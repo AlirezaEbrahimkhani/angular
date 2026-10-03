@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 describe('Angular Elements', () => {
@@ -12,6 +12,9 @@ describe('Angular Elements', () => {
   });
 
   it('should recognize the zippy as an Angular Element', () => {
-    cy.get('.tree-wrapper').find('.tree-node:contains("app-zippy")').its('length').should('eq', 1);
+    cy.get('.tree-wrapper')
+      .find('ng-tree-node:contains("app-zippy")')
+      .its('length')
+      .should('eq', 1);
   });
 });

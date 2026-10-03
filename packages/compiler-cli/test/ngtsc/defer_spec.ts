@@ -3,10 +3,10 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {ErrorCode, ngErrorCode} from '@angular/compiler-cli/src/ngtsc/diagnostics';
+import {ErrorCode, ngErrorCode} from '../../src/ngtsc/diagnostics';
 
 import {runInEachFileSystem} from '../../src/ngtsc/file_system/testing';
 import {loadStandardTestFiles} from '../../src/ngtsc/testing';
@@ -31,7 +31,6 @@ runInEachFileSystem(() => {
         import { Component } from '@angular/core';
 
         @Component({
-          standalone: true,
           selector: 'cmp-a',
           template: 'CmpA!'
         })
@@ -47,14 +46,12 @@ runInEachFileSystem(() => {
 
         @Component({
           selector: 'local-dep',
-          standalone: true,
           template: 'Local dependency',
         })
         export class LocalDep {}
 
         @Component({
           selector: 'test-cmp',
-          standalone: true,
           imports: [CmpA, LocalDep],
           template: \`
             @defer {
@@ -79,53 +76,48 @@ runInEachFileSystem(() => {
       expect(jsContents).not.toContain('import { CmpA }');
     });
 
-    it(
-      'should include timer scheduler function when ' + '`after` or `minimum` parameters are used',
-      () => {
-        env.write(
-          'cmp-a.ts',
-          `
+    it('should include timer scheduler function when `after` or `minimum` parameters are used', () => {
+      env.write(
+        'cmp-a.ts',
+        `
           import { Component } from '@angular/core';
 
           @Component({
-            standalone: true,
             selector: 'cmp-a',
             template: 'CmpA!'
           })
           export class CmpA {}
         `,
-        );
+      );
 
-        env.write(
-          '/test.ts',
-          `
-            import { Component } from '@angular/core';
-            import { CmpA } from './cmp-a';
+      env.write(
+        '/test.ts',
+        `
+          import { Component } from '@angular/core';
+          import { CmpA } from './cmp-a';
 
-            @Component({
-              selector: 'test-cmp',
-              standalone: true,
-              imports: [CmpA],
-              template: \`
-                @defer {
-                  <cmp-a />
-                } @loading (after 500ms; minimum 300ms) {
-                  Loading...
-                }
-              \`,
-            })
-            export class TestCmp {}
-          `,
-        );
+          @Component({
+            selector: 'test-cmp',
+            imports: [CmpA],
+            template: \`
+              @defer {
+                <cmp-a />
+              } @loading (after 500ms; minimum 300ms) {
+                Loading...
+              }
+            \`,
+          })
+          export class TestCmp {}
+        `,
+      );
 
-        env.driveMain();
+      env.driveMain();
 
-        const jsContents = env.getContents('test.js');
-        expect(jsContents).toContain(
-          'ɵɵdefer(2, 0, TestCmp_Defer_2_DepsFn, 1, null, null, 0, null, i0.ɵɵdeferEnableTimerScheduling)',
-        );
-      },
-    );
+      const jsContents = env.getContents('test.js');
+      expect(jsContents).toContain(
+        'ɵɵdefer(2, 0, TestCmp_Defer_2_DepsFn, 1, null, null, 0, null, i0.ɵɵdeferEnableTimerScheduling)',
+      );
+    });
 
     describe('imports', () => {
       it('should retain regular imports when symbol is eagerly referenced', () => {
@@ -135,7 +127,6 @@ runInEachFileSystem(() => {
           import { Component } from '@angular/core';
 
           @Component({
-            standalone: true,
             selector: 'cmp-a',
             template: 'CmpA!'
           })
@@ -151,7 +142,6 @@ runInEachFileSystem(() => {
 
           @Component({
             selector: 'test-cmp',
-            standalone: true,
             imports: [CmpA],
             template: \`
               @defer {
@@ -188,14 +178,12 @@ runInEachFileSystem(() => {
           import { Component } from '@angular/core';
 
           @Component({
-            standalone: true,
             selector: 'cmp-a',
             template: 'CmpA!'
           })
           export class CmpA {}
 
           @Component({
-            standalone: true,
             selector: 'cmp-b',
             template: 'CmpB!'
           })
@@ -211,7 +199,6 @@ runInEachFileSystem(() => {
 
           @Component({
             selector: 'test-cmp',
-            standalone: true,
             imports: [CmpA, CmpB],
             template: \`
               @defer {
@@ -250,14 +237,12 @@ runInEachFileSystem(() => {
           import { Component } from '@angular/core';
 
           @Component({
-            standalone: true,
             selector: 'cmp-a',
             template: 'CmpA!'
           })
           export class CmpA {}
 
           @Component({
-            standalone: true,
             selector: 'cmp-b',
             template: 'CmpB!'
           })
@@ -273,7 +258,6 @@ runInEachFileSystem(() => {
 
           @Component({
             selector: 'test-cmp',
-            standalone: true,
             imports: [CmpA, CmpB],
             template: \`
               @defer {
@@ -309,7 +293,6 @@ runInEachFileSystem(() => {
           import { Component } from '@angular/core';
 
           @Component({
-            standalone: true,
             selector: 'cmp-a',
             template: 'CmpA!'
           })
@@ -325,7 +308,6 @@ runInEachFileSystem(() => {
 
           @Component({
             selector: 'test-cmp',
-            standalone: true,
             imports: [forwardRef(() => CmpA)],
             template: \`
               @defer {
@@ -358,7 +340,6 @@ runInEachFileSystem(() => {
           export class Foo {}
 
           @Component({
-            standalone: true,
             selector: 'cmp-a',
             template: 'CmpA!'
           })
@@ -376,7 +357,6 @@ runInEachFileSystem(() => {
 
           @Component({
             selector: 'test-cmp',
-            standalone: true,
             imports: [CmpA],
             template: \`
               @defer {
@@ -406,7 +386,6 @@ runInEachFileSystem(() => {
             export class Foo {}
 
             @Component({
-              standalone: true,
               selector: 'cmp-a',
               template: 'CmpA!'
             })
@@ -425,7 +404,6 @@ runInEachFileSystem(() => {
 
             @Component({
               selector: 'test-cmp',
-              standalone: true,
               imports: [CmpA],
               template: \`
                 @defer {
@@ -455,7 +433,6 @@ runInEachFileSystem(() => {
             export class Foo {}
 
             @Component({
-              standalone: true,
               selector: 'cmp-a',
               template: 'CmpA!'
             })
@@ -474,7 +451,6 @@ runInEachFileSystem(() => {
 
             @Component({
               selector: 'test-cmp',
-              standalone: true,
               imports: [CmpA],
               template: \`
                 @defer {
@@ -504,7 +480,6 @@ runInEachFileSystem(() => {
             export class Foo {}
 
             @Component({
-              standalone: true,
               selector: 'cmp-a',
               template: 'CmpA!'
             })
@@ -523,7 +498,6 @@ runInEachFileSystem(() => {
 
             @Component({
               selector: 'test-cmp',
-              standalone: true,
               imports: [CmpA],
               template: \`
                 @defer {
@@ -551,14 +525,12 @@ runInEachFileSystem(() => {
           import { Component } from '@angular/core';
 
           @Component({
-            standalone: true,
             selector: 'cmp-a',
             template: 'CmpA!'
           })
           export class CmpA {}
 
           @Component({
-            standalone: true,
             selector: 'cmp-b',
             template: 'CmpB!'
           })
@@ -575,7 +547,6 @@ runInEachFileSystem(() => {
 
           @Component({
             selector: 'test-cmp',
-            standalone: true,
             imports: [CmpA, CmpB],
             template: \`
               @defer {
@@ -606,7 +577,6 @@ runInEachFileSystem(() => {
           `
           import { Component } from '@angular/core';
           @Component({
-            standalone: true,
             selector: 'cmp-a',
             template: 'CmpA!'
           })
@@ -620,13 +590,11 @@ runInEachFileSystem(() => {
           import CmpA from './cmp-a';
           @Component({
             selector: 'local-dep',
-            standalone: true,
             template: 'Local dependency',
           })
           export class LocalDep {}
           @Component({
             selector: 'test-cmp',
-            standalone: true,
             imports: [CmpA, LocalDep],
             template: \`
               @defer {
@@ -652,6 +620,108 @@ runInEachFileSystem(() => {
         // via dynamic imports and an original import can be removed.
         expect(jsContents).not.toContain('import CmpA');
       });
+
+      it('should defer symbol that is used only in types', () => {
+        env.write(
+          'cmp.ts',
+          `
+          import { Component } from '@angular/core';
+
+          @Component({
+            selector: 'cmp',
+            template: 'Cmp!'
+          })
+          export class Cmp {}
+        `,
+        );
+
+        env.write(
+          '/test.ts',
+          `
+          import { Component, viewChild } from '@angular/core';
+          import { Cmp } from './cmp';
+
+          const topLevelConst: Cmp = null!;
+
+          @Component({
+            imports: [Cmp],
+            template: \`
+              @defer {
+                <cmp #ref/>
+              }
+            \`,
+          })
+          export class TestCmp {
+            query = viewChild<Cmp>('ref');
+            asType: Cmp;
+            inlineType: {foo: Cmp};
+            unionType: string | Cmp | number;
+            constructor(param: Cmp) {}
+            inMethod(param: Cmp): Cmp {
+              let localVar: Cmp | null = null;
+              return localVar!;
+            }
+          }
+
+          function inFunction(param: Cmp): Cmp {
+            return null!;
+          }
+        `,
+        );
+
+        env.driveMain();
+
+        const jsContents = env.getContents('test.js');
+        expect(jsContents).toContain('ɵɵdefer(1, 0, TestCmp_Defer_1_DepsFn)');
+        expect(jsContents).toContain('() => [import("./cmp").then(m => m.Cmp)]');
+        expect(jsContents).not.toContain('import { Cmp }');
+      });
+
+      it('should retain symbols used in types and eagerly', () => {
+        env.write(
+          'cmp.ts',
+          `
+          import { Component } from '@angular/core';
+
+          @Component({
+            selector: 'cmp',
+            template: 'Cmp!'
+          })
+          export class Cmp {}
+        `,
+        );
+
+        env.write(
+          '/test.ts',
+          `
+          import { Component, viewChild } from '@angular/core';
+          import { Cmp } from './cmp';
+
+          @Component({
+            imports: [Cmp],
+            template: \`
+              @defer {
+                <cmp #ref/>
+              }
+            \`,
+          })
+          export class TestCmp {
+            // Type-only reference
+            query = viewChild<Cmp>('ref');
+
+            // Directy reference
+            otherQuery = viewChild(Cmp);
+          }
+        `,
+        );
+
+        env.driveMain();
+
+        const jsContents = env.getContents('test.js');
+        expect(jsContents).toContain('ɵɵdefer(1, 0, TestCmp_Defer_1_DepsFn)');
+        expect(jsContents).toContain('() => [Cmp]');
+        expect(jsContents).toContain('import { Cmp }');
+      });
     });
 
     it('should detect pipe used in the `when` trigger as an eager dependency', () => {
@@ -660,7 +730,7 @@ runInEachFileSystem(() => {
         `
         import { Pipe } from '@angular/core';
 
-        @Pipe({name: 'test', standalone: true})
+        @Pipe({name: 'test'})
         export class TestPipe {
           transform() {
             return 1;
@@ -677,7 +747,6 @@ runInEachFileSystem(() => {
 
         @Component({
           selector: 'test-cmp',
-          standalone: true,
           imports: [TestPipe],
           template: '@defer (when 1 | test) { hello }',
         })
@@ -699,7 +768,7 @@ runInEachFileSystem(() => {
         `
         import { Pipe } from '@angular/core';
 
-        @Pipe({name: 'test', standalone: true})
+        @Pipe({name: 'test'})
         export class TestPipe {
           transform() {
             return 1;
@@ -716,7 +785,6 @@ runInEachFileSystem(() => {
 
         @Component({
           selector: 'test-cmp',
-          standalone: true,
           imports: [TestPipe],
           template: '@defer (when 1 | test) { hello }',
         })
@@ -738,7 +806,7 @@ runInEachFileSystem(() => {
         `
         import { Pipe } from '@angular/core';
 
-        @Pipe({name: 'test', standalone: true})
+        @Pipe({name: 'test'})
         export class TestPipe {
           transform() {
             return 1;
@@ -755,7 +823,6 @@ runInEachFileSystem(() => {
 
         @Component({
           selector: 'test-cmp',
-          standalone: true,
           imports: [TestPipe],
           template: '@defer (when 1 | test) { {{1 | test}} }',
         })
@@ -781,9 +848,7 @@ runInEachFileSystem(() => {
           'deferred-a.ts',
           `
           import {Component} from '@angular/core';
-
           @Component({
-            standalone: true,
             selector: 'deferred-cmp-a',
             template: 'DeferredCmpA contents',
           })
@@ -796,13 +861,23 @@ runInEachFileSystem(() => {
           'deferred-b.ts',
           `
           import {Component} from '@angular/core';
-
           @Component({
-            standalone: true,
             selector: 'deferred-cmp-b',
             template: 'DeferredCmpB contents',
           })
           export class DeferredCmpB {
+          }
+        `,
+        );
+
+        env.write(
+          'pipe-a.ts',
+          `
+          import {Pipe} from '@angular/core';
+          @Pipe({
+            name: 'pipea',
+          })
+          export class PipeA {
           }
         `,
         );
@@ -813,21 +888,26 @@ runInEachFileSystem(() => {
           import {Component} from '@angular/core';
           import {DeferredCmpA} from './deferred-a';
           import {DeferredCmpB} from './deferred-b';
-
+          import {PipeA} from './pipe-a';
           @Component({
-            standalone: true,
             // @ts-ignore
-            deferredImports: [DeferredCmpA, DeferredCmpB],
+            deferredImports: [DeferredCmpA, DeferredCmpB, PipeA],
             template: \`
-              @defer {
-                <deferred-cmp-a />
-              }
-              @defer {
-                <deferred-cmp-b />
+              @for (item of items; track item) {
+                @if (true) {
+                  @defer {
+                    {{ 'Hi!' | pipea }}
+                    <deferred-cmp-a />
+                  }
+                  @defer {
+                    <deferred-cmp-b />
+                  }
+                }
               }
             \`,
           })
           export class AppCmp {
+             items = [1,2,3];
           }
         `,
         );
@@ -835,30 +915,35 @@ runInEachFileSystem(() => {
         env.driveMain();
         const jsContents = env.getContents('test.js');
 
-        // Expect that all deferrableImports become dynamic imports.
+        // Expect that all deferrableImports in local compilation mode
+        // are located in a single function (since we can't detect in
+        // the local mode which components belong to which block).
         expect(jsContents).toContain(
-          'const AppCmp_Defer_1_DepsFn = () => [' +
-            'import("./deferred-a").then(m => m.DeferredCmpA)];',
+          'const AppCmp_For_1_Conditional_0_Defer_1_DepsFn = () => [' +
+            'import("./deferred-a").then(m => m.DeferredCmpA), ' +
+            'import("./pipe-a").then(m => m.PipeA)];',
         );
         expect(jsContents).toContain(
-          'const AppCmp_Defer_4_DepsFn = () => [' +
+          'const AppCmp_For_1_Conditional_0_Defer_4_DepsFn = () => [' +
             'import("./deferred-b").then(m => m.DeferredCmpB)];',
         );
 
         // Make sure there are no eager imports present in the output.
         expect(jsContents).not.toContain(`from './deferred-a'`);
         expect(jsContents).not.toContain(`from './deferred-b'`);
+        expect(jsContents).not.toContain(`from './pipe-a'`);
 
-        // Defer instructions have different dependency functions in full mode.
-        expect(jsContents).toContain('ɵɵdefer(1, 0, AppCmp_Defer_1_DepsFn);');
-        expect(jsContents).toContain('ɵɵdefer(4, 3, AppCmp_Defer_4_DepsFn);');
+        // There's 2 separate defer instructions due to the two separate defer blocks
+        expect(jsContents).toContain('ɵɵdefer(1, 0, AppCmp_For_1_Conditional_0_Defer_1_DepsFn);');
+        expect(jsContents).toContain('ɵɵdefer(4, 3, AppCmp_For_1_Conditional_0_Defer_4_DepsFn);');
 
         // Expect `ɵsetClassMetadataAsync` to contain dynamic imports too.
         expect(jsContents).toContain(
           'ɵsetClassMetadataAsync(AppCmp, () => [' +
             'import("./deferred-a").then(m => m.DeferredCmpA), ' +
+            'import("./pipe-a").then(m => m.PipeA), ' +
             'import("./deferred-b").then(m => m.DeferredCmpB)], ' +
-            '(DeferredCmpA, DeferredCmpB) => {',
+            '(DeferredCmpA, PipeA, DeferredCmpB) => {',
         );
       });
 
@@ -869,7 +954,6 @@ runInEachFileSystem(() => {
             import {Component} from '@angular/core';
 
             @Component({
-              standalone: true,
               selector: 'eager-cmp-a',
               template: 'EagerCmpA contents',
             })
@@ -884,7 +968,6 @@ runInEachFileSystem(() => {
             import {Component} from '@angular/core';
 
             @Component({
-              standalone: true,
               selector: 'deferred-cmp-a',
               template: 'DeferredCmpA contents',
             })
@@ -899,7 +982,6 @@ runInEachFileSystem(() => {
             import {Component} from '@angular/core';
 
             @Component({
-              standalone: true,
               selector: 'deferred-cmp-b',
               template: 'DeferredCmpB contents',
             })
@@ -917,7 +999,6 @@ runInEachFileSystem(() => {
             import {EagerCmpA} from './eager-a';
 
             @Component({
-              standalone: true,
               imports: [EagerCmpA],
               // @ts-ignore
               deferredImports: [DeferredCmpA, DeferredCmpB],
@@ -982,7 +1063,6 @@ runInEachFileSystem(() => {
               @Injectable()
               class MyInjectable {}
               @Component({
-                standalone: true,
                 // @ts-ignore
                 deferredImports: [MyInjectable],
                 template: '',
@@ -1005,7 +1085,6 @@ runInEachFileSystem(() => {
               @NgModule()
               class MyModule {}
               @Component({
-                standalone: true,
                 // @ts-ignore
                 deferredImports: [MyModule],
                 template: '',
@@ -1025,8 +1104,8 @@ runInEachFileSystem(() => {
             'deferred-a.ts',
             `
               import {Component} from '@angular/core';
+
               @Component({
-                standalone: true,
                 selector: 'deferred-cmp-a',
                 template: 'DeferredCmpA contents',
               })
@@ -1039,8 +1118,8 @@ runInEachFileSystem(() => {
             'deferred-b.ts',
             `
               import {Component} from '@angular/core';
+
               @Component({
-                standalone: true,
                 selector: 'deferred-cmp-b',
                 template: 'DeferredCmpB contents',
               })
@@ -1056,7 +1135,6 @@ runInEachFileSystem(() => {
               import {DeferredCmpA} from './deferred-a';
               import {DeferredCmpB} from './deferred-b';
               @Component({
-                standalone: true,
                 // @ts-ignore
                 deferredImports: [DeferredCmpA, DeferredCmpB],
                 template: \`
@@ -1082,8 +1160,8 @@ runInEachFileSystem(() => {
             'deferred-a.ts',
             `
               import {Component} from '@angular/core';
+
               @Component({
-                standalone: true,
                 selector: 'deferred-cmp-a',
                 template: 'DeferredCmpA contents',
               })
@@ -1097,8 +1175,8 @@ runInEachFileSystem(() => {
             `
               import {Component} from '@angular/core';
               import {DeferredCmpA} from './deferred-a';
+
               @Component({
-                standalone: true,
                 // @ts-ignore
                 deferredImports: [DeferredCmpA],
                 imports: [DeferredCmpA],
@@ -1122,10 +1200,7 @@ runInEachFileSystem(() => {
             'deferred-pipe-a.ts',
             `
               import {Pipe} from '@angular/core';
-              @Pipe({
-                standalone: true,
-                name: 'deferredPipeA'
-              })
+              @Pipe({name: 'deferredPipeA'})
               export class DeferredPipeA {
                 transform() {}
               }
@@ -1136,10 +1211,7 @@ runInEachFileSystem(() => {
             'deferred-pipe-b.ts',
             `
               import {Pipe} from '@angular/core';
-              @Pipe({
-                standalone: true,
-                name: 'deferredPipeB'
-              })
+              @Pipe({name: 'deferredPipeB'})
               export class DeferredPipeB {
                 transform() {}
               }
@@ -1153,7 +1225,6 @@ runInEachFileSystem(() => {
               import {DeferredPipeA} from './deferred-pipe-a';
               import {DeferredPipeB} from './deferred-pipe-b';
               @Component({
-                standalone: true,
                 // @ts-ignore
                 deferredImports: [DeferredPipeA, DeferredPipeB],
                 template: \`
@@ -1178,7 +1249,6 @@ runInEachFileSystem(() => {
             `
             import {Component} from '@angular/core';
             @Component({
-              standalone: true,
               selector: 'deferred-cmp-a',
               template: 'DeferredCmpA contents',
             })
@@ -1193,7 +1263,6 @@ runInEachFileSystem(() => {
             import {Component} from '@angular/core';
             import {DeferredCmpA} from './deferred-a';
             @Component({
-              standalone: true,
               // @ts-ignore
               deferredImports: [DeferredCmpA],
               template: \`
@@ -1224,7 +1293,6 @@ runInEachFileSystem(() => {
             `
               import {Component} from '@angular/core';
               @Component({
-                standalone: true,
                 selector: 'deferred-cmp-a',
                 template: 'DeferredCmpA contents',
               })
@@ -1239,7 +1307,6 @@ runInEachFileSystem(() => {
               import {Component} from '@angular/core';
               import {DeferredCmpA} from './deferred-a';
               @Component({
-                standalone: true,
                 // @ts-ignore
                 deferredImports: [DeferredCmpA],
                 template: \`
@@ -1274,7 +1341,6 @@ runInEachFileSystem(() => {
           import {Component} from '@angular/core';
 
           @Component({
-            standalone: true,
             selector: 'cmp-a',
             template: 'CmpA!'
           })
@@ -1290,14 +1356,12 @@ runInEachFileSystem(() => {
 
           @Component({
             selector: 'local-dep',
-            standalone: true,
             template: 'Local dependency',
           })
           export class LocalDep {}
 
           @Component({
             selector: 'test-cmp',
-            standalone: true,
             imports: [CmpA, LocalDep],
             template: \`
               @defer {
@@ -1337,7 +1401,6 @@ runInEachFileSystem(() => {
             import {Component} from '@angular/core';
 
             @Component({
-              standalone: true,
               selector: 'cmp-a',
               template: 'CmpA!'
             })
@@ -1353,7 +1416,6 @@ runInEachFileSystem(() => {
 
             @Component({
               selector: 'test-cmp',
-              standalone: true,
               imports: [CmpA],
               template: \`
                 @defer {
@@ -1394,7 +1456,6 @@ runInEachFileSystem(() => {
         import {Component} from '@angular/core';
 
         @Component({
-          standalone: true,
           selector: 'cmp-a',
           template: 'CmpA!'
         })
@@ -1410,15 +1471,13 @@ runInEachFileSystem(() => {
 
         @Component({
           selector: 'local-dep',
-          standalone: true,
           template: 'Local dependency',
         })
         export class LocalDep {}
 
         @Component({
           selector: 'test-cmp',
-          standalone: true,
-          imports: [CmpA, LocalDep],
+                    imports: [CmpA, LocalDep],
           template: \`
             @defer {
               <cmp-a />
@@ -1445,6 +1504,155 @@ runInEachFileSystem(() => {
           // Callback that invokes `setClassMetadata` at the end
           'CmpA => { i0.ɵsetClassMetadata(TestCmp',
       );
+    });
+
+    describe('trigger validation', () => {
+      it('should report if reference-based trigger has no reference and there is no placeholder block but a hydrate trigger exists', () => {
+        env.write(
+          '/test.ts',
+          `
+          import {Component} from '@angular/core';
+
+          @Component({template: '@defer (on viewport; hydrate on immediate) {hello}'})
+          export class TestCmp {}
+        `,
+        );
+
+        const diags = env.driveDiagnostics();
+        expect(diags.length).toBe(1);
+        expect(diags[0].messageText).toBe(
+          'Trigger with no parameters can only be placed on an @defer that has a @placeholder block',
+        );
+      });
+
+      it('should report if reference-based trigger has no reference and there is no placeholder block but a hydrate trigger exists and it is also viewport', () => {
+        env.write(
+          '/test.ts',
+          `
+          import {Component} from '@angular/core';
+
+          @Component({template: '@defer (on viewport; hydrate on viewport) {hello}'})
+          export class TestCmp {}
+        `,
+        );
+
+        const diags = env.driveDiagnostics();
+        expect(diags.length).toBe(1);
+        expect(diags[0].messageText).toBe(
+          'Trigger with no parameters can only be placed on an @defer that has a @placeholder block',
+        );
+      });
+
+      it('should report if reference-based trigger has no reference and the placeholder is empty', () => {
+        env.write(
+          '/test.ts',
+          `
+          import {Component} from '@angular/core';
+
+          @Component({template: '@defer (on viewport) {hello} @placeholder {}'})
+          export class TestCmp {}
+        `,
+        );
+
+        const diags = env.driveDiagnostics();
+        expect(diags.length).toBe(1);
+        expect(diags[0].messageText).toBe(
+          'Trigger with no parameters can only be placed on an @defer that has a @placeholder block with exactly one root element node',
+        );
+      });
+
+      it('should report if reference-based trigger has no reference and the placeholder with text at the root', () => {
+        env.write(
+          '/test.ts',
+          `
+          import {Component} from '@angular/core';
+
+          @Component({template: '@defer (on viewport) {hello} @placeholder {placeholder}'})
+          export class TestCmp {}
+        `,
+        );
+
+        const diags = env.driveDiagnostics();
+        expect(diags.length).toBe(1);
+        expect(diags[0].messageText).toBe(
+          'Trigger with no parameters can only be placed on an @defer that has a @placeholder block with exactly one root element node',
+        );
+      });
+
+      it('should report if reference-based trigger has no reference and there is no placeholder block', () => {
+        env.write(
+          '/test.ts',
+          `
+          import {Component} from '@angular/core';
+
+          @Component({template: '@defer (on viewport) {hello}'})
+          export class TestCmp {}
+        `,
+        );
+
+        const diags = env.driveDiagnostics();
+        expect(diags.length).toBe(1);
+        expect(diags[0].messageText).toBe(
+          'Trigger with no parameters can only be placed on an @defer that has a @placeholder block',
+        );
+      });
+
+      it('should report if reference-based trigger has no reference and the placeholder has multiple root elements', () => {
+        env.write(
+          '/test.ts',
+          `
+          import {Component} from '@angular/core';
+
+          @Component({template: '@defer (on viewport) {hello} @placeholder {<div></div><span></span>}'})
+          export class TestCmp {}
+        `,
+        );
+
+        const diags = env.driveDiagnostics();
+        expect(diags.length).toBe(1);
+        expect(diags[0].messageText).toBe(
+          'Trigger with no parameters can only be placed on an @defer that has a @placeholder block with exactly one root element node',
+        );
+      });
+
+      it('should report if reference-based trigger has no reference and the placeholder has one root element and some text', () => {
+        env.write(
+          '/test.ts',
+          `
+          import {Component} from '@angular/core';
+
+          @Component({template: '@defer (on viewport) {hello} @placeholder {<div></div> hi}'})
+          export class TestCmp {}
+        `,
+        );
+
+        const diags = env.driveDiagnostics();
+        expect(diags.length).toBe(1);
+        expect(diags[0].messageText).toBe(
+          'Trigger with no parameters can only be placed on an @defer that has a @placeholder block with exactly one root element node',
+        );
+      });
+
+      it('should count whitespace as a root node when preserveWhitespaces is enabled', () => {
+        env.write(
+          '/test.ts',
+          `
+          import {Component} from '@angular/core';
+
+          @Component({
+            preserveWhitespaces: true,
+            template: '@defer (on viewport) {hello} @placeholder {<div></div>  }'
+          })
+          export class TestCmp {}
+        `,
+        );
+
+        const diags = env.driveDiagnostics();
+        expect(diags.length).toBe(1);
+        expect(diags[0].messageText).toBe(
+          'Trigger with no parameters can only be placed on an @defer that has a @placeholder block with exactly one root element node',
+        );
+      });
     });
   });
 });

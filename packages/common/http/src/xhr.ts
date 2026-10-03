@@ -3,18 +3,22 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {XhrFactory} from '@angular/common';
-import {Injectable, ɵRuntimeError as RuntimeError} from '@angular/core';
+import {XhrFactory} from '../../index';
+import {
+  Injectable,
+  ɵRuntimeError as RuntimeError,
+  ɵformatRuntimeError as formatRuntimeError,
+} from '@angular/core';
 import {from, Observable, Observer, of} from 'rxjs';
 import {switchMap} from 'rxjs/operators';
 
-import {HttpBackend} from './backend';
+import type {HttpBackend} from './backend';
 import {RuntimeErrorCode} from './errors';
 import {HttpHeaders} from './headers';
-import {HttpRequest} from './request';
+import {ACCEPT_HEADER, ACCEPT_HEADER_VALUE, CONTENT_TYPE_HEADER, HttpRequest} from './request';
 import {
   HTTP_STATUS_CODE_NO_CONTENT,
   HTTP_STATUS_CODE_OK,
@@ -31,17 +35,59 @@ import {
 const XSSI_PREFIX = /^\)\]\}',?\n/;
 
 /**
- * Determine an appropriate URL for the response, by checking either
- * XMLHttpRequest.responseURL or the X-Request-URL header.
+ * Validates whether the request is compatible with the XHR backend.
+ * Show a warning if the request contains options that are not supported by XHR.
  */
-function getResponseUrl(xhr: any): string | null {
-  if ('responseURL' in xhr && xhr.responseURL) {
-    return xhr.responseURL;
+function validateXhrCompatibility(req: HttpRequest<any>) {
+  const unsupportedOptions: {
+    property: keyof HttpRequest<any>;
+    errorCode: RuntimeErrorCode;
+  }[] = [
+    {
+      property: 'keepalive',
+      errorCode: RuntimeErrorCode.KEEPALIVE_NOT_SUPPORTED_WITH_XHR,
+    },
+    {
+      property: 'cache',
+      errorCode: RuntimeErrorCode.CACHE_NOT_SUPPORTED_WITH_XHR,
+    },
+    {
+      property: 'priority',
+      errorCode: RuntimeErrorCode.PRIORITY_NOT_SUPPORTED_WITH_XHR,
+    },
+    {
+      property: 'mode',
+      errorCode: RuntimeErrorCode.MODE_NOT_SUPPORTED_WITH_XHR,
+    },
+    {
+      property: 'redirect',
+      errorCode: RuntimeErrorCode.REDIRECT_NOT_SUPPORTED_WITH_XHR,
+    },
+    {
+      property: 'credentials',
+      errorCode: RuntimeErrorCode.CREDENTIALS_NOT_SUPPORTED_WITH_XHR,
+    },
+    {
+      property: 'integrity',
+      errorCode: RuntimeErrorCode.INTEGRITY_NOT_SUPPORTED_WITH_XHR,
+    },
+    {
+      property: 'referrer',
+      errorCode: RuntimeErrorCode.REFERRER_NOT_SUPPORTED_WITH_XHR,
+    },
+  ];
+
+  // Check each unsupported option and warn if present
+  for (const {property, errorCode} of unsupportedOptions) {
+    if (req[property]) {
+      console.warn(
+        formatRuntimeError(
+          errorCode,
+          `Angular detected that a \`HttpClient\` request with the \`${property}\` option was sent using XHR, which does not support it. To use the \`${property}\` option, enable Fetch API support by passing \`withFetch()\` as an argument to \`provideHttpClient()\`.`,
+        ),
+      );
+    }
   }
-  if (/^X-Request-URL:/m.test(xhr.getAllResponseHeaders())) {
-    return xhr.getResponseHeader('X-Request-URL');
-  }
-  return null;
 }
 
 /**
@@ -51,7 +97,7 @@ function getResponseUrl(xhr: any): string | null {
  *
  * @publicApi
  */
-@Injectable()
+@Injectable({providedIn: 'root'})
 export class HttpXhrBackend implements HttpBackend {
   constructor(private xhrFactory: XhrFactory) {}
 
@@ -71,13 +117,22 @@ export class HttpXhrBackend implements HttpBackend {
       );
     }
 
+    // Validate that the request is compatible with the XHR backend.
+    ngDevMode && validateXhrCompatibility(req);
+
     // Check whether this factory has a special function to load an XHR implementation
     // for various non-browser environments. We currently limit it to only `ServerXhr`
     // class, which needs to load an XHR implementation.
     const xhrFactory: XhrFactory & {ɵloadImpl?: () => Promise<void>} = this.xhrFactory;
-    const source: Observable<void | null> = xhrFactory.ɵloadImpl
-      ? from(xhrFactory.ɵloadImpl())
-      : of(null);
+    const source: Observable<void | null> =
+      // Note that `ɵloadImpl` is never defined in client bundles and can be
+      // safely dropped whenever we're running in the browser.
+      // This branching is redundant.
+      // The `ngServerMode` guard also enables tree-shaking of the `from()`
+      // function from the common bundle, as it's only used in server code.
+      typeof ngServerMode !== 'undefined' && ngServerMode && xhrFactory.ɵloadImpl
+        ? from(xhrFactory.ɵloadImpl())
+        : of(null);
 
     return source.pipe(
       switchMap(() => {
@@ -95,17 +150,21 @@ export class HttpXhrBackend implements HttpBackend {
           req.headers.forEach((name, values) => xhr.setRequestHeader(name, values.join(',')));
 
           // Add an Accept header if one isn't present already.
-          if (!req.headers.has('Accept')) {
-            xhr.setRequestHeader('Accept', 'application/json, text/plain, */*');
+          if (!req.headers.has(ACCEPT_HEADER)) {
+            xhr.setRequestHeader(ACCEPT_HEADER, ACCEPT_HEADER_VALUE);
           }
 
           // Auto-detect the Content-Type header if one isn't present already.
-          if (!req.headers.has('Content-Type')) {
+          if (!req.headers.has(CONTENT_TYPE_HEADER)) {
             const detectedType = req.detectContentTypeHeader();
             // Sometimes Content-Type detection fails.
             if (detectedType !== null) {
-              xhr.setRequestHeader('Content-Type', detectedType);
+              xhr.setRequestHeader(CONTENT_TYPE_HEADER, detectedType);
             }
+          }
+
+          if (req.timeout) {
+            xhr.timeout = req.timeout;
           }
 
           // Set the responseType if one was requested.
@@ -145,7 +204,7 @@ export class HttpXhrBackend implements HttpBackend {
 
             // Read the response URL from the XMLHttpResponse instance and fall back on the
             // request URL.
-            const url = getResponseUrl(xhr) || req.url;
+            const url = xhr.responseURL || req.url;
 
             // Construct the HttpHeaderResponse and memoize it.
             headerResponse = new HttpHeaderResponse({headers, status: xhr.status, statusText, url});
@@ -249,6 +308,21 @@ export class HttpXhrBackend implements HttpBackend {
             observer.error(res);
           };
 
+          let onTimeout = onError;
+
+          if (req.timeout) {
+            onTimeout = (_: ProgressEvent) => {
+              const {url} = partialFromXhr();
+              const res = new HttpErrorResponse({
+                error: new DOMException('Request timed out', 'TimeoutError'),
+                status: xhr.status || 0,
+                statusText: xhr.statusText || 'Request timeout',
+                url: url || undefined,
+              });
+              observer.error(res);
+            };
+          }
+
           // The sentHeaders flag tracks whether the HttpResponseHeaders event
           // has been sent on the stream. This is necessary to track if progress
           // is enabled since the event will be sent on only the first download
@@ -310,7 +384,7 @@ export class HttpXhrBackend implements HttpBackend {
           // By default, register for load and error events.
           xhr.addEventListener('load', onLoad);
           xhr.addEventListener('error', onError);
-          xhr.addEventListener('timeout', onError);
+          xhr.addEventListener('timeout', onTimeout);
           xhr.addEventListener('abort', onError);
 
           // Progress events are only enabled if requested.
@@ -334,7 +408,7 @@ export class HttpXhrBackend implements HttpBackend {
             xhr.removeEventListener('error', onError);
             xhr.removeEventListener('abort', onError);
             xhr.removeEventListener('load', onLoad);
-            xhr.removeEventListener('timeout', onError);
+            xhr.removeEventListener('timeout', onTimeout);
 
             if (req.reportProgress) {
               xhr.removeEventListener('progress', onDownProgress);

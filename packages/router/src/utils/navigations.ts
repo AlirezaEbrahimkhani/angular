@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {Observable} from 'rxjs';
@@ -18,7 +18,7 @@ import {
   NavigationSkipped,
 } from '../events';
 
-enum NavigationResult {
+const enum NavigationResult {
   COMPLETE,
   FAILED,
   REDIRECTING,
@@ -33,7 +33,7 @@ enum NavigationResult {
  * redirecting/superseding navigation must finish.
  * - `NavigationError`, `NavigationEnd`, or `NavigationSkipped` event emits
  */
-export function afterNextNavigation(router: {events: Observable<Event>}, action: () => void) {
+export function afterNextNavigation(router: {events: Observable<Event>}, action: () => void): void {
   router.events
     .pipe(
       filter(

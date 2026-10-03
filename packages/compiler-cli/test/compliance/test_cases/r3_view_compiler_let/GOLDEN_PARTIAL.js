@@ -20,7 +20,6 @@ i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "0.0.0-PLACEHOLDE
     @let result = value * 2;
     The result is {{result}}
   `,
-                    standalone: true,
                 }]
         }] });
 
@@ -60,7 +59,6 @@ i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "0.0.0-PLACEHOLDE
     @let result = two + 1;
     The result is {{result}}
   `,
-                    standalone: true,
                 }]
         }] });
 
@@ -90,7 +88,6 @@ i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "0.0.0-PLACEHOLDE
             type: Pipe,
             args: [{
                     name: 'double',
-                    standalone: true,
                 }]
         }] });
 export class MyApp {
@@ -112,7 +109,6 @@ i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "0.0.0-PLACEHOLDE
     @let result = one | double;
     The result is {{result}}
   `,
-                    standalone: true,
                     imports: [DoublePipe],
                 }]
         }] });
@@ -162,7 +158,6 @@ i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "0.0.0-PLACEHOLDE
 
     <button (click)="callback(one, two)"></button>
   `,
-                    standalone: true,
                 }]
         }] });
 
@@ -210,7 +205,6 @@ i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "0.0.0-PLACEHOLDE
 
     @let one = 1;
   `,
-                    standalone: true,
                 }]
         }] });
 
@@ -244,7 +238,6 @@ i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "0.0.0-PLACEHOLDE
     {{value}}
     <ng-template>{{value}}</ng-template>
   `,
-                    standalone: true,
                 }]
         }] });
 
@@ -310,7 +303,6 @@ i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "0.0.0-PLACEHOLDE
       }
     </ng-template>
   `,
-                    standalone: true,
                 }]
         }] });
 
@@ -350,7 +342,6 @@ i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "0.0.0-PLACEHOLDE
     @let fullName = name.value + ' ' + lastName.value;
     Hello, {{fullName}}
   `,
-                    standalone: true,
                 }]
         }] });
 
@@ -384,7 +375,6 @@ i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "0.0.0-PLACEHOLDE
     {{message}}
     <input #name>
   `,
-                    standalone: true,
                 }]
         }] });
 
@@ -433,7 +423,6 @@ i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "0.0.0-PLACEHOLDE
       }
     }
   `,
-                    standalone: true,
                 }]
         }] });
 
@@ -475,7 +464,6 @@ i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "0.0.0-PLACEHOLDE
       @let result = value * 2;
     </ng-template>
   `,
-                    standalone: true,
                 }]
         }] });
 
@@ -513,7 +501,6 @@ i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "0.0.0-PLACEHOLDE
     @let result = value * 2;
     {{value}}
   `,
-                    standalone: true,
                 }]
         }] });
 
@@ -557,7 +544,6 @@ i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "0.0.0-PLACEHOLDE
     @let four = three + 1;
     {{value}}
   `,
-                    standalone: true,
                 }]
         }] });
 
@@ -601,7 +587,6 @@ i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "0.0.0-PLACEHOLDE
     @let four = three + 1;
     {{two}}
   `,
-                    standalone: true,
                 }]
         }] });
 
@@ -650,7 +635,6 @@ i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "0.0.0-PLACEHOLDE
     {{value}}
     <button (click)="callback(three)"></button>
   `,
-                    standalone: true,
                 }]
         }] });
 
@@ -701,7 +685,6 @@ i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "0.0.0-PLACEHOLDE
       {{three}}
     }
   `,
-                    standalone: true,
                 }]
         }] });
 
@@ -742,7 +725,6 @@ i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "0.0.0-PLACEHOLDE
       The value comes from {{value}}
     }
   `,
-                    standalone: true,
                 }]
         }] });
 
@@ -751,6 +733,217 @@ i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "0.0.0-PLACEHOLDE
  ****************************************************************************************************/
 import * as i0 from "@angular/core";
 export declare class MyApp {
+    static ɵfac: i0.ɵɵFactoryDeclaration<MyApp, never>;
+    static ɵcmp: i0.ɵɵComponentDeclaration<MyApp, "ng-component", never, {}, {}, never, never, true, never>;
+}
+
+/****************************************************************************************************
+ * PARTIAL FILE: let_with_pipe_optimization.js
+ ****************************************************************************************************/
+import { Component, Pipe } from '@angular/core';
+import * as i0 from "@angular/core";
+export class DoublePipe {
+    transform(value) {
+        return value * 2;
+    }
+}
+DoublePipe.ɵfac = i0.ɵɵngDeclareFactory({ minVersion: "12.0.0", version: "0.0.0-PLACEHOLDER", ngImport: i0, type: DoublePipe, deps: [], target: i0.ɵɵFactoryTarget.Pipe });
+DoublePipe.ɵpipe = i0.ɵɵngDeclarePipe({ minVersion: "14.0.0", version: "0.0.0-PLACEHOLDER", ngImport: i0, type: DoublePipe, isStandalone: true, name: "double" });
+i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "0.0.0-PLACEHOLDER", ngImport: i0, type: DoublePipe, decorators: [{
+            type: Pipe,
+            args: [{
+                    name: 'double',
+                }]
+        }] });
+export class MyApp {
+    constructor() {
+        this.value = 1;
+    }
+}
+MyApp.ɵfac = i0.ɵɵngDeclareFactory({ minVersion: "12.0.0", version: "0.0.0-PLACEHOLDER", ngImport: i0, type: MyApp, deps: [], target: i0.ɵɵFactoryTarget.Component });
+MyApp.ɵcmp = i0.ɵɵngDeclareComponent({ minVersion: "14.0.0", version: "0.0.0-PLACEHOLDER", type: MyApp, isStandalone: true, selector: "ng-component", ngImport: i0, template: `
+    @let foo = (value | double) + 3;
+    {{foo}}
+  `, isInline: true, dependencies: [{ kind: "pipe", type: DoublePipe, name: "double" }] });
+i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "0.0.0-PLACEHOLDER", ngImport: i0, type: MyApp, decorators: [{
+            type: Component,
+            args: [{
+                    template: `
+    @let foo = (value | double) + 3;
+    {{foo}}
+  `,
+                    imports: [DoublePipe],
+                }]
+        }] });
+
+/****************************************************************************************************
+ * PARTIAL FILE: let_with_pipe_optimization.d.ts
+ ****************************************************************************************************/
+import { PipeTransform } from '@angular/core';
+import * as i0 from "@angular/core";
+export declare class DoublePipe implements PipeTransform {
+    transform(value: number): number;
+    static ɵfac: i0.ɵɵFactoryDeclaration<DoublePipe, never>;
+    static ɵpipe: i0.ɵɵPipeDeclaration<DoublePipe, "double", true>;
+}
+export declare class MyApp {
+    value: number;
+    static ɵfac: i0.ɵɵFactoryDeclaration<MyApp, never>;
+    static ɵcmp: i0.ɵɵComponentDeclaration<MyApp, "ng-component", never, {}, {}, never, never, true, never>;
+}
+
+/****************************************************************************************************
+ * PARTIAL FILE: let_in_i18n.js
+ ****************************************************************************************************/
+import { Component } from '@angular/core';
+import * as i0 from "@angular/core";
+export class MyApp {
+    constructor() {
+        this.value = 1;
+    }
+}
+MyApp.ɵfac = i0.ɵɵngDeclareFactory({ minVersion: "12.0.0", version: "0.0.0-PLACEHOLDER", ngImport: i0, type: MyApp, deps: [], target: i0.ɵɵFactoryTarget.Component });
+MyApp.ɵcmp = i0.ɵɵngDeclareComponent({ minVersion: "14.0.0", version: "0.0.0-PLACEHOLDER", type: MyApp, isStandalone: true, selector: "ng-component", ngImport: i0, template: `
+    <div i18n>
+      @let result = value * 2;
+      The result is {{result}}
+    </div>
+  `, isInline: true });
+i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "0.0.0-PLACEHOLDER", ngImport: i0, type: MyApp, decorators: [{
+            type: Component,
+            args: [{
+                    template: `
+    <div i18n>
+      @let result = value * 2;
+      The result is {{result}}
+    </div>
+  `,
+                }]
+        }] });
+
+/****************************************************************************************************
+ * PARTIAL FILE: let_in_i18n.d.ts
+ ****************************************************************************************************/
+import * as i0 from "@angular/core";
+export declare class MyApp {
+    value: number;
+    static ɵfac: i0.ɵɵFactoryDeclaration<MyApp, never>;
+    static ɵcmp: i0.ɵɵComponentDeclaration<MyApp, "ng-component", never, {}, {}, never, never, true, never>;
+}
+
+/****************************************************************************************************
+ * PARTIAL FILE: let_in_child_view_inside_i18n.js
+ ****************************************************************************************************/
+import { Component } from '@angular/core';
+import * as i0 from "@angular/core";
+export class MyApp {
+    constructor() {
+        this.value = 1;
+    }
+}
+MyApp.ɵfac = i0.ɵɵngDeclareFactory({ minVersion: "12.0.0", version: "0.0.0-PLACEHOLDER", ngImport: i0, type: MyApp, deps: [], target: i0.ɵɵFactoryTarget.Component });
+MyApp.ɵcmp = i0.ɵɵngDeclareComponent({ minVersion: "14.0.0", version: "0.0.0-PLACEHOLDER", type: MyApp, isStandalone: true, selector: "ng-component", ngImport: i0, template: `
+    <div i18n>
+      @let result = value * 2;
+      <ng-template>The result is {{result}}</ng-template>
+    </div>
+  `, isInline: true });
+i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "0.0.0-PLACEHOLDER", ngImport: i0, type: MyApp, decorators: [{
+            type: Component,
+            args: [{
+                    template: `
+    <div i18n>
+      @let result = value * 2;
+      <ng-template>The result is {{result}}</ng-template>
+    </div>
+  `,
+                }]
+        }] });
+
+/****************************************************************************************************
+ * PARTIAL FILE: let_in_child_view_inside_i18n.d.ts
+ ****************************************************************************************************/
+import * as i0 from "@angular/core";
+export declare class MyApp {
+    value: number;
+    static ɵfac: i0.ɵɵFactoryDeclaration<MyApp, never>;
+    static ɵcmp: i0.ɵɵComponentDeclaration<MyApp, "ng-component", never, {}, {}, never, never, true, never>;
+}
+
+/****************************************************************************************************
+ * PARTIAL FILE: let_in_i18n_and_child_view.js
+ ****************************************************************************************************/
+import { Component } from '@angular/core';
+import * as i0 from "@angular/core";
+export class MyApp {
+    constructor() {
+        this.value = 1;
+    }
+}
+MyApp.ɵfac = i0.ɵɵngDeclareFactory({ minVersion: "12.0.0", version: "0.0.0-PLACEHOLDER", ngImport: i0, type: MyApp, deps: [], target: i0.ɵɵFactoryTarget.Component });
+MyApp.ɵcmp = i0.ɵɵngDeclareComponent({ minVersion: "14.0.0", version: "0.0.0-PLACEHOLDER", type: MyApp, isStandalone: true, selector: "ng-component", ngImport: i0, template: `
+    <div i18n>
+      @let result = value * 2;
+      The result is {{result}}
+      <ng-template>To repeat, the result is {{result}}</ng-template>
+    </div>
+  `, isInline: true });
+i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "0.0.0-PLACEHOLDER", ngImport: i0, type: MyApp, decorators: [{
+            type: Component,
+            args: [{
+                    template: `
+    <div i18n>
+      @let result = value * 2;
+      The result is {{result}}
+      <ng-template>To repeat, the result is {{result}}</ng-template>
+    </div>
+  `,
+                }]
+        }] });
+
+/****************************************************************************************************
+ * PARTIAL FILE: let_in_i18n_and_child_view.d.ts
+ ****************************************************************************************************/
+import * as i0 from "@angular/core";
+export declare class MyApp {
+    value: number;
+    static ɵfac: i0.ɵɵFactoryDeclaration<MyApp, never>;
+    static ɵcmp: i0.ɵɵComponentDeclaration<MyApp, "ng-component", never, {}, {}, never, never, true, never>;
+}
+
+/****************************************************************************************************
+ * PARTIAL FILE: let_preceded_by_i18n.js
+ ****************************************************************************************************/
+import { Component } from '@angular/core';
+import * as i0 from "@angular/core";
+export class MyApp {
+    constructor() {
+        this.value = 1;
+    }
+}
+MyApp.ɵfac = i0.ɵɵngDeclareFactory({ minVersion: "12.0.0", version: "0.0.0-PLACEHOLDER", ngImport: i0, type: MyApp, deps: [], target: i0.ɵɵFactoryTarget.Component });
+MyApp.ɵcmp = i0.ɵɵngDeclareComponent({ minVersion: "14.0.0", version: "0.0.0-PLACEHOLDER", type: MyApp, isStandalone: true, selector: "ng-component", ngImport: i0, template: `
+    <div i18n>Hello {{value}}</div>
+    @let result = value * 2;
+    <ng-template>The result is {{result}}</ng-template>
+  `, isInline: true });
+i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "0.0.0-PLACEHOLDER", ngImport: i0, type: MyApp, decorators: [{
+            type: Component,
+            args: [{
+                    template: `
+    <div i18n>Hello {{value}}</div>
+    @let result = value * 2;
+    <ng-template>The result is {{result}}</ng-template>
+  `,
+                }]
+        }] });
+
+/****************************************************************************************************
+ * PARTIAL FILE: let_preceded_by_i18n.d.ts
+ ****************************************************************************************************/
+import * as i0 from "@angular/core";
+export declare class MyApp {
+    value: number;
     static ɵfac: i0.ɵɵFactoryDeclaration<MyApp, never>;
     static ɵcmp: i0.ɵɵComponentDeclaration<MyApp, "ng-component", never, {}, {}, never, never, true, never>;
 }

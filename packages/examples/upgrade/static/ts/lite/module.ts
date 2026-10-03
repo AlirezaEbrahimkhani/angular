@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 // #docplaster
@@ -11,20 +11,17 @@ import {
   Component,
   Directive,
   ElementRef,
-  EventEmitter,
   Inject,
   Injectable,
   Injector,
-  Input,
+  input,
   NgModule,
-  Output,
+  output,
   StaticProvider,
 } from '@angular/core';
-import {BrowserModule} from '@angular/platform-browser';
 // #docregion basic-how-to
-import {platformBrowserDynamic} from '@angular/platform-browser-dynamic';
+import {BrowserModule, platformBrowser} from '@angular/platform-browser';
 // #enddocregion
-/* tslint:disable: no-duplicate-imports */
 // #docregion basic-how-to
 import {downgradeComponent, downgradeModule, UpgradeComponent} from '@angular/upgrade/static';
 
@@ -73,17 +70,18 @@ class HeroesService {
       <header><ng-content selector="h1"></ng-content></header>
       <ng-content selector=".extra"></ng-content>
       <div *ngFor="let hero of this.heroesService.heroes">
-        <ng1-hero [hero]="hero" (onRemove)="onRemoveHero(hero)">
-          <strong>Super Hero</strong>
-        </ng1-hero>
-      </div>
+          <ng1-hero [hero]="hero" (onRemove)="onRemoveHero(hero)">
+            <strong>Super Hero</strong>
+          </ng1-hero>
+        </div>
       <button (click)="onAddHero()">Add Hero</button>
     </div>
   `,
+  standalone: false,
 })
 class Ng2HeroesComponent {
-  @Output() private addHero = new EventEmitter<Hero>();
-  @Output() private removeHero = new EventEmitter<Hero>();
+  addHero = output<Hero>();
+  removeHero = output<Hero>();
 
   constructor(
     @Inject('$rootScope') private $rootScope: ng.IRootScopeService,
@@ -107,12 +105,15 @@ class Ng2HeroesComponent {
 }
 
 // This Angular directive will act as an interface to the "upgraded" AngularJS component.
-@Directive({selector: 'ng1-hero'})
+@Directive({
+  selector: 'ng1-hero',
+  standalone: false,
+})
 class Ng1HeroComponentWrapper extends UpgradeComponent {
   // The names of the input and output properties here must match the names of the
   // `<` and `&` bindings in the AngularJS component that is being wrapped.
-  @Input() hero!: Hero;
-  @Output() onRemove!: EventEmitter<void>;
+  hero = input.required<Hero>();
+  onRemove = output<void>();
 
   constructor(elementRef: ElementRef, injector: Injector) {
     // We must pass the name of the directive as used by AngularJS to the super.
@@ -142,7 +143,7 @@ class MyLazyAngularModule {
 // The function that will bootstrap the Angular module (when/if necessary).
 // (This would be omitted if we provided an `NgModuleFactory` directly.)
 const ng2BootstrapFn = (extraProviders: StaticProvider[]) =>
-  platformBrowserDynamic(extraProviders).bootstrapModule(MyLazyAngularModule);
+  platformBrowser(extraProviders).bootstrapModule(MyLazyAngularModule);
 // #enddocregion
 // (We are using the dynamic browser platform, as this example has not been compiled AOT.)
 

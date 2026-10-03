@@ -6,39 +6,31 @@
  * found in the LICENSE file at https://angular.dev/license
  */
 
-import {DOCS_VIEWER_SELECTOR, DocViewer, WINDOW} from '@angular/docs';
+import {DOCS_VIEWER_SELECTOR, DocViewer, WINDOW, TutorialConfig, TutorialType} from '@angular/docs';
 
-import {Component, Input, signal} from '@angular/core';
+import {Component, input, Input, signal} from '@angular/core';
 import {ComponentFixture, TestBed} from '@angular/core/testing';
-import {NoopAnimationsModule} from '@angular/platform-browser/animations';
-import {RouterTestingModule} from '@angular/router/testing';
+import {provideRouter} from '@angular/router';
 import {of} from 'rxjs';
 
-import {
-  EMBEDDED_EDITOR_SELECTOR,
-  EmbeddedEditor,
-  EmbeddedTutorialManager,
-  NodeRuntimeSandbox,
-} from '../../editor';
+import {EMBEDDED_EDITOR_SELECTOR, EmbeddedEditor, EmbeddedTutorialManager} from '../../editor';
+import {NodeRuntimeSandbox} from '../../editor/node-runtime-sandbox.service';
 
 import {mockAsyncProvider} from '../../core/services/inject-async';
 import Tutorial from './tutorial.component';
-import {TutorialConfig, TutorialType} from '@angular/docs';
 
 @Component({
   selector: EMBEDDED_EDITOR_SELECTOR,
   template: '<div>FakeEmbeddedEditor</div>',
-  standalone: true,
 })
 class FakeEmbeddedEditor {}
 
 @Component({
   selector: DOCS_VIEWER_SELECTOR,
   template: '<div>FakeDocsViewer</div>',
-  standalone: true,
 })
 class FakeDocViewer {
-  @Input('documentFilePath') documentFilePath: string | undefined;
+  documentFilePath = input<string | undefined>();
 }
 
 // TODO: export this class, it's a helpful mock we could you on other tests.
@@ -96,8 +88,9 @@ describe('Tutorial', () => {
 
   beforeEach(async () => {
     TestBed.configureTestingModule({
-      imports: [Tutorial, RouterTestingModule, EmbeddedEditor, DocViewer, NoopAnimationsModule],
+      imports: [Tutorial, EmbeddedEditor, DocViewer],
       providers: [
+        provideRouter([]),
         {
           provide: WINDOW,
           useValue: fakeWindow,
@@ -118,7 +111,7 @@ describe('Tutorial', () => {
       },
     });
 
-    await TestBed.compileComponents();
+    await TestBed;
 
     fixture = TestBed.createComponent(Tutorial);
     component = fixture.componentInstance;
@@ -142,12 +135,13 @@ describe('Tutorial', () => {
     setupResetRevealAnswerValues();
     fixture.detectChanges();
 
-    if (!component.revealAnswerButton) throw new Error('revealAnswerButton is undefined');
+    const revealAnswerButton = component.revealAnswerButton();
+    if (!revealAnswerButton) throw new Error('revealAnswerButton is undefined');
 
     const revealAnswerSpy = spyOn(component['embeddedTutorialManager'], 'revealAnswer');
     const resetRevealAnswerSpy = spyOn(component['embeddedTutorialManager'], 'resetRevealAnswer');
 
-    component.revealAnswerButton.nativeElement.click();
+    revealAnswerButton.nativeElement.click();
 
     expect(revealAnswerSpy).not.toHaveBeenCalled();
     expect(resetRevealAnswerSpy).toHaveBeenCalled();
@@ -157,35 +151,39 @@ describe('Tutorial', () => {
     setupRevealAnswerValues();
     fixture.detectChanges();
 
-    if (!component.revealAnswerButton) throw new Error('revealAnswerButton is undefined');
+    const revealAnswerButton = component.revealAnswerButton();
+    if (!revealAnswerButton) throw new Error('revealAnswerButton is undefined');
 
     const embeddedTutorialManagerRevealAnswerSpy = spyOn(
       component['embeddedTutorialManager'],
       'revealAnswer',
     );
-    component.revealAnswerButton.nativeElement.click();
+
+    // Simulate a click on the reveal answer button
+    await component.handleRevealAnswer();
 
     expect(embeddedTutorialManagerRevealAnswerSpy).toHaveBeenCalled();
 
     await fixture.whenStable();
     fixture.detectChanges();
 
-    expect(component.revealAnswerButton.nativeElement.textContent?.trim()).toBe('Reset');
+    expect(revealAnswerButton.nativeElement.textContent?.trim()).toBe('Reset');
   });
 
   it('should not reveal the answer when button is disabled', async () => {
     setupDisabledRevealAnswerValues();
     fixture.detectChanges();
 
-    if (!component.revealAnswerButton) throw new Error('revealAnswerButton is undefined');
+    const revealAnswerButton = component.revealAnswerButton();
+    if (!revealAnswerButton) throw new Error('revealAnswerButton is undefined');
 
     spyOn(component, 'canRevealAnswer').and.returnValue(false);
 
     const handleRevealAnswerSpy = spyOn(component, 'handleRevealAnswer');
 
-    component.revealAnswerButton.nativeElement.click();
+    revealAnswerButton.nativeElement.click();
 
-    expect(component.revealAnswerButton.nativeElement.getAttribute('disabled')).toBeDefined();
+    expect(revealAnswerButton.nativeElement.getAttribute('disabled')).toBeDefined();
     expect(handleRevealAnswerSpy).not.toHaveBeenCalled();
   });
 
@@ -193,6 +191,6 @@ describe('Tutorial', () => {
     setupNoRevealAnswerValues();
     fixture.detectChanges();
 
-    expect(component.revealAnswerButton).toBe(undefined);
+    expect(component.revealAnswerButton()).toBe(undefined);
   });
 });

@@ -25,7 +25,7 @@ The lessons in this tutorial assume that you have experience with the following:
 
 These lessons can be completed using a local installation of the Angular tools or in our embedded editor. Local Angular development can be completed on Windows, MacOS or Linux based systems.
 
-Note: Look for alerts like this one, which call out steps that may only be for your local editor.
+NOTE: Look for alerts like this one, which call out steps that may only be for your local editor.
 
 ## Conceptual preview of your first Angular app
 
@@ -36,7 +36,7 @@ This app uses features that are common to many Angular apps.
 
 ## Local development environment
 
-Note: This step is only for your local environment!
+NOTE: This step is only for your local environment!
 
 Perform these steps in a command-line tool on the computer you want to use for this tutorial.
 
@@ -66,6 +66,13 @@ You are free to use any tool you prefer to build apps with Angular. We recommend
 
 1. [Visual Studio Code](https://code.visualstudio.com/)
 2. As an optional, but recommended step you can further improve your developer experience by installing the [Angular Language Service](https://marketplace.visualstudio.com/items?itemName=Angular.ng-template)
+3. [WebStorm](https://www.jetbrains.com/webstorm/)
+</docs-step>
+
+<docs-step title="Optional: set-up your AI powered IDE">
+
+In case you're following this tutorial in your preferred AI powered IDE, [check out Angular prompt rules and best practices](/ai/develop-with-ai).
+
 </docs-step>
 
 </docs-workflow>

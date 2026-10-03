@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {
@@ -91,15 +91,16 @@ import {
   combineResolvers,
   compileDeclareFactory,
   compileNgFactoryDefField,
+  createForwardRefResolver,
   createValueHasWrongTypeError,
   extractClassMetadata,
   extractSchemas,
   findAngularDecorator,
-  forwardRefResolver,
   getProviderDiagnostics,
   getValidConstructorDependencies,
   InjectableClassRegistry,
   isExpressionForwardReference,
+  JitDeclarationRegistry,
   ReferencesRegistry,
   resolveProvidersRequiringFactory,
   toR3Reference,
@@ -285,6 +286,8 @@ export class NgModuleDecoratorHandler
     private includeSelectorScope: boolean,
     private readonly compilationMode: CompilationMode,
     private readonly localCompilationExtraImportsTracker: LocalCompilationExtraImportsTracker | null,
+    private readonly jitDeclarationRegistry: JitDeclarationRegistry,
+    private readonly emitDeclarationOnly: boolean,
   ) {}
 
   readonly precedence = HandlerPrecedence.PRIMARY;
@@ -341,15 +344,19 @@ export class NgModuleDecoratorHandler
     const ngModule = reflectObjectLiteral(meta);
 
     if (ngModule.has('jit')) {
+      this.jitDeclarationRegistry.jitDeclarations.add(node);
       // The only allowed value is true, so there's no need to expand further.
       return {};
     }
 
+    const forwardRefResolver = createForwardRefResolver(this.isCore);
     const moduleResolvers = combineResolvers([
       createModuleWithProvidersResolver(this.reflector, this.isCore),
       forwardRefResolver,
     ]);
 
+    const allowUnresolvedReferences =
+      this.compilationMode === CompilationMode.LOCAL && !this.emitDeclarationOnly;
     const diagnostics: ts.Diagnostic[] = [];
 
     // Resolving declarations
@@ -363,7 +370,7 @@ export class NgModuleDecoratorHandler
         name,
         'declarations',
         0,
-        this.compilationMode === CompilationMode.LOCAL,
+        allowUnresolvedReferences,
       ).references;
 
       // Look through the declarations to make sure they're all a part of the current compilation.
@@ -399,7 +406,7 @@ export class NgModuleDecoratorHandler
         name,
         'imports',
         0,
-        this.compilationMode === CompilationMode.LOCAL,
+        allowUnresolvedReferences,
       );
 
       if (
@@ -434,7 +441,7 @@ export class NgModuleDecoratorHandler
         name,
         'exports',
         0,
-        this.compilationMode === CompilationMode.LOCAL,
+        allowUnresolvedReferences,
       ).references;
       this.referencesRegistry.add(node, ...exportRefs);
     }
@@ -442,7 +449,7 @@ export class NgModuleDecoratorHandler
     // Resolving bootstrap
     let bootstrapRefs: Reference<ClassDeclaration>[] = [];
     const rawBootstrap: ts.Expression | null = ngModule.get('bootstrap') ?? null;
-    if (this.compilationMode !== CompilationMode.LOCAL && rawBootstrap !== null) {
+    if (!allowUnresolvedReferences && rawBootstrap !== null) {
       const bootstrapMeta = this.evaluator.evaluate(rawBootstrap, forwardRefResolver);
       bootstrapRefs = this.resolveTypeList(
         rawBootstrap,
@@ -462,10 +469,26 @@ export class NgModuleDecoratorHandler
       }
     }
 
-    const schemas =
-      this.compilationMode !== CompilationMode.LOCAL && ngModule.has('schemas')
-        ? extractSchemas(ngModule.get('schemas')!, this.evaluator, 'NgModule')
-        : [];
+    let schemas: SchemaMetadata[] | undefined;
+    try {
+      schemas =
+        this.compilationMode !== CompilationMode.LOCAL && ngModule.has('schemas')
+          ? extractSchemas(ngModule.get('schemas')!, this.evaluator, 'NgModule')
+          : [];
+    } catch (e) {
+      if (e instanceof FatalDiagnosticError) {
+        diagnostics.push(e.toDiagnostic());
+
+        // Use an empty schema array if schema extract fails.
+        // A build will still fail in this case. However, for the language service,
+        // this allows the module to exist in the compiler registry and prevents
+        // cascading diagnostics within an IDE due to "missing" components. The
+        // originating schema related errors will still be reported in the IDE.
+        schemas = [];
+      } else {
+        throw e;
+      }
+    }
 
     let id: Expression | null = null;
     if (ngModule.has('id')) {
@@ -526,7 +549,7 @@ export class NgModuleDecoratorHandler
     const type = wrapTypeReference(this.reflector, node);
 
     let ngModuleMetadata: R3NgModuleMetadata;
-    if (this.compilationMode === CompilationMode.LOCAL) {
+    if (allowUnresolvedReferences) {
       ngModuleMetadata = {
         kind: R3NgModuleMetadataKind.Local,
         type,
@@ -582,7 +605,7 @@ export class NgModuleDecoratorHandler
     }
 
     const topLevelImports: TopLevelImportedExpression[] = [];
-    if (this.compilationMode !== CompilationMode.LOCAL && ngModule.has('imports')) {
+    if (!allowUnresolvedReferences && ngModule.has('imports')) {
       const rawImports = unwrapExpression(ngModule.get('imports')!);
 
       let topLevelExpressions: ts.Expression[] = [];
@@ -630,7 +653,7 @@ export class NgModuleDecoratorHandler
       imports: [],
     };
 
-    if (this.compilationMode === CompilationMode.LOCAL) {
+    if (allowUnresolvedReferences) {
       // Adding NgModule's raw imports/exports to the injector's imports field in local compilation
       // mode.
       for (const exp of [rawImports, rawExports]) {
@@ -731,6 +754,7 @@ export class NgModuleDecoratorHandler
       rawExports: analysis.rawExports,
       decorator: analysis.decorator,
       mayDeclareProviders: analysis.providers !== null,
+      isPoisoned: false,
     });
 
     this.injectableRegistry.registerInjectable(node, {
@@ -1149,6 +1173,17 @@ export class NgModuleDecoratorHandler
       } else if (entry instanceof DynamicValue && allowUnresolvedReferences) {
         dynamicValueSet.add(entry);
         continue;
+      } else if (
+        this.emitDeclarationOnly &&
+        entry instanceof DynamicValue &&
+        entry.isFromUnknownIdentifier()
+      ) {
+        throw createValueHasWrongTypeError(
+          entry.node,
+          entry,
+          `Value at position ${absoluteIndex} in the NgModule.${arrayName} of ${className} is an external reference. ` +
+            'External references in @NgModule declarations are not supported in experimental declaration-only emission mode',
+        );
       } else {
         // TODO(alxhub): Produce a better diagnostic here - the array index may be an inner array.
         throw createValueHasWrongTypeError(

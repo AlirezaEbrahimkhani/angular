@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {Type} from '@angular/core';
@@ -21,14 +21,6 @@ export class Logger {
   empty() {
     this.logs.length = 0;
   }
-}
-
-export function provideTokenLogger(token: string, returnValue = true as boolean | UrlTree) {
-  return {
-    provide: token,
-    useFactory: (logger: Logger) => () => (logger.add(token), returnValue),
-    deps: [Logger],
-  };
 }
 
 export declare type ARSArgs = {
@@ -55,4 +47,20 @@ export function createActivatedRouteSnapshot(args: ARSArgs): ActivatedRouteSnaps
     args.routeConfig || {},
     args.resolve || {},
   );
+}
+
+export async function timeout(ms?: number): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+}
+
+export function useAutoTick() {
+  beforeEach(() => {
+    jasmine.clock().install();
+    jasmine.clock().autoTick();
+  });
+  afterEach(() => {
+    jasmine.clock().uninstall();
+  });
 }

@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {isForwardRef, resolveForwardRef} from '../di/forward_ref';
@@ -11,8 +11,9 @@ import {Type} from '../interface/type';
 import {flatten} from '../util/array_utils';
 import {noSideEffects} from '../util/closure';
 import {EMPTY_ARRAY} from '../util/empty';
+import {getNgModuleDefOrThrow, getPipeDef} from './def_getters';
 
-import {extractDefListOrFactory, getNgModuleDef} from './definition';
+import {extractDefListOrFactory, extractDirectiveDef} from './definition';
 import {depsTracker} from './deps_tracker/deps_tracker';
 import {
   ComponentDef,
@@ -37,8 +38,8 @@ export function ɵɵsetComponentScope(
   pipes: Type<any>[] | (() => Type<any>[]),
 ): void {
   const def = type.ɵcmp as ComponentDef<any>;
-  def.directiveDefs = extractDefListOrFactory(directives, /* pipeDef */ false);
-  def.pipeDefs = extractDefListOrFactory(pipes, /* pipeDef */ true);
+  def.directiveDefs = extractDefListOrFactory(directives, extractDirectiveDef);
+  def.pipeDefs = extractDefListOrFactory(pipes, getPipeDef);
 }
 
 /**
@@ -53,7 +54,7 @@ export function ɵɵsetComponentScope(
  */
 export function ɵɵsetNgModuleScope(type: any, scope: NgModuleScopeInfoFromDecorator): unknown {
   return noSideEffects(() => {
-    const ngModuleDef = getNgModuleDef(type, true);
+    const ngModuleDef = getNgModuleDefOrThrow(type);
     ngModuleDef.declarations = convertToTypeArray(scope.declarations || EMPTY_ARRAY);
     ngModuleDef.imports = convertToTypeArray(scope.imports || EMPTY_ARRAY);
     ngModuleDef.exports = convertToTypeArray(scope.exports || EMPTY_ARRAY);

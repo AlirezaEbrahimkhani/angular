@@ -3,12 +3,12 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {PropType} from 'protocol';
+import {PropType} from '../../../../protocol';
 
-import {isSignal} from '../utils';
+import {isSignal, safelyReadSignalValue} from '../utils';
 
 const commonTypes = {
   boolean: PropType.Boolean,
@@ -27,7 +27,11 @@ const commonTypes = {
  */
 export const getPropType = (prop: unknown): PropType => {
   if (isSignal(prop)) {
-    prop = prop();
+    const {error, value} = safelyReadSignalValue(prop);
+    if (error) {
+      return PropType.Unknown;
+    }
+    prop = value;
   }
 
   if (prop === undefined) {

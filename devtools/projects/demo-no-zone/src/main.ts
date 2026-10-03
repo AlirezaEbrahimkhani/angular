@@ -3,15 +3,13 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {platformBrowserDynamic} from '@angular/platform-browser-dynamic';
+import {bootstrapApplication} from '@angular/platform-browser';
+import {AppComponent} from './app/app.component';
+import {provideZonelessChangeDetection} from '@angular/core';
 
-import {AppModule} from './app/app.module';
-
-platformBrowserDynamic()
-  .bootstrapModule(AppModule, {
-    ngZone: 'noop',
-  })
-  .catch((err) => console.error(err));
+bootstrapApplication(AppComponent, {
+  providers: [provideZonelessChangeDetection()],
+}).catch((err) => console.error(err));

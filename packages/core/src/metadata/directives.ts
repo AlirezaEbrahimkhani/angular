@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {ChangeDetectionStrategy} from '../change_detection/constants';
@@ -49,34 +49,25 @@ export interface DirectiveDecorator {
    *
    * ### Declaring directives
    *
-   * In order to make a directive available to other components in your application, you should do
-   * one of the following:
-   *  - either mark the directive as [standalone](guide/components/importing),
-   *  - or declare it in an NgModule by adding it to the `declarations` and `exports` fields.
-   *
-   * ** Marking a directive as standalone **
-   *
-   * You can add the `standalone: true` flag to the Directive decorator metadata to declare it as
-   * [standalone](guide/components/importing):
+   * By default, directives are marked as [standalone](guide/components/importing), which makes
+   * them available to other components in your application.
    *
    * ```ts
    * @Directive({
-   *   standalone: true,
    *   selector: 'my-directive',
    * })
-   * class MyDirective {}
    * ```
    *
-   * When marking a directive as standalone, please make sure that the directive is not already
-   * declared in an NgModule.
-   *
+   * Please make sure that directives marked as standalone are not already declared in an NgModule.
    *
    * ** Declaring a directive in an NgModule **
-   *
-   * Another approach is to declare a directive in an NgModule:
+   * If you want to declare a directive in an ngModule, add the `standalone: false` flag to the
+   * Directive decorator metadata and add the directive to the `declarations` and `exports`
+   * fields of your ngModule.
    *
    * ```ts
    * @Directive({
+   *   standalone: false,
    *   selector: 'my-directive',
    * })
    * class MyDirective {}
@@ -164,7 +155,7 @@ export interface Directive {
    *
    * The following example creates a component with two data-bound properties.
    *
-   * ```typescript
+   * ```ts
    * @Component({
    *   selector: 'bank-account',
    *   inputs: ['bankName', {name: 'id', alias: 'account-id'}],
@@ -204,7 +195,7 @@ export interface Directive {
    *
    * @usageNotes
    *
-   * ```typescript
+   * ```ts
    * @Component({
    *   selector: 'child-dir',
    *   outputs: [ 'bankNameChange' ],
@@ -401,9 +392,10 @@ export interface ComponentDecorator {
    * Unlike other directives, only one component can be instantiated for a given element in a
    * template.
    *
-   * A component must belong to an NgModule in order for it to be available
-   * to another component or application. To make it a member of an NgModule,
-   * list it in the `declarations` field of the `NgModule` metadata.
+   * Standalone components can be directly imported in any other standalone component or NgModule.
+   * NgModule based apps on the other hand require components to belong to an NgModule in
+   * order for them to be available to another component or application. To make a component a
+   * member of an NgModule, list it in the `declarations` field of the `NgModule` metadata.
    *
    * Note that, in addition to these options for configuring a directive,
    * you can control a component's runtime behavior by implementing
@@ -417,12 +409,12 @@ export interface ComponentDecorator {
    * The following example creates a component with two data-bound properties,
    * specified by the `inputs` value.
    *
-   * <code-example path="core/ts/metadata/directives.ts" region="component-input"></code-example>
+   * {@example core/ts/metadata/directives.ts region='component-input'}
    *
    *
    * ### Setting component outputs
    *
-   * The following example shows two event emitters that emit on an interval. One
+   * The following example shows two output function that emit on an interval. One
    * emits an output every second, while the other emits every five seconds.
    *
    * {@example core/ts/metadata/directives.ts region='component-output-interval'}
@@ -558,16 +550,6 @@ export interface Component extends Directive {
   viewProviders?: Provider[];
 
   /**
-   * The module ID of the module that contains the component.
-   * The component must be able to resolve relative URLs for templates and styles.
-   * SystemJS exposes the `__moduleName` variable within each module.
-   * In CommonJS, this can  be set to `module.id`.
-   *
-   * @deprecated This option does not have any effect. Will be removed in Angular v17.
-   */
-  moduleId?: string;
-
-  /**
    * The relative path or absolute URL of a template file for an Angular component.
    * If provided, do not supply an inline template using `template`.
    *
@@ -582,7 +564,7 @@ export interface Component extends Directive {
   template?: string;
 
   /**
-   * One relative paths or an absolute URL for files containing CSS stylesheet to use
+   * One relative path or an absolute URL for file containing a CSS stylesheet to use
    * in this component.
    */
   styleUrl?: string;
@@ -603,6 +585,7 @@ export interface Component extends Directive {
    * [`state()`](api/animations/state) and `transition()` definitions.
    * See the [Animations guide](guide/animations) and animations API documentation.
    *
+   * @deprecated 20.2 Use `animate.enter` or `animate.leave` instead. Intent to remove in v23
    */
   animations?: any[];
 
@@ -622,13 +605,6 @@ export interface Component extends Directive {
    * the policy is automatically switched to `ViewEncapsulation.None`.
    */
   encapsulation?: ViewEncapsulation;
-
-  /**
-   * Overrides the default interpolation start and end delimiters (`{{` and `}}`).
-   *
-   * @deprecated use Angular's default interpolation delimiters instead.
-   */
-  interpolation?: [string, string];
 
   /**
    * True to preserve or false to remove potentially superfluous whitespace characters
@@ -713,7 +689,7 @@ export interface PipeDecorator {
    * For example, if the name is "myPipe", use a template binding expression
    * such as the following:
    *
-   * ```
+   * ```html
    * {{ exp | myPipe }}
    * ```
    *
@@ -800,7 +776,7 @@ export interface InputDecorator {
    * The following example creates a component with two input properties,
    * one of which is given a special binding name.
    *
-   * ```typescript
+   * ```ts
    * import { Component, Input, numberAttribute, booleanAttribute } from '@angular/core';
    * @Component({
    *   selector: 'bank-account',
@@ -952,7 +928,7 @@ export interface HostBindingDecorator {
    * The following example creates a directive that sets the `valid` and `invalid`
    * class, a style color, and an id on the DOM element that has an `ngModel` directive on it.
    *
-   * ```typescript
+   * ```ts
    * @Directive({selector: '[ngModel]'})
    * class NgModelStatus {
    *   constructor(public control: NgModel) {}

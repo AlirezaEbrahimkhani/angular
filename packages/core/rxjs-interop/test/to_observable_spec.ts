@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {
@@ -14,9 +14,9 @@ import {
   Injector,
   Signal,
   signal,
-} from '@angular/core';
-import {toObservable} from '@angular/core/rxjs-interop';
-import {ComponentFixture, TestBed} from '@angular/core/testing';
+} from '../../src/core';
+import {toObservable} from '../src';
+import {ComponentFixture, TestBed} from '../../testing';
 import {take, toArray} from 'rxjs/operators';
 
 describe('toObservable()', () => {
@@ -25,7 +25,6 @@ describe('toObservable()', () => {
 
   @Component({
     template: '',
-    standalone: true,
   })
   class Cmp {}
 

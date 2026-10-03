@@ -1,7 +1,6 @@
-load("//tools:defaults.bzl", "jasmine_node_test", "ts_library")
-load("@build_bazel_rules_nodejs//:index.bzl", "copy_to_bin")
+load("//tools:defaults.bzl", "copy_to_bin", "jasmine_test", "ts_project")
 
-ts_library(
+ts_project(
     name = "test_lib",
     testonly = True,
     srcs = glob(
@@ -26,15 +25,12 @@ copy_to_bin(
     srcs = glob(["test_files/**/*"]),
 )
 
-jasmine_node_test(
+jasmine_test(
     name = "integration",
-    bootstrap = ["//tools/testing:node_no_angular"],
     data = [
         ":test_files",
-    ],
-    deps = [
         ":test_lib",
-        "@npm//fast-glob",
-        "@npm//yargs",
+        "//:node_modules/tinyglobby",
+        "//:node_modules/yargs",
     ],
 )

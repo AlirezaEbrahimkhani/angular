@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {Directive, ElementRef, InjectionToken, Renderer2} from '@angular/core';
@@ -143,13 +143,13 @@ export class BaseControlValueAccessor {
   /**
    * The registered callback function called when a change or input event occurs on the input
    * element.
-   * @nodoc
+   * @docs-private
    */
   onChange = (_: any) => {};
 
   /**
    * The registered callback function called when a blur event occurs on the input element.
-   * @nodoc
+   * @docs-private
    */
   onTouched = () => {};
 
@@ -161,7 +161,7 @@ export class BaseControlValueAccessor {
   /**
    * Helper method that sets a property on a target element using the current Renderer
    * implementation.
-   * @nodoc
+   * @docs-private
    */
   protected setProperty(key: string, value: any): void {
     this._renderer.setProperty(this._elementRef.nativeElement, key, value);
@@ -169,7 +169,7 @@ export class BaseControlValueAccessor {
 
   /**
    * Registers a function called when the control is touched.
-   * @nodoc
+   * @docs-private
    */
   registerOnTouched(fn: () => void): void {
     this.onTouched = fn;
@@ -177,7 +177,7 @@ export class BaseControlValueAccessor {
 
   /**
    * Registers a function called when the control value changes.
-   * @nodoc
+   * @docs-private
    */
   registerOnChange(fn: (_: any) => {}): void {
     this.onChange = fn;
@@ -185,7 +185,7 @@ export class BaseControlValueAccessor {
 
   /**
    * Sets the "disabled" property on the range input element.
-   * @nodoc
+   * @docs-private
    */
   setDisabledState(isDisabled: boolean): void {
     this.setProperty('disabled', isDisabled);
@@ -212,5 +212,5 @@ export class BuiltInControlValueAccessor extends BaseControlValueAccessor {}
  * @publicApi
  */
 export const NG_VALUE_ACCESSOR = new InjectionToken<ReadonlyArray<ControlValueAccessor>>(
-  ngDevMode ? 'NgValueAccessor' : '',
+  typeof ngDevMode !== undefined && ngDevMode ? 'NgValueAccessor' : '',
 );

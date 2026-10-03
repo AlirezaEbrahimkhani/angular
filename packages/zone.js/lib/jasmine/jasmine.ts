@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 /// <reference types="jasmine"/>
@@ -54,49 +54,6 @@ export function patchJasmine(Zone: ZoneType): void {
       !disablePatchingJasmineClock &&
       (global[symbol('fakeAsyncPatchLock')] === true ||
         global[symbol('fakeAsyncAutoFakeAsyncWhenClockPatched')] === true);
-
-    const ignoreUnhandledRejection = global[symbol('ignoreUnhandledRejection')] === true;
-
-    if (!ignoreUnhandledRejection) {
-      const globalErrors = (jasmine as any).GlobalErrors;
-      if (globalErrors && !(jasmine as any)[symbol('GlobalErrors')]) {
-        (jasmine as any)[symbol('GlobalErrors')] = globalErrors;
-        (jasmine as any).GlobalErrors = function () {
-          const instance = new globalErrors();
-          const originalInstall = instance.install;
-          if (originalInstall && !instance[symbol('install')]) {
-            instance[symbol('install')] = originalInstall;
-            instance.install = function () {
-              const isNode = typeof process !== 'undefined' && !!process.on;
-              // Note: Jasmine checks internally if `process` and `process.on` is defined.
-              // Otherwise, it installs the browser rejection handler through the
-              // `global.addEventListener`. This code may be run in the browser environment where
-              // `process` is not defined, and this will lead to a runtime exception since Webpack 5
-              // removed automatic Node.js polyfills. Note, that events are named differently, it's
-              // `unhandledRejection` in Node.js and `unhandledrejection` in the browser.
-              const originalHandlers: any[] = isNode
-                ? process.listeners('unhandledRejection')
-                : global.eventListeners('unhandledrejection');
-              const result = originalInstall.apply(this, arguments);
-              isNode
-                ? process.removeAllListeners('unhandledRejection')
-                : global.removeAllListeners('unhandledrejection');
-              if (originalHandlers) {
-                originalHandlers.forEach((handler) => {
-                  if (isNode) {
-                    process.on('unhandledRejection', handler);
-                  } else {
-                    global.addEventListener('unhandledrejection', handler);
-                  }
-                });
-              }
-              return result;
-            };
-          }
-          return instance;
-        };
-      }
-    }
 
     // Monkey patch all of the jasmine DSL so that each function runs in appropriate zone.
     const jasmineEnv: any = jasmine.getEnv();

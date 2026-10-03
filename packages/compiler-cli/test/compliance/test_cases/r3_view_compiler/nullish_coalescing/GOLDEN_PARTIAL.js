@@ -11,7 +11,7 @@ export class MyApp {
     }
 }
 MyApp.ɵfac = i0.ɵɵngDeclareFactory({ minVersion: "12.0.0", version: "0.0.0-PLACEHOLDER", ngImport: i0, type: MyApp, deps: [], target: i0.ɵɵFactoryTarget.Component });
-MyApp.ɵcmp = i0.ɵɵngDeclareComponent({ minVersion: "14.0.0", version: "0.0.0-PLACEHOLDER", type: MyApp, selector: "my-app", ngImport: i0, template: `
+MyApp.ɵcmp = i0.ɵɵngDeclareComponent({ minVersion: "14.0.0", version: "0.0.0-PLACEHOLDER", type: MyApp, isStandalone: false, selector: "my-app", ngImport: i0, template: `
     <div>Hello, {{ firstName ?? 'Frodo' }}!</div>
     <span>Your last name is {{ lastName ?? lastNameFallback ?? 'unknown' }}</span>
   `, isInline: true });
@@ -22,7 +22,8 @@ i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "0.0.0-PLACEHOLDE
                     template: `
     <div>Hello, {{ firstName ?? 'Frodo' }}!</div>
     <span>Your last name is {{ lastName ?? lastNameFallback ?? 'unknown' }}</span>
-  `
+  `,
+                    standalone: false
                 }]
         }] });
 export class MyModule {
@@ -65,9 +66,9 @@ export class MyApp {
     }
 }
 MyApp.ɵfac = i0.ɵɵngDeclareFactory({ minVersion: "12.0.0", version: "0.0.0-PLACEHOLDER", ngImport: i0, type: MyApp, deps: [], target: i0.ɵɵFactoryTarget.Component });
-MyApp.ɵcmp = i0.ɵɵngDeclareComponent({ minVersion: "14.0.0", version: "0.0.0-PLACEHOLDER", type: MyApp, selector: "my-app", ngImport: i0, template: `
+MyApp.ɵcmp = i0.ɵɵngDeclareComponent({ minVersion: "14.0.0", version: "0.0.0-PLACEHOLDER", type: MyApp, isStandalone: false, selector: "my-app", ngImport: i0, template: `
     <div [title]="'Hello, ' + (firstName ?? 'Frodo') + '!'"></div>
-    <span [title]="'Your last name is ' + lastName ?? lastNameFallback ?? 'unknown'"></span>
+    <span [title]="'Your last name is ' + (lastName ?? lastNameFallback ?? 'unknown')"></span>
   `, isInline: true });
 i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "0.0.0-PLACEHOLDER", ngImport: i0, type: MyApp, decorators: [{
             type: Component,
@@ -75,8 +76,9 @@ i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "0.0.0-PLACEHOLDE
                     selector: 'my-app',
                     template: `
     <div [title]="'Hello, ' + (firstName ?? 'Frodo') + '!'"></div>
-    <span [title]="'Your last name is ' + lastName ?? lastNameFallback ?? 'unknown'"></span>
-  `
+    <span [title]="'Your last name is ' + (lastName ?? lastNameFallback ?? 'unknown')"></span>
+  `,
+                    standalone: false
                 }]
         }] });
 export class MyModule {
@@ -122,7 +124,7 @@ export class MyApp {
     }
 }
 MyApp.ɵfac = i0.ɵɵngDeclareFactory({ minVersion: "12.0.0", version: "0.0.0-PLACEHOLDER", ngImport: i0, type: MyApp, deps: [], target: i0.ɵɵFactoryTarget.Component });
-MyApp.ɵcmp = i0.ɵɵngDeclareComponent({ minVersion: "14.0.0", version: "0.0.0-PLACEHOLDER", type: MyApp, selector: "my-app", host: { listeners: { "click": "logLastName(lastName ?? lastNameFallback ?? 'unknown')" }, properties: { "attr.first-name": "'Hello, ' + (firstName ?? 'Frodo') + '!'" } }, ngImport: i0, template: ``, isInline: true });
+MyApp.ɵcmp = i0.ɵɵngDeclareComponent({ minVersion: "14.0.0", version: "0.0.0-PLACEHOLDER", type: MyApp, isStandalone: false, selector: "my-app", host: { listeners: { "click": "logLastName(lastName ?? lastNameFallback ?? 'unknown')" }, properties: { "attr.first-name": "'Hello, ' + (firstName ?? 'Frodo') + '!'" } }, ngImport: i0, template: ``, isInline: true });
 i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "0.0.0-PLACEHOLDER", ngImport: i0, type: MyApp, decorators: [{
             type: Component,
             args: [{
@@ -131,7 +133,8 @@ i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "0.0.0-PLACEHOLDE
                         '[attr.first-name]': `'Hello, ' + (firstName ?? 'Frodo') + '!'`,
                         '(click)': `logLastName(lastName ?? lastNameFallback ?? 'unknown')`
                     },
-                    template: ``
+                    template: ``,
+                    standalone: false
                 }]
         }] });
 export class MyModule {
@@ -160,5 +163,55 @@ export declare class MyModule {
     static ɵfac: i0.ɵɵFactoryDeclaration<MyModule, never>;
     static ɵmod: i0.ɵɵNgModuleDeclaration<MyModule, [typeof MyApp], never, never>;
     static ɵinj: i0.ɵɵInjectorDeclaration<MyModule>;
+}
+
+/****************************************************************************************************
+ * PARTIAL FILE: nullish_coalescing_parens.js
+ ****************************************************************************************************/
+import { Component } from '@angular/core';
+import * as i0 from "@angular/core";
+export class MyApp {
+    constructor() {
+        this.x = null;
+        this.y = 0;
+        this.z = 1;
+    }
+}
+MyApp.ɵfac = i0.ɵɵngDeclareFactory({ minVersion: "12.0.0", version: "0.0.0-PLACEHOLDER", ngImport: i0, type: MyApp, deps: [], target: i0.ɵɵFactoryTarget.Component });
+MyApp.ɵcmp = i0.ɵɵngDeclareComponent({ minVersion: "14.0.0", version: "0.0.0-PLACEHOLDER", type: MyApp, isStandalone: true, selector: "my-app", ngImport: i0, template: `
+    <div>{{ (x && y) ?? z }}</div>
+    <div>{{ x && (y ?? z) }}</div>
+    <div>{{ x?.y ?? y?.z }}</div>
+    <div>{{ (x?.y ?? y) || z }}</div>
+    <div>{{ (x?.y ?? y) && z }}</div>
+    <div>{{ z || (x?.y ?? y) }}</div>
+    <div>{{ z && (x?.y ?? y) }}</div>
+    `, isInline: true });
+i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "0.0.0-PLACEHOLDER", ngImport: i0, type: MyApp, decorators: [{
+            type: Component,
+            args: [{
+                    selector: 'my-app',
+                    template: `
+    <div>{{ (x && y) ?? z }}</div>
+    <div>{{ x && (y ?? z) }}</div>
+    <div>{{ x?.y ?? y?.z }}</div>
+    <div>{{ (x?.y ?? y) || z }}</div>
+    <div>{{ (x?.y ?? y) && z }}</div>
+    <div>{{ z || (x?.y ?? y) }}</div>
+    <div>{{ z && (x?.y ?? y) }}</div>
+    `,
+                }]
+        }] });
+
+/****************************************************************************************************
+ * PARTIAL FILE: nullish_coalescing_parens.d.ts
+ ****************************************************************************************************/
+import * as i0 from "@angular/core";
+export declare class MyApp {
+    x: any;
+    y: any;
+    z: any;
+    static ɵfac: i0.ɵɵFactoryDeclaration<MyApp, never>;
+    static ɵcmp: i0.ɵɵComponentDeclaration<MyApp, "my-app", never, {}, {}, never, never, true, never>;
 }
 

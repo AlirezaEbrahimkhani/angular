@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 import ts from 'typescript';
 
@@ -34,44 +34,59 @@ enum PureAnnotation {
   TERSER = '@__PURE__',
 }
 
-const UNARY_OPERATORS: Record<UnaryOperator, ts.PrefixUnaryOperator> = {
-  '+': ts.SyntaxKind.PlusToken,
-  '-': ts.SyntaxKind.MinusToken,
-  '!': ts.SyntaxKind.ExclamationToken,
-};
-
-const BINARY_OPERATORS: Record<BinaryOperator, ts.BinaryOperator> = {
-  '&&': ts.SyntaxKind.AmpersandAmpersandToken,
-  '>': ts.SyntaxKind.GreaterThanToken,
-  '>=': ts.SyntaxKind.GreaterThanEqualsToken,
-  '&': ts.SyntaxKind.AmpersandToken,
-  '|': ts.SyntaxKind.BarToken,
-  '/': ts.SyntaxKind.SlashToken,
-  '==': ts.SyntaxKind.EqualsEqualsToken,
-  '===': ts.SyntaxKind.EqualsEqualsEqualsToken,
-  '<': ts.SyntaxKind.LessThanToken,
-  '<=': ts.SyntaxKind.LessThanEqualsToken,
-  '-': ts.SyntaxKind.MinusToken,
-  '%': ts.SyntaxKind.PercentToken,
-  '*': ts.SyntaxKind.AsteriskToken,
-  '!=': ts.SyntaxKind.ExclamationEqualsToken,
-  '!==': ts.SyntaxKind.ExclamationEqualsEqualsToken,
-  '||': ts.SyntaxKind.BarBarToken,
-  '+': ts.SyntaxKind.PlusToken,
-  '??': ts.SyntaxKind.QuestionQuestionToken,
-};
-
-const VAR_TYPES: Record<VariableDeclarationType, ts.NodeFlags> = {
-  'const': ts.NodeFlags.Const,
-  'let': ts.NodeFlags.Let,
-  'var': ts.NodeFlags.None,
-};
-
 /**
  * A TypeScript flavoured implementation of the AstFactory.
  */
 export class TypeScriptAstFactory implements AstFactory<ts.Statement, ts.Expression> {
   private externalSourceFiles = new Map<string, ts.SourceMapSource>();
+
+  private readonly UNARY_OPERATORS: Record<UnaryOperator, ts.PrefixUnaryOperator> =
+    /* @__PURE__ */ (() => ({
+      '+': ts.SyntaxKind.PlusToken,
+      '-': ts.SyntaxKind.MinusToken,
+      '!': ts.SyntaxKind.ExclamationToken,
+    }))();
+
+  private readonly BINARY_OPERATORS: Record<BinaryOperator, ts.BinaryOperator> =
+    /* @__PURE__ */ (() => ({
+      '&&': ts.SyntaxKind.AmpersandAmpersandToken,
+      '>': ts.SyntaxKind.GreaterThanToken,
+      '>=': ts.SyntaxKind.GreaterThanEqualsToken,
+      '&': ts.SyntaxKind.AmpersandToken,
+      '|': ts.SyntaxKind.BarToken,
+      '/': ts.SyntaxKind.SlashToken,
+      '==': ts.SyntaxKind.EqualsEqualsToken,
+      '===': ts.SyntaxKind.EqualsEqualsEqualsToken,
+      '<': ts.SyntaxKind.LessThanToken,
+      '<=': ts.SyntaxKind.LessThanEqualsToken,
+      '-': ts.SyntaxKind.MinusToken,
+      '%': ts.SyntaxKind.PercentToken,
+      '*': ts.SyntaxKind.AsteriskToken,
+      '**': ts.SyntaxKind.AsteriskAsteriskToken,
+      '!=': ts.SyntaxKind.ExclamationEqualsToken,
+      '!==': ts.SyntaxKind.ExclamationEqualsEqualsToken,
+      '||': ts.SyntaxKind.BarBarToken,
+      '+': ts.SyntaxKind.PlusToken,
+      '??': ts.SyntaxKind.QuestionQuestionToken,
+      'in': ts.SyntaxKind.InKeyword,
+      '=': ts.SyntaxKind.EqualsToken,
+      '+=': ts.SyntaxKind.PlusEqualsToken,
+      '-=': ts.SyntaxKind.MinusEqualsToken,
+      '*=': ts.SyntaxKind.AsteriskEqualsToken,
+      '/=': ts.SyntaxKind.SlashEqualsToken,
+      '%=': ts.SyntaxKind.PercentEqualsToken,
+      '**=': ts.SyntaxKind.AsteriskAsteriskEqualsToken,
+      '&&=': ts.SyntaxKind.AmpersandAmpersandEqualsToken,
+      '||=': ts.SyntaxKind.BarBarEqualsToken,
+      '??=': ts.SyntaxKind.QuestionQuestionEqualsToken,
+    }))();
+
+  private readonly VAR_TYPES: Record<VariableDeclarationType, ts.NodeFlags> =
+    /* @__PURE__ */ (() => ({
+      'const': ts.NodeFlags.Const,
+      'let': ts.NodeFlags.Let,
+      'var': ts.NodeFlags.None,
+    }))();
 
   constructor(private annotateForClosureCompiler: boolean) {}
 
@@ -79,8 +94,12 @@ export class TypeScriptAstFactory implements AstFactory<ts.Statement, ts.Express
 
   createArrayLiteral = ts.factory.createArrayLiteralExpression;
 
-  createAssignment(target: ts.Expression, value: ts.Expression): ts.Expression {
-    return ts.factory.createBinaryExpression(target, ts.SyntaxKind.EqualsToken, value);
+  createAssignment(
+    target: ts.Expression,
+    operator: BinaryOperator,
+    value: ts.Expression,
+  ): ts.Expression {
+    return ts.factory.createBinaryExpression(target, this.BINARY_OPERATORS[operator], value);
   }
 
   createBinaryExpression(
@@ -88,7 +107,11 @@ export class TypeScriptAstFactory implements AstFactory<ts.Statement, ts.Express
     operator: BinaryOperator,
     rightOperand: ts.Expression,
   ): ts.Expression {
-    return ts.factory.createBinaryExpression(leftOperand, BINARY_OPERATORS[operator], rightOperand);
+    return ts.factory.createBinaryExpression(
+      leftOperand,
+      this.BINARY_OPERATORS[operator],
+      rightOperand,
+    );
   }
 
   createBlock(body: ts.Statement[]): ts.Statement {
@@ -126,11 +149,11 @@ export class TypeScriptAstFactory implements AstFactory<ts.Statement, ts.Express
 
   createExpressionStatement = ts.factory.createExpressionStatement;
 
-  createDynamicImport(url: string) {
+  createDynamicImport(url: string | ts.Expression) {
     return ts.factory.createCallExpression(
-      ts.factory.createToken(ts.SyntaxKind.ImportKeyword) as ts.Expression,
+      ts.factory.createToken(ts.SyntaxKind.ImportKeyword) as ts.ImportExpression,
       /* type */ undefined,
-      [ts.factory.createStringLiteral(url)],
+      [typeof url === 'string' ? ts.factory.createStringLiteral(url) : url],
     );
   }
 
@@ -243,6 +266,14 @@ export class TypeScriptAstFactory implements AstFactory<ts.Statement, ts.Express
     tag: ts.Expression,
     template: TemplateLiteral<ts.Expression>,
   ): ts.Expression {
+    return ts.factory.createTaggedTemplateExpression(
+      tag,
+      undefined,
+      this.createTemplateLiteral(template),
+    );
+  }
+
+  createTemplateLiteral(template: TemplateLiteral<ts.Expression>): ts.TemplateLiteral {
     let templateLiteral: ts.TemplateLiteral;
     const length = template.elements.length;
     const head = template.elements[0];
@@ -276,15 +307,17 @@ export class TypeScriptAstFactory implements AstFactory<ts.Statement, ts.Express
     if (head.range !== null) {
       this.setSourceMapRange(templateLiteral, head.range);
     }
-    return ts.factory.createTaggedTemplateExpression(tag, undefined, templateLiteral);
+    return templateLiteral;
   }
 
   createThrowStatement = ts.factory.createThrowStatement;
 
   createTypeOfExpression = ts.factory.createTypeOfExpression;
 
+  createVoidExpression = ts.factory.createVoidExpression;
+
   createUnaryExpression(operator: UnaryOperator, operand: ts.Expression): ts.Expression {
-    return ts.factory.createPrefixUnaryExpression(UNARY_OPERATORS[operator], operand);
+    return ts.factory.createPrefixUnaryExpression(this.UNARY_OPERATORS[operator], operand);
   }
 
   createVariableDeclaration(
@@ -303,9 +336,13 @@ export class TypeScriptAstFactory implements AstFactory<ts.Statement, ts.Express
             initializer ?? undefined,
           ),
         ],
-        VAR_TYPES[type],
+        this.VAR_TYPES[type],
       ),
     );
+  }
+
+  createRegularExpressionLiteral(body: string, flags: string | null): ts.Expression {
+    return ts.factory.createRegularExpressionLiteral(`/${body}/${flags ?? ''}`);
   }
 
   setSourceMapRange<T extends ts.Node>(node: T, sourceMapRange: SourceMapRange | null): T {
@@ -352,7 +389,10 @@ export function createTemplateTail(cooked: string, raw: string): ts.TemplateTail
  * @param statement The statement that will have comments attached.
  * @param leadingComments The comments to attach to the statement.
  */
-export function attachComments(statement: ts.Statement, leadingComments: LeadingComment[]): void {
+export function attachComments(
+  statement: ts.Statement | ts.Expression,
+  leadingComments: LeadingComment[],
+): void {
   for (const comment of leadingComments) {
     const commentKind = comment.multiline
       ? ts.SyntaxKind.MultiLineCommentTrivia

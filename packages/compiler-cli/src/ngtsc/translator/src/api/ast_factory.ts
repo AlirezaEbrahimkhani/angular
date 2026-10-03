@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 /**
@@ -20,7 +20,7 @@ export interface AstFactory<TStatement, TExpression> {
    * @param statement the statement where the comments are to be attached.
    * @param leadingComments the comments to attach.
    */
-  attachComments(statement: TStatement, leadingComments: LeadingComment[]): void;
+  attachComments(statement: TStatement | TExpression, leadingComments: LeadingComment[]): void;
 
   /**
    * Create a literal array expression (e.g. `[expr1, expr2]`).
@@ -33,9 +33,10 @@ export interface AstFactory<TStatement, TExpression> {
    * Create an assignment expression (e.g. `lhsExpr = rhsExpr`).
    *
    * @param target an expression that evaluates to the left side of the assignment.
+   * @param operator binary assignment operator that will be applied.
    * @param value an expression that evaluates to the right side of the assignment.
    */
-  createAssignment(target: TExpression, value: TExpression): TExpression;
+  createAssignment(target: TExpression, operator: BinaryOperator, value: TExpression): TExpression;
 
   /**
    * Create a binary expression (e.g. `lhs && rhs`).
@@ -136,7 +137,7 @@ export interface AstFactory<TStatement, TExpression> {
    *
    * @param url the URL that should by used in the dynamic import
    */
-  createDynamicImport(url: string): TExpression;
+  createDynamicImport(url: string | TExpression): TExpression;
 
   /**
    * Create an identifier.
@@ -218,6 +219,18 @@ export interface AstFactory<TStatement, TExpression> {
   createTaggedTemplate(tag: TExpression, template: TemplateLiteral<TExpression>): TExpression;
 
   /**
+   * Create an untagged template literal
+   *
+   * ```
+   * `str1${expr1}str2${expr2}str3`
+   * ```
+   *
+   * @param template the collection of strings and expressions that constitute an interpolated
+   *     template literal.
+   */
+  createTemplateLiteral(template: TemplateLiteral<TExpression>): TExpression;
+
+  /**
    * Create a throw statement (e.g. `throw expr;`).
    *
    * @param expression the expression to be thrown.
@@ -230,6 +243,13 @@ export interface AstFactory<TStatement, TExpression> {
    * @param expression the expression whose type we want.
    */
   createTypeOfExpression(expression: TExpression): TExpression;
+
+  /**
+   * Create an expression that evaluates an expression and returns `undefined`.
+   *
+   * @param expression the expression whose type we want.
+   */
+  createVoidExpression(expression: TExpression): TExpression;
 
   /**
    * Prefix the `operand` with the given `operator` (e.g. `-expr`).
@@ -251,6 +271,14 @@ export interface AstFactory<TStatement, TExpression> {
     initializer: TExpression | null,
     type: VariableDeclarationType,
   ): TStatement;
+
+  /**
+   * Create a regular expression literal (e.g. `/\d+/g`).
+   *
+   * @param body Body of the regex.
+   * @param flags Flags of the regex, if any.
+   */
+  createRegularExpressionLiteral(body: string, flags: string | null): TExpression;
 
   /**
    * Attach a source map range to the given node.
@@ -292,11 +320,23 @@ export type BinaryOperator =
   | '-'
   | '%'
   | '*'
+  | '**'
   | '!='
   | '!=='
   | '||'
   | '+'
-  | '??';
+  | '??'
+  | 'in'
+  | '='
+  | '+='
+  | '-='
+  | '*='
+  | '/='
+  | '%='
+  | '**='
+  | '&&='
+  | '||='
+  | '??=';
 
 /**
  * The original location of the start or end of a node created by the `AstFactory`.

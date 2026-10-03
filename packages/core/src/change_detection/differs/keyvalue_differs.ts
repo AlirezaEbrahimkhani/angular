@@ -3,10 +3,10 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {Optional, SkipSelf, StaticProvider, ɵɵdefineInjectable} from '../../di';
+import {inject, Optional, SkipSelf, StaticProvider, ɵɵdefineInjectable} from '../../di';
 import {RuntimeError, RuntimeErrorCode} from '../../errors';
 
 import {DefaultKeyValueDifferFactory} from './default_keyvalue_differ';
@@ -123,16 +123,13 @@ export function defaultKeyValueDiffersFactory() {
  */
 export class KeyValueDiffers {
   /** @nocollapse */
-  static ɵprov = /** @pureOrBreakMyCode */ ɵɵdefineInjectable({
+  static ɵprov = /** @pureOrBreakMyCode */ /* @__PURE__ */ ɵɵdefineInjectable({
     token: KeyValueDiffers,
     providedIn: 'root',
     factory: defaultKeyValueDiffersFactory,
   });
 
-  /**
-   * @deprecated v4.0.0 - Should be private.
-   */
-  factories: KeyValueDifferFactory[];
+  private readonly factories: KeyValueDifferFactory[];
 
   constructor(factories: KeyValueDifferFactory[]) {
     this.factories = factories;
@@ -158,7 +155,7 @@ export class KeyValueDiffers {
    * which will only be applied to the injector for this component and its children.
    * This step is all that's required to make a new {@link KeyValueDiffer} available.
    *
-   * ```
+   * ```ts
    * @Component({
    *   viewProviders: [
    *     KeyValueDiffers.extend([new ImmutableMapDiffer()])
@@ -169,14 +166,13 @@ export class KeyValueDiffers {
   static extend<S>(factories: KeyValueDifferFactory[]): StaticProvider {
     return {
       provide: KeyValueDiffers,
-      useFactory: (parent: KeyValueDiffers) => {
+      useFactory: () => {
+        const parent = inject(KeyValueDiffers, {optional: true, skipSelf: true});
         // if parent is null, it means that we are in the root injector and we have just overridden
         // the default injection mechanism for KeyValueDiffers, in such a case just assume
         // `defaultKeyValueDiffersFactory`.
         return KeyValueDiffers.create(factories, parent || defaultKeyValueDiffersFactory());
       },
-      // Dependency technically isn't optional, but we can provide a better error message this way.
-      deps: [[KeyValueDiffers, new SkipSelf(), new Optional()]],
     };
   }
 

@@ -3,11 +3,12 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {_sanitizeHtml} from '../../src/sanitization/html_sanitizer';
 import {isDOMParserAvailable} from '../../src/sanitization/inert_body';
+import {isBrowser} from '@angular/private/testing';
 
 function sanitizeHtml(defaultDoc: any, unsafeHtmlInput: string): string {
   return _sanitizeHtml(defaultDoc, unsafeHtmlInput).toString();

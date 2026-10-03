@@ -1,10 +1,10 @@
 # Copyright Google LLC All Rights Reserved.
 #
 # Use of this source code is governed by an MIT-style license that can be
-# found in the LICENSE file at https://angular.io/license
+# found in the LICENSE file at https://angular.dev/license
 """Bazel macro for running Angular benchmarks"""
 
-load("//tools:defaults.bzl", "nodejs_binary")
+load("//tools:defaults.bzl", "js_binary")
 
 def ng_benchmark(name, bundle):
     """
@@ -16,14 +16,14 @@ def ng_benchmark(name, bundle):
       bundle: label of the bundle rule to run
     """
 
-    nodejs_binary(
+    js_binary(
         name = name,
         data = [bundle],
         entry_point = bundle + ".debug.min.js",
         tags = ["local", "manual"],  # run benchmarks locally and never on CI
     )
 
-    nodejs_binary(
+    js_binary(
         name = name + "_profile",
         data = [bundle],
         entry_point = bundle + ".debug.min.js",

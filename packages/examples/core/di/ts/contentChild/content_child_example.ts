@@ -3,41 +3,49 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 // #docregion Component
-import {Component, ContentChild, Directive, Input} from '@angular/core';
+import {Component, contentChild, Directive, input, signal} from '@angular/core';
 
-@Directive({selector: 'pane'})
+@Directive({
+  selector: 'pane',
+  standalone: false,
+})
 export class Pane {
-  @Input() id!: string;
+  id = input.required<string>();
 }
 
 @Component({
   selector: 'tab',
-  template: ` <div>pane: {{ pane?.id }}</div> `,
+  template: ` <div>pane: {{ pane()?.id() }}</div> `,
+  standalone: false,
 })
 export class Tab {
-  @ContentChild(Pane) pane!: Pane;
+  pane = contentChild(Pane);
 }
 
 @Component({
   selector: 'example-app',
   template: `
     <tab>
-      <pane id="1" *ngIf="shouldShow"></pane>
-      <pane id="2" *ngIf="!shouldShow"></pane>
+      @if(shouldShow()) {
+        <pane id="1"/>
+      } @else { 
+        <pane id="2"/>
+      }
     </tab>
 
     <button (click)="toggle()">Toggle</button>
   `,
+  standalone: false,
 })
 export class ContentChildComp {
-  shouldShow = true;
+  shouldShow = signal(true);
 
   toggle() {
-    this.shouldShow = !this.shouldShow;
+    this.shouldShow.update((shouldShow) => !shouldShow);
   }
 }
 // #enddocregion

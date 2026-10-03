@@ -3,10 +3,9 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
-import {R3NgModuleMetadataGlobal, WrappedNodeExpr} from '@angular/compiler';
-import {R3Reference} from '@angular/compiler/src/compiler';
+import {R3NgModuleMetadataGlobal, WrappedNodeExpr, R3Reference} from '@angular/compiler';
 import ts from 'typescript';
 
 import {absoluteFrom} from '../../../file_system';
@@ -28,7 +27,11 @@ import {
 import {LocalModuleScopeRegistry, MetadataDtsModuleScopeResolver} from '../../../scope';
 import {getDeclaration, makeProgram} from '../../../testing';
 import {CompilationMode} from '../../../transform';
-import {InjectableClassRegistry, NoopReferencesRegistry} from '../../common';
+import {
+  InjectableClassRegistry,
+  JitDeclarationRegistry,
+  NoopReferencesRegistry,
+} from '../../common';
 import {NgModuleDecoratorHandler} from '../src/handler';
 
 function setup(program: ts.Program, compilationMode = CompilationMode.FULL) {
@@ -52,6 +55,7 @@ function setup(program: ts.Program, compilationMode = CompilationMode.FULL) {
   const refEmitter = new ReferenceEmitter([new LocalIdentifierStrategy()]);
   const injectableRegistry = new InjectableClassRegistry(reflectionHost, /* isCore */ false);
   const exportedProviderStatusResolver = new ExportedProviderStatusResolver(metaReader);
+  const jitDeclarationRegistry = new JitDeclarationRegistry();
 
   const handler = new NgModuleDecoratorHandler(
     reflectionHost,
@@ -72,6 +76,8 @@ function setup(program: ts.Program, compilationMode = CompilationMode.FULL) {
     true,
     compilationMode,
     /* localCompilationExtraImportsTracker */ null,
+    jitDeclarationRegistry,
+    /* emitDeclarationOnly */ false,
   );
 
   return {handler, reflectionHost};

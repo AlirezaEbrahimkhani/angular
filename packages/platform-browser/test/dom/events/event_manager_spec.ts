@@ -3,19 +3,18 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {ɵgetDOM as getDOM} from '@angular/common';
-import {NgZone} from '@angular/core/src/zone/ng_zone';
-import {DomEventsPlugin} from '@angular/platform-browser/src/dom/events/dom_events';
-import {
-  EventManager,
-  EventManagerPlugin,
-} from '@angular/platform-browser/src/dom/events/event_manager';
+import {NgZone} from '@angular/core';
+import {DomEventsPlugin} from '../../../src/dom/events/dom_events';
+import {EventManager, EventManagerPlugin} from '../../../src/dom/events/event_manager';
 
-import {createMouseEvent, el} from '../../../testing/src/browser_util';
 import {TestBed} from '@angular/core/testing';
+import {isNode, createMouseEvent, el} from '@angular/private/testing';
+
+import type {} from 'zone.js';
 
 (function () {
   if (isNode) return;
@@ -300,7 +299,7 @@ import {TestBed} from '@angular/core/testing';
 
     // This test is reliant on `zone_event_unpatched_init.js` and verifies
     // that the Zone unpatched event setting applies to the event manager.
-    it('should run unpatchedEvents handler outside of ngZone', () => {
+    it('should run unpatchedEvents handler outside of ngZone', () => () => {
       const element = el('<div><div></div></div>');
       const zone = new NgZone({enableLongStackTrace: true});
       const manager = new EventManager([domEventPlugin], zone);
@@ -325,7 +324,7 @@ import {TestBed} from '@angular/core/testing';
       expect(timeoutId).not.toBe(null);
 
       // cleanup the DOM by removing the test element we attached earlier.
-      doc.body.removeChild(element);
+      element.remove();
       timeoutId && clearTimeout(timeoutId);
     });
 

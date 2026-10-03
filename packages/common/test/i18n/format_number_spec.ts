@@ -3,14 +3,14 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {formatCurrency, formatNumber, formatPercent} from '@angular/common';
-import localeAr from '@angular/common/locales/ar';
-import localeEn from '@angular/common/locales/en';
-import localeEsUS from '@angular/common/locales/es-US';
-import localeFr from '@angular/common/locales/fr';
+import {formatCurrency, formatNumber, formatPercent} from '../../index';
+import localeAr from '../../locales/ar';
+import localeEn from '../../locales/en';
+import localeEsUS from '../../locales/es-US';
+import localeFr from '../../locales/fr';
 import {ɵDEFAULT_LOCALE_ID, ɵregisterLocaleData, ɵunregisterLocaleData} from '@angular/core';
 
 describe('Format number', () => {

@@ -2,5 +2,6 @@
   "title": "Add routing",
   "type": "local",
   "answerSrc": "../11-details-page/src",
-  "openFiles": ["src/main.ts", "src/app/app.component.ts"]
+  "answerRootDir": "../11-details-page/",
+  "openFiles": ["src/main.ts", "src/app/app.ts"]
 }

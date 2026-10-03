@@ -1,5 +1,3 @@
-load("@build_bazel_rules_nodejs//:providers.bzl", "run_node")
-
 def _generate_element_api_json(ctx):
     """Implementation of the generate_element_api_json rule"""
 
@@ -17,14 +15,17 @@ def _generate_element_api_json(ctx):
     manifest = ctx.actions.declare_file("elements.json")
     args.add(manifest.path)
 
-    # Define an action that runs the nodejs_binary executable. This is
-    # the main thing that this rule does.
-    run_node(
-        ctx = ctx,
+    # Define an action that runs the executable.
+    ctx.actions.run(
         inputs = depset(ctx.files.srcs),
-        executable = "_generate_element_api_json",
+        executable = ctx.executable._generate_element_api_json,
         outputs = [manifest],
         arguments = [args],
+        env = {
+            # Note: This rule access source files directly, without copying them over.
+            # Hence we don't need to change the working directory to the bazel-bin.
+            "BAZEL_BINDIR": ".",
+        },
     )
 
     # The return value describes what the rule is producing. In this case we need to specify

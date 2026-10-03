@@ -3,11 +3,11 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {SecurityContext} from '@angular/core';
-import {DomSanitizerImpl} from '@angular/platform-browser/src/security/dom_sanitization_service';
+import {DomSanitizerImpl} from '../../src/security/dom_sanitization_service';
 
 describe('DOM Sanitization Service', () => {
   it('accepts resource URL values for resource contexts', () => {

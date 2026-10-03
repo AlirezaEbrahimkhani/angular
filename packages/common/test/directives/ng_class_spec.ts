@@ -3,10 +3,10 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {NgClass} from '@angular/common';
+import {NgClass} from '../../index';
 import {Component} from '@angular/core';
 import {ComponentFixture, TestBed, waitForAsync} from '@angular/core/testing';
 
@@ -18,6 +18,7 @@ describe('binding to CSS class list', () => {
   }
 
   function detectChangesAndExpectClassName(classes: string): void {
+    fixture?.changeDetectorRef.markForCheck();
     fixture!.detectChanges();
     let nonNormalizedClassName = fixture!.debugElement.children[0].nativeElement.className;
     expect(normalizeClassNames(nonNormalizedClassName)).toEqual(normalizeClassNames(classes));
@@ -395,8 +396,10 @@ describe('binding to CSS class list', () => {
       detectChangesAndExpectClassName('');
 
       fixture.componentInstance.condition = false;
+      fixture.changeDetectorRef.markForCheck();
       fixture.detectChanges();
       fixture.componentInstance.condition = true;
+      fixture.changeDetectorRef.markForCheck();
       detectChangesAndExpectClassName('color-red');
     });
 
@@ -446,6 +449,7 @@ describe('binding to CSS class list', () => {
           <div leading-space [ngClass]="{' foo': applyClasses}"></div>
           <div trailing-space [ngClass]="{'foo ': applyClasses}"></div>
         `,
+        standalone: false,
       })
       class Cmp {
         applyClasses = true;
@@ -466,7 +470,6 @@ describe('binding to CSS class list', () => {
         selector: 'test-component',
         imports: [NgClass],
         template: `<div class="{{ 'option-' + level }}" [ngClass]="'option-' + level"></div>`,
-        standalone: true,
       })
       class TestComponent {
         level = 1;
@@ -478,6 +481,7 @@ describe('binding to CSS class list', () => {
       expect(fixture.nativeElement.firstChild.className).toBe('option-1');
 
       fixture.componentInstance.level = 5;
+      fixture.changeDetectorRef.markForCheck();
       fixture.detectChanges();
       expect(fixture.nativeElement.firstChild.className).toBe('option-5');
     });
@@ -487,7 +491,6 @@ describe('binding to CSS class list', () => {
         selector: 'test-component',
         imports: [NgClass],
         template: `<div trailing-space [ngClass]="{foo: applyClasses}"></div>`,
-        standalone: true,
       })
       class TestComponent {
         applyClasses = true;
@@ -501,7 +504,11 @@ describe('binding to CSS class list', () => {
   });
 });
 
-@Component({selector: 'test-cmp', template: ''})
+@Component({
+  selector: 'test-cmp',
+  template: '',
+  standalone: false,
+})
 class TestComponent {
   condition: boolean = true;
   items: any[] | undefined;

@@ -1,48 +1,28 @@
-load("@io_bazel_rules_sass//:defs.bzl", "sass_binary")
-load("//devtools/tools:ng_module.bzl", "ng_module")
+load("//devtools/tools:defaults.bzl", "ng_project", "sass_binary")
 
-package(default_visibility = ["//visibility:public"])
+package(default_visibility = ["//devtools:__subpackages__"])
 
-_STYLE_SRCS = [
-    "component-metadata.component.scss",
-    "property-tab.component.scss",
-    "property-tab-header.component.scss",
-]
+sass_binary(
+    name = "property-tab_styles",
+    src = "property-tab.component.scss",
+)
 
-_STYLE_LABELS = [
-    src[:-len(".component.scss")].replace("-", "_") + "_styles"
-    for src in _STYLE_SRCS
-]
-
-[
-    sass_binary(
-        name = label,
-        src = src,
-    )
-    for label, src in zip(_STYLE_LABELS, _STYLE_SRCS)
-]
-
-ng_module(
+ng_project(
     name = "property-tab",
     srcs = [
-        "component-metadata.component.ts",
         "property-tab.component.ts",
-        "property-tab-header.component.ts",
     ],
     angular_assets = [
         "property-tab.component.html",
-        "property-tab-header.component.html",
-        "component-metadata.component.html",
-    ] + _STYLE_LABELS,
+        ":property-tab_styles",
+    ],
     deps = [
+        "//:node_modules/@angular/core",
         "//devtools/projects/ng-devtools/src/lib/devtools-tabs/directive-explorer/directive-forest/index-forest",
         "//devtools/projects/ng-devtools/src/lib/devtools-tabs/directive-explorer/property-resolver",
+        "//devtools/projects/ng-devtools/src/lib/devtools-tabs/directive-explorer/property-tab/defer-view",
+        "//devtools/projects/ng-devtools/src/lib/devtools-tabs/directive-explorer/property-tab/property-tab-header",
         "//devtools/projects/ng-devtools/src/lib/devtools-tabs/directive-explorer/property-tab/property-view",
         "//devtools/projects/protocol",
-        "//packages/common",
-        "//packages/core",
-        "@npm//@angular/material",
-        "@npm//@types",
-        "@npm//rxjs",
     ],
 )

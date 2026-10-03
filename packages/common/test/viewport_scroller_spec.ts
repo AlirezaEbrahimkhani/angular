@@ -3,10 +3,11 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {BrowserViewportScroller, ViewportScroller} from '../src/viewport_scroller';
+import {isNode} from '@angular/private/testing';
 
 describe('BrowserViewportScroller', () => {
   describe('setHistoryScrollRestoration', () => {
@@ -36,10 +37,15 @@ describe('BrowserViewportScroller', () => {
       expect(() => scroller.setHistoryScrollRestoration('manual')).not.toThrow();
     });
 
+    it('should not allow overwriting position with options', () => {
+      scroller.scrollToPosition([10, 10], {top: 0, left: 0} as any);
+      expect(windowSpy.scrollTo).toHaveBeenCalledWith({top: 10, left: 10});
+    });
+
     it('should still allow scrolling if scrollRestoration is not writable', () => {
       createNonWritableScrollRestoration();
       scroller.scrollToPosition([10, 10]);
-      expect(windowSpy.scrollTo as jasmine.Spy).toHaveBeenCalledWith(10, 10);
+      expect(windowSpy.scrollTo).toHaveBeenCalledWith({top: 10, left: 10});
     });
   });
 
@@ -98,6 +104,14 @@ describe('BrowserViewportScroller', () => {
       cleanup();
     });
 
+    it('should not allow overwriting position with options', () => {
+      const {anchorNode, cleanup} = createTallElementWithShadowRoot();
+      anchorNode.name = anchor;
+      scroller.scrollToAnchor(anchor, {top: 0, left: 0} as any);
+      expect(scroller.getScrollPosition()[1]).not.toEqual(0);
+      cleanup();
+    });
+
     function createTallElement() {
       const tallItem = document.createElement('div');
       tallItem.style.height = '3000px';
@@ -108,8 +122,8 @@ describe('BrowserViewportScroller', () => {
       return {
         anchorNode,
         cleanup: () => {
-          document.body.removeChild(tallItem);
-          document.body.removeChild(anchorNode);
+          tallItem.remove();
+          anchorNode.remove();
         },
       };
     }
@@ -128,8 +142,8 @@ describe('BrowserViewportScroller', () => {
       return {
         anchorNode,
         cleanup: () => {
-          document.body.removeChild(tallItem);
-          document.body.removeChild(elementWithShadowRoot);
+          tallItem.remove();
+          elementWithShadowRoot.remove();
         },
       };
     }

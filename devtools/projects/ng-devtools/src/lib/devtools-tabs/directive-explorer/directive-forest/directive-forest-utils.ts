@@ -3,12 +3,12 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {FlatTreeControl} from '@angular/cdk/tree';
 
-import {FlatNode} from './component-data-source';
+import {FlatNode} from './component-data-source/index';
 
 export const isChildOf = (childPosition: number[], parentPosition: number[]) => {
   if (childPosition.length <= parentPosition.length) {
@@ -34,4 +34,17 @@ export const parentCollapsed = (
     }
   }
   return false;
+};
+
+/** Returns the `FlatNode`'s directive array string. */
+export const getDirectivesArrayString = (node: FlatNode): string =>
+  node.directives ? node.directives.map((dir) => `[${dir}]`).join('') : '';
+
+/** Returns the full node name string as rendered by the tree-node component. */
+export const getFullNodeNameString = (node: FlatNode): string => {
+  const cmp = node.original.component;
+  if (cmp && cmp.isElement) {
+    return `<${node.name}/>`;
+  }
+  return node.name + getDirectivesArrayString(node);
 };

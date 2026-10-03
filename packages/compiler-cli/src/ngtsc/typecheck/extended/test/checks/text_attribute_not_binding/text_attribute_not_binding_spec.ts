@@ -3,10 +3,10 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {DiagnosticCategoryLabel} from '@angular/compiler-cli/src/ngtsc/core/api';
+import {DiagnosticCategoryLabel} from '../../../../../core/api';
 import ts from 'typescript';
 
 import {ErrorCode, ExtendedTemplateDiagnosticName, ngErrorCode} from '../../../../../diagnostics';

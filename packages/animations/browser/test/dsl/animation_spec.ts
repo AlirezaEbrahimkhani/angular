@@ -3,8 +3,11 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
+
+import {isNode} from '@angular/private/testing';
+
 import {
   animate,
   animation,
@@ -22,7 +25,7 @@ import {
   trigger,
   useAnimation,
   ɵStyleDataMap,
-} from '@angular/animations';
+} from '../../../src/animations';
 
 import {Animation} from '../../src/dsl/animation';
 import {buildAnimationAst} from '../../src/dsl/animation_ast_builder';
@@ -56,7 +59,7 @@ describe('Animation', () => {
   });
 
   afterEach(() => {
-    document.body.removeChild(rootElement);
+    rootElement.remove();
   });
 
   describe('validation', () => {

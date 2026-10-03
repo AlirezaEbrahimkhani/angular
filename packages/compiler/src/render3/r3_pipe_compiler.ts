@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 import * as o from '../output/output_ast';
 
@@ -30,7 +30,7 @@ export interface R3PipeMetadata {
   /**
    * Name of the pipe.
    */
-  pipeName: string;
+  pipeName: string | null;
 
   /**
    * Dependencies of the pipe's constructor.
@@ -52,7 +52,11 @@ export function compilePipeFromMetadata(metadata: R3PipeMetadata): R3CompiledExp
   const definitionMapValues: {key: string; quoted: boolean; value: o.Expression}[] = [];
 
   // e.g. `name: 'myPipe'`
-  definitionMapValues.push({key: 'name', value: o.literal(metadata.pipeName), quoted: false});
+  definitionMapValues.push({
+    key: 'name',
+    value: o.literal(metadata.pipeName ?? metadata.name),
+    quoted: false,
+  });
 
   // e.g. `type: MyPipe`
   definitionMapValues.push({key: 'type', value: metadata.type.value, quoted: false});
@@ -60,8 +64,8 @@ export function compilePipeFromMetadata(metadata: R3PipeMetadata): R3CompiledExp
   // e.g. `pure: true`
   definitionMapValues.push({key: 'pure', value: o.literal(metadata.pure), quoted: false});
 
-  if (metadata.isStandalone) {
-    definitionMapValues.push({key: 'standalone', value: o.literal(true), quoted: false});
+  if (metadata.isStandalone === false) {
+    definitionMapValues.push({key: 'standalone', value: o.literal(false), quoted: false});
   }
 
   const expression = o

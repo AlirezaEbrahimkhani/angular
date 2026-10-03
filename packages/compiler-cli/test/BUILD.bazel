@@ -1,8 +1,8 @@
-load("//tools:defaults.bzl", "jasmine_node_test", "ts_library")
+load("//tools:defaults.bzl", "angular_jasmine_test", "ts_project")
 
 # Uses separate test rules to allow the tests to run in parallel
 
-ts_library(
+ts_project(
     name = "test_utils",
     testonly = True,
     srcs = [
@@ -11,20 +11,21 @@ ts_library(
     ],
     visibility = [
         ":__subpackages__",
+        "//packages/compiler-cli/src/ngtsc/transform/jit/test:__pkg__",
         "//packages/language-service/test:__subpackages__",
     ],
     deps = [
+        "//:node_modules/typescript",
         "//packages:types",
         "//packages/compiler",
         "//packages/compiler-cli",
         "//packages/compiler-cli/src/ngtsc/file_system",
         "//packages/compiler-cli/src/ngtsc/testing",
-        "@npm//typescript",
     ],
 )
 
 # extract_18n_spec
-ts_library(
+ts_project(
     name = "extract_i18n_lib",
     testonly = True,
     srcs = [
@@ -32,54 +33,25 @@ ts_library(
     ],
     deps = [
         ":test_utils",
+        "//:node_modules/typescript",
         "//packages/compiler",
         "//packages/compiler-cli",
-        "@npm//typescript",
     ],
 )
 
-jasmine_node_test(
+angular_jasmine_test(
     name = "extract_i18n",
-    bootstrap = ["//tools/testing:node"],
     data = [
-        "//packages/core:npm_package",
-    ],
-    deps = [
         ":extract_i18n_lib",
+        "//:node_modules/yargs",
         "//packages/common:npm_package",
         "//packages/core",
-        "@npm//yargs",
-    ],
-)
-
-ts_library(
-    name = "jit_transforms_test_lib",
-    testonly = True,
-    srcs = [
-        "downlevel_decorators_transform_spec.ts",
-        "initializer_api_transforms_spec.ts",
-        "signal_queries_metadata_transform_spec.ts",
-    ],
-    deps = [
-        ":test_utils",
-        "//packages/compiler-cli/src/ngtsc/imports",
-        "//packages/compiler-cli/src/ngtsc/partial_evaluator",
-        "//packages/compiler-cli/src/ngtsc/reflection",
-        "//packages/compiler-cli/src/transformers/jit_transforms",
-        "@npm//typescript",
-    ],
-)
-
-jasmine_node_test(
-    name = "jit_transforms_test",
-    bootstrap = ["//tools/testing:node"],
-    deps = [
-        ":jit_transforms_test_lib",
+        "//packages/core:npm_package",
     ],
 )
 
 # perform_watch_spec
-ts_library(
+ts_project(
     name = "perform_watch_lib",
     testonly = True,
     srcs = [
@@ -87,27 +59,24 @@ ts_library(
     ],
     deps = [
         ":test_utils",
+        "//:node_modules/typescript",
         "//packages/compiler",
         "//packages/compiler-cli",
         "//packages/private/testing",
-        "@npm//typescript",
     ],
 )
 
-jasmine_node_test(
+angular_jasmine_test(
     name = "perform_watch",
-    bootstrap = ["//tools/testing:node"],
     data = [
-        "//packages/core:npm_package",
-    ],
-    deps = [
         ":perform_watch_lib",
         "//packages/core",
+        "//packages/core:npm_package",
     ],
 )
 
 # perform_compile_spec
-ts_library(
+ts_project(
     name = "perform_compile_lib",
     testonly = True,
     srcs = [
@@ -115,25 +84,22 @@ ts_library(
     ],
     deps = [
         ":test_utils",
+        "//:node_modules/typescript",
         "//packages/compiler",
         "//packages/compiler-cli",
-        "@npm//typescript",
     ],
 )
 
-jasmine_node_test(
+angular_jasmine_test(
     name = "perform_compile",
-    bootstrap = ["//tools/testing:node"],
     data = [
-        "//packages/core:npm_package",
-    ],
-    deps = [
         ":perform_compile_lib",
         "//packages/core",
+        "//packages/core:npm_package",
     ],
 )
 
-ts_library(
+ts_project(
     name = "typescript_support_lib",
     testonly = True,
     srcs = [
@@ -144,16 +110,15 @@ ts_library(
     ],
 )
 
-jasmine_node_test(
+angular_jasmine_test(
     name = "typescript_support",
-    bootstrap = ["//tools/testing:node"],
-    deps = [
+    data = [
         ":typescript_support_lib",
     ],
 )
 
 # version_helpers_spec
-ts_library(
+ts_project(
     name = "version_helpers_lib",
     testonly = True,
     srcs = ["version_helpers_spec.ts"],
@@ -162,10 +127,9 @@ ts_library(
     ],
 )
 
-jasmine_node_test(
+angular_jasmine_test(
     name = "version_helpers",
-    bootstrap = ["//tools/testing:node"],
-    deps = [
+    data = [
         ":version_helpers_lib",
     ],
 )

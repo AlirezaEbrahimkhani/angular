@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {ɵRuntimeError as RuntimeError} from '@angular/core';
@@ -20,8 +20,8 @@ import {
 export function controlParentException(nameOrIndex: string | number | null): Error {
   return new RuntimeError(
     RuntimeErrorCode.FORM_CONTROL_NAME_MISSING_PARENT,
-    `formControlName must be used with a parent formGroup directive. You'll want to add a formGroup
-      directive and pass it an existing FormGroup instance (you can create one in your class).
+    `formControlName must be used with a parent formGroup or formArray directive.  You'll want to add a formGroup/formArray
+      directive and pass it an existing FormGroup/FormArray instance (you can create one in your class).
 
       ${describeFormControl(nameOrIndex)}
 

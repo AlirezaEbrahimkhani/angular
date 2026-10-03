@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {
@@ -17,6 +17,10 @@ import {
   ReactiveNode,
   SIGNAL,
 } from './graph';
+
+// Required as the signals library is in a separate package, so we need to explicitly ensure the
+// global `ngDevMode` type is defined.
+declare const ngDevMode: boolean | undefined;
 
 /**
  * A cleanup function that can be optionally registered from the watch logic. If registered, the
@@ -52,7 +56,6 @@ export interface Watch {
   [SIGNAL]: WatchNode;
 }
 export interface WatchNode extends ReactiveNode {
-  hasRun: boolean;
   fn: ((onCleanup: WatchCleanupRegisterFn) => void) | null;
   schedule: ((watch: Watch) => void) | null;
   cleanupFn: WatchCleanupFn;
@@ -99,14 +102,18 @@ export function createWatch(
     }
 
     if (isInNotificationPhase()) {
-      throw new Error(`Schedulers cannot synchronously execute watches while scheduling.`);
+      throw new Error(
+        typeof ngDevMode !== 'undefined' && ngDevMode
+          ? 'Schedulers cannot synchronously execute watches while scheduling.'
+          : '',
+      );
     }
 
     node.dirty = false;
-    if (node.hasRun && !consumerPollProducersForChange(node)) {
+    if (node.version > 0 && !consumerPollProducersForChange(node)) {
       return;
     }
-    node.hasRun = true;
+    node.version++;
 
     const prevConsumer = consumerBeforeComputation(node);
     try {
@@ -144,7 +151,6 @@ const WATCH_NODE: Partial<WatchNode> = /* @__PURE__ */ (() => {
         node.schedule(node.ref);
       }
     },
-    hasRun: false,
     cleanupFn: NOOP_CLEANUP_FN,
   };
 })();

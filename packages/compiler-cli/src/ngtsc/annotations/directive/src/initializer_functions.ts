@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import ts from 'typescript';
@@ -82,6 +82,10 @@ export function tryParseInitializerApi<Functions extends InitializerApiFunction[
   reflector: ReflectionHost,
   importTracker: ImportedSymbolsTracker,
 ): (InitializerFunctionMetadata & {api: Functions[number]}) | null {
+  if (ts.isAsExpression(expression) || ts.isParenthesizedExpression(expression)) {
+    return tryParseInitializerApi(functions, expression.expression, reflector, importTracker);
+  }
+
   if (!ts.isCallExpression(expression)) {
     return null;
   }

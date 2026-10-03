@@ -3,13 +3,12 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {MessageBundle} from '@angular/compiler/src/i18n/message_bundle';
-import {Xmb} from '@angular/compiler/src/i18n/serializers/xmb';
-import {DEFAULT_INTERPOLATION_CONFIG} from '@angular/compiler/src/ml_parser/defaults';
-import {HtmlParser} from '@angular/compiler/src/ml_parser/html_parser';
+import {MessageBundle} from '../../../src/i18n/message_bundle';
+import {Xmb} from '../../../src/i18n/serializers/xmb';
+import {HtmlParser} from '../../../src/ml_parser/html_parser';
 
 describe('XMB serializer', () => {
   const HTML = `
@@ -80,7 +79,7 @@ function toXmb(html: string, url: string, locale: string | null = null): string 
   const catalog = new MessageBundle(new HtmlParser(), [], {}, locale);
   const serializer = new Xmb();
 
-  catalog.updateFromTemplate(html, url, DEFAULT_INTERPOLATION_CONFIG);
+  catalog.updateFromTemplate(html, url);
 
   return catalog.write(serializer);
 }

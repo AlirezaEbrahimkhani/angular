@@ -3,16 +3,16 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import type {ɵGlobalDevModeUtils as GlobalDevModeUtils, Type} from '@angular/core';
-import {HydrationStatus} from 'protocol';
+import type {Type} from '@angular/core';
+import {HydrationStatus} from '../../../protocol';
+import {ngDebugClient} from './ng-debug-api/ng-debug-api';
 
 let hydrationOverlayItems: HTMLElement[] = [];
 let selectedElementOverlay: HTMLElement | null = null;
-
-declare const ng: GlobalDevModeUtils['ng'];
+let selectedElement: Node | null = null;
 
 const DEV_TOOLS_HIGHLIGHT_NODE_ID = '____ngDevToolsHighlight';
 
@@ -39,7 +39,7 @@ function createOverlay(color: RgbColor): {overlay: HTMLElement; overlayContent: 
   const overlay = document.createElement('div');
   overlay.className = 'ng-devtools-overlay';
   overlay.style.backgroundColor = toCSSColor(...color, 0.35);
-  overlay.style.position = 'fixed';
+  overlay.style.position = 'absolute';
   overlay.style.zIndex = '2147483647';
   overlay.style.pointerEvents = 'none';
   overlay.style.display = 'flex';
@@ -61,11 +61,12 @@ export function findComponentAndHost(el: Node | undefined): {
   component: any;
   host: HTMLElement | null;
 } {
+  const ng = ngDebugClient();
   if (!el) {
     return {component: null, host: null};
   }
   while (el) {
-    const component = el instanceof HTMLElement && ng.getComponent(el);
+    const component = el instanceof HTMLElement && ng.getComponent!(el);
     if (component) {
       return {component, host: el as HTMLElement};
     }
@@ -83,7 +84,12 @@ export function getDirectiveName(dir: Type<unknown> | undefined | null): string 
 }
 
 export function highlightSelectedElement(el: Node): void {
+  if (el === selectedElement) {
+    return;
+  }
+  unHighlight();
   selectedElementOverlay = addHighlightForElement(el);
+  selectedElement = el;
 }
 
 export function highlightHydrationElement(el: Node, status: HydrationStatus) {
@@ -102,10 +108,19 @@ export function highlightHydrationElement(el: Node, status: HydrationStatus) {
 }
 
 export function unHighlight(): void {
-  if (selectedElementOverlay) {
-    document.body.removeChild(selectedElementOverlay);
-    selectedElementOverlay = null;
+  if (!selectedElementOverlay) {
+    return;
   }
+
+  for (const node of document.body.childNodes) {
+    if (node === selectedElementOverlay) {
+      document.body.removeChild(selectedElementOverlay);
+
+      break;
+    }
+  }
+
+  selectedElementOverlay = null;
 }
 
 export function removeHydrationHighlights(): void {
@@ -186,8 +201,8 @@ function showOverlay(
   const {width, height, top, left} = dimensions;
   overlay.style.width = ~~width + 'px';
   overlay.style.height = ~~height + 'px';
-  overlay.style.top = ~~top + 'px';
-  overlay.style.left = ~~left + 'px';
+  overlay.style.top = ~~top + window.scrollY + 'px';
+  overlay.style.left = ~~left + window.scrollX + 'px';
 
   positionOverlayContent(overlayContent, dimensions, labelPosition);
   overlayContent.replaceChildren();

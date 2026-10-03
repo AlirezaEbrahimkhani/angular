@@ -3,9 +3,10 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
+import {Provider} from '@angular/core';
 import {createImageLoader, ImageLoaderConfig, ImageLoaderInfo} from './image_loader';
 
 /**
@@ -36,7 +37,7 @@ function isCloudinaryUrl(url: string): boolean {
  *
  * @publicApi
  */
-export const provideCloudinaryLoader = createImageLoader(
+export const provideCloudinaryLoader: (path: string) => Provider[] = createImageLoader(
   createCloudinaryUrl,
   ngDevMode
     ? [
@@ -60,6 +61,10 @@ function createCloudinaryUrl(path: string, config: ImageLoaderConfig) {
   let params = `f_auto,${quality}`;
   if (config.width) {
     params += `,w_${config.width}`;
+  }
+
+  if (config.loaderParams?.['rounded']) {
+    params += `,r_max`;
   }
 
   return `${path}/image/upload/${params}/${config.src}`;

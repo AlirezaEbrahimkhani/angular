@@ -3,27 +3,21 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {isPlatformServer} from '@angular/common';
 import {
   EnvironmentInjector,
   inject,
-  Injectable,
   InjectionToken,
-  PLATFORM_ID,
   runInInjectionContext,
-  ɵConsole as Console,
-  ɵformatRuntimeError as formatRuntimeError,
-  ɵPendingTasks as PendingTasks,
+  PendingTasks,
 } from '@angular/core';
 import {Observable} from 'rxjs';
 import {finalize} from 'rxjs/operators';
 
-import {HttpBackend, HttpHandler} from './backend';
-import {RuntimeErrorCode} from './errors';
-import {FetchBackend} from './fetch';
+import type {HttpHandler} from './backend';
+
 import {HttpRequest} from './request';
 import {HttpEvent} from './response';
 
@@ -107,7 +101,7 @@ export type HttpHandlerFn = (req: HttpRequest<unknown>) => Observable<HttpEvent<
  *
  * @usageNotes
  * Here is a noop interceptor that passes the request through without modifying it:
- * ```typescript
+ * ```ts
  * export const noopInterceptor: HttpInterceptorFn = (req: HttpRequest<unknown>, next:
  * HttpHandlerFn) => {
  *   return next(modifiedReq);
@@ -118,7 +112,7 @@ export type HttpHandlerFn = (req: HttpRequest<unknown>) => Observable<HttpEvent<
  * `next()` handler function.
  *
  * Here is a basic interceptor that adds a bearer token to the headers
- * ```typescript
+ * ```ts
  * export const authenticationInterceptor: HttpInterceptorFn = (req: HttpRequest<unknown>, next:
  * HttpHandlerFn) => {
  *    const userToken = 'MY_TOKEN'; const modifiedReq = req.clone({
@@ -146,12 +140,12 @@ export type HttpInterceptorFn = (
  * `HttpInterceptorFn`, which is a useful abstraction for including different kinds of interceptors
  * (e.g. legacy class-based interceptors) in the same chain.
  */
-type ChainedInterceptorFn<RequestT> = (
+export type ChainedInterceptorFn<RequestT> = (
   req: HttpRequest<RequestT>,
   finalHandlerFn: HttpHandlerFn,
 ) => Observable<HttpEvent<RequestT>>;
 
-function interceptorChainEndFn(
+export function interceptorChainEndFn(
   req: HttpRequest<any>,
   finalHandlerFn: HttpHandlerFn,
 ): Observable<HttpEvent<any>> {
@@ -162,7 +156,7 @@ function interceptorChainEndFn(
  * Constructs a `ChainedInterceptorFn` which adapts a legacy `HttpInterceptor` to the
  * `ChainedInterceptorFn` interface.
  */
-function adaptLegacyInterceptorToChain(
+export function adaptLegacyInterceptorToChain(
   chainTailFn: ChainedInterceptorFn<any>,
   interceptor: HttpInterceptor,
 ): ChainedInterceptorFn<any> {
@@ -176,7 +170,7 @@ function adaptLegacyInterceptorToChain(
  * Constructs a `ChainedInterceptorFn` which wraps and invokes a functional interceptor in the given
  * injector.
  */
-function chainedInterceptorFn(
+export function chainedInterceptorFn(
   chainTailFn: ChainedInterceptorFn<unknown>,
   interceptorFn: HttpInterceptorFn,
   injector: EnvironmentInjector,
@@ -196,28 +190,29 @@ function chainedInterceptorFn(
  * @publicApi
  */
 export const HTTP_INTERCEPTORS = new InjectionToken<readonly HttpInterceptor[]>(
-  ngDevMode ? 'HTTP_INTERCEPTORS' : '',
+  typeof ngDevMode !== undefined && ngDevMode ? 'HTTP_INTERCEPTORS' : '',
 );
 
 /**
  * A multi-provided token of `HttpInterceptorFn`s.
  */
 export const HTTP_INTERCEPTOR_FNS = new InjectionToken<readonly HttpInterceptorFn[]>(
-  ngDevMode ? 'HTTP_INTERCEPTOR_FNS' : '',
+  typeof ngDevMode !== undefined && ngDevMode ? 'HTTP_INTERCEPTOR_FNS' : '',
+  {factory: () => []},
 );
 
 /**
  * A multi-provided token of `HttpInterceptorFn`s that are only set in root.
  */
 export const HTTP_ROOT_INTERCEPTOR_FNS = new InjectionToken<readonly HttpInterceptorFn[]>(
-  ngDevMode ? 'HTTP_ROOT_INTERCEPTOR_FNS' : '',
+  typeof ngDevMode !== undefined && ngDevMode ? 'HTTP_ROOT_INTERCEPTOR_FNS' : '',
 );
 
 // TODO(atscott): We need a larger discussion about stability and what should contribute to stability.
 // Should the whole interceptor chain contribute to stability or just the backend request #55075?
 // Should HttpClient contribute to stability automatically at all?
 export const REQUESTS_CONTRIBUTE_TO_STABILITY = new InjectionToken<boolean>(
-  ngDevMode ? 'REQUESTS_CONTRIBUTE_TO_STABILITY' : '',
+  typeof ngDevMode !== undefined && ngDevMode ? 'REQUESTS_CONTRIBUTE_TO_STABILITY' : '',
   {providedIn: 'root', factory: () => true},
 );
 
@@ -244,86 +239,10 @@ export function legacyInterceptorFnFactory(): HttpInterceptorFn {
     const pendingTasks = inject(PendingTasks);
     const contributeToStability = inject(REQUESTS_CONTRIBUTE_TO_STABILITY);
     if (contributeToStability) {
-      const taskId = pendingTasks.add();
-      return chain(req, handler).pipe(finalize(() => pendingTasks.remove(taskId)));
+      const removeTask = pendingTasks.add();
+      return chain(req, handler).pipe(finalize(removeTask));
     } else {
       return chain(req, handler);
     }
   };
-}
-
-let fetchBackendWarningDisplayed = false;
-
-/** Internal function to reset the flag in tests */
-export function resetFetchBackendWarningFlag() {
-  fetchBackendWarningDisplayed = false;
-}
-
-@Injectable()
-export class HttpInterceptorHandler extends HttpHandler {
-  private chain: ChainedInterceptorFn<unknown> | null = null;
-  private readonly pendingTasks = inject(PendingTasks);
-  private readonly contributeToStability = inject(REQUESTS_CONTRIBUTE_TO_STABILITY);
-
-  constructor(
-    private backend: HttpBackend,
-    private injector: EnvironmentInjector,
-  ) {
-    super();
-
-    // We strongly recommend using fetch backend for HTTP calls when SSR is used
-    // for an application. The logic below checks if that's the case and produces
-    // a warning otherwise.
-    if ((typeof ngDevMode === 'undefined' || ngDevMode) && !fetchBackendWarningDisplayed) {
-      const isServer = isPlatformServer(injector.get(PLATFORM_ID));
-      if (isServer && !(this.backend instanceof FetchBackend)) {
-        fetchBackendWarningDisplayed = true;
-        injector
-          .get(Console)
-          .warn(
-            formatRuntimeError(
-              RuntimeErrorCode.NOT_USING_FETCH_BACKEND_IN_SSR,
-              'Angular detected that `HttpClient` is not configured ' +
-                "to use `fetch` APIs. It's strongly recommended to " +
-                'enable `fetch` for applications that use Server-Side Rendering ' +
-                'for better performance and compatibility. ' +
-                'To enable `fetch`, add the `withFetch()` to the `provideHttpClient()` ' +
-                'call at the root of the application.',
-            ),
-          );
-      }
-    }
-  }
-
-  override handle(initialRequest: HttpRequest<any>): Observable<HttpEvent<any>> {
-    if (this.chain === null) {
-      const dedupedInterceptorFns = Array.from(
-        new Set([
-          ...this.injector.get(HTTP_INTERCEPTOR_FNS),
-          ...this.injector.get(HTTP_ROOT_INTERCEPTOR_FNS, []),
-        ]),
-      );
-
-      // Note: interceptors are wrapped right-to-left so that final execution order is
-      // left-to-right. That is, if `dedupedInterceptorFns` is the array `[a, b, c]`, we want to
-      // produce a chain that is conceptually `c(b(a(end)))`, which we build from the inside
-      // out.
-      this.chain = dedupedInterceptorFns.reduceRight(
-        (nextSequencedFn, interceptorFn) =>
-          chainedInterceptorFn(nextSequencedFn, interceptorFn, this.injector),
-        interceptorChainEndFn as ChainedInterceptorFn<unknown>,
-      );
-    }
-
-    if (this.contributeToStability) {
-      const taskId = this.pendingTasks.add();
-      return this.chain(initialRequest, (downstreamRequest) =>
-        this.backend.handle(downstreamRequest),
-      ).pipe(finalize(() => this.pendingTasks.remove(taskId)));
-    } else {
-      return this.chain(initialRequest, (downstreamRequest) =>
-        this.backend.handle(downstreamRequest),
-      );
-    }
-  }
 }

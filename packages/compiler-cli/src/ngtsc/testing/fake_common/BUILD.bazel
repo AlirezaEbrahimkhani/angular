@@ -1,23 +1,22 @@
-load("//tools:defaults.bzl", "ng_package", "ts_library")
+load("//tools:defaults.bzl", "ng_package", "ts_project")
 
 package(default_visibility = ["//visibility:public"])
 
-ts_library(
+ts_project(
     name = "fake_common",
     srcs = [
         "index.ts",
     ],
-    module_name = "@angular/common",
     deps = [
         "//packages/core",
     ],
 )
 
 ng_package(
-    name = "npm_package",
     srcs = [
         "package.json",
     ],
+    package = "@angular/common",
     deps = [
         ":fake_common",
     ],

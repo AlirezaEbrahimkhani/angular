@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {
@@ -13,7 +13,7 @@ import {
   Pipe,
   Type,
   ɵReflectionCapabilities as ReflectionCapabilities,
-} from '@angular/core';
+} from '../../src/core';
 
 import {MetadataOverride} from './metadata_override';
 import {MetadataOverrider} from './metadata_overrider';

@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import * as ir from '../../ir';
@@ -83,7 +83,12 @@ export function countVariables(job: CompilationJob): void {
     // an embedded view).
     for (const unit of job.units) {
       for (const op of unit.create) {
-        if (op.kind !== ir.OpKind.Template && op.kind !== ir.OpKind.RepeaterCreate) {
+        if (
+          op.kind !== ir.OpKind.Template &&
+          op.kind !== ir.OpKind.RepeaterCreate &&
+          op.kind !== ir.OpKind.ConditionalCreate &&
+          op.kind !== ir.OpKind.ConditionalBranchCreate
+        ) {
           continue;
         }
 
@@ -104,13 +109,21 @@ export function countVariables(job: CompilationJob): void {
 function varsUsedByOp(op: (ir.CreateOp | ir.UpdateOp) & ir.ConsumesVarsTrait): number {
   let slots: number;
   switch (op.kind) {
-    case ir.OpKind.Property:
-    case ir.OpKind.HostProperty:
     case ir.OpKind.Attribute:
       // All of these bindings use 1 variable slot, plus 1 slot for every interpolated expression,
       // if any.
       slots = 1;
       if (op.expression instanceof ir.Interpolation && !isSingletonInterpolation(op.expression)) {
+        slots += op.expression.expressions.length;
+      }
+      return slots;
+    case ir.OpKind.Property:
+    case ir.OpKind.DomProperty:
+      slots = 1;
+
+      // We need to assign a slot even for singleton interpolations, because the
+      // runtime needs to store both the raw value and the stringified one.
+      if (op.expression instanceof ir.Interpolation) {
         slots += op.expression.expressions.length;
       }
       return slots;

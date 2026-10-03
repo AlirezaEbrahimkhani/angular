@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {HttpTransferCacheOptions, ɵwithHttpTransferCache} from '@angular/common/http';
@@ -15,12 +15,15 @@ import {
   NgZone,
   Provider,
   ɵConsole as Console,
+  ɵRuntimeError as RuntimeError,
   ɵformatRuntimeError as formatRuntimeError,
   ɵwithDomHydration as withDomHydration,
   ɵwithEventReplay,
   ɵwithI18nSupport,
+  ɵZONELESS_ENABLED as ZONELESS_ENABLED,
+  ɵwithIncrementalHydration,
+  ɵIS_ENABLED_BLOCKING_INITIAL_NAVIGATION as IS_ENABLED_BLOCKING_INITIAL_NAVIGATION,
 } from '@angular/core';
-
 import {RuntimeErrorCode} from './errors';
 
 /**
@@ -34,6 +37,7 @@ export enum HydrationFeatureKind {
   HttpTransferCacheOptions,
   I18nSupport,
   EventReplay,
+  IncrementalHydration,
 }
 
 /**
@@ -70,9 +74,9 @@ export function withNoHttpTransferCache(): HydrationFeature<HydrationFeatureKind
 }
 
 /**
- * The function accepts a an object, which allows to configure cache parameters,
+ * The function accepts an object, which allows to configure cache parameters,
  * such as which headers should be included (no headers are included by default),
- * wether POST requests should be cached or a callback function to determine if a
+ * whether POST requests should be cached or a callback function to determine if a
  * particular request should be cached.
  *
  * @publicApi
@@ -90,8 +94,7 @@ export function withHttpTransferCacheOptions(
 /**
  * Enables support for hydrating i18n blocks.
  *
- * @developerPreview
- * @publicApi
+ * @publicApi 20.0
  */
 export function withI18nSupport(): HydrationFeature<HydrationFeatureKind.I18nSupport> {
   return hydrationFeature(HydrationFeatureKind.I18nSupport, ɵwithI18nSupport());
@@ -106,12 +109,11 @@ export function withI18nSupport(): HydrationFeature<HydrationFeatureKind.I18nSup
  *
  * Basic example of how you can enable event replay in your application when
  * `bootstrapApplication` function is used:
- * ```
+ * ```ts
  * bootstrapApplication(AppComponent, {
  *   providers: [provideClientHydration(withEventReplay())]
  * });
  * ```
- * @developerPreview
  * @publicApi
  * @see {@link provideClientHydration}
  */
@@ -120,27 +122,45 @@ export function withEventReplay(): HydrationFeature<HydrationFeatureKind.EventRe
 }
 
 /**
- * Returns an `ENVIRONMENT_INITIALIZER` token setup with a function
- * that verifies whether compatible ZoneJS was used in an application
- * and logs a warning in a console if it's not the case.
+ * Enables support for incremental hydration using the `hydrate` trigger syntax.
+ *
+ * @usageNotes
+ *
+ * Basic example of how you can enable incremental hydration in your application when
+ * the `bootstrapApplication` function is used:
+ * ```ts
+ * bootstrapApplication(AppComponent, {
+ *   providers: [provideClientHydration(withIncrementalHydration())]
+ * });
+ * ```
+ * @publicApi 20.0
+ * @see {@link provideClientHydration}
  */
-function provideZoneJsCompatibilityDetector(): Provider[] {
+export function withIncrementalHydration(): HydrationFeature<HydrationFeatureKind.IncrementalHydration> {
+  return hydrationFeature(HydrationFeatureKind.IncrementalHydration, ɵwithIncrementalHydration());
+}
+
+/**
+ * Returns an `ENVIRONMENT_INITIALIZER` token setup with a function
+ * that verifies whether enabledBlocking initial navigation is used in an application
+ * and logs a warning in a console if it's not compatible with hydration.
+ */
+function provideEnabledBlockingInitialNavigationDetector(): Provider[] {
   return [
     {
       provide: ENVIRONMENT_INITIALIZER,
       useValue: () => {
-        const ngZone = inject(NgZone);
-        // Checking `ngZone instanceof NgZone` would be insufficient here,
-        // because custom implementations might use NgZone as a base class.
-        if (ngZone.constructor !== NgZone) {
+        const isEnabledBlockingInitialNavigation = inject(IS_ENABLED_BLOCKING_INITIAL_NAVIGATION, {
+          optional: true,
+        });
+
+        if (isEnabledBlockingInitialNavigation) {
           const console = inject(Console);
           const message = formatRuntimeError(
-            RuntimeErrorCode.UNSUPPORTED_ZONEJS_INSTANCE,
-            'Angular detected that hydration was enabled for an application ' +
-              'that uses a custom or a noop Zone.js implementation. ' +
-              'This is not yet a fully supported configuration.',
+            RuntimeErrorCode.HYDRATION_CONFLICTING_FEATURES,
+            'Configuration error: found both hydration and enabledBlocking initial navigation ' +
+              'in the same application, which is a contradiction.',
           );
-          // tslint:disable-next-line:no-console
           console.warn(message);
         }
       },
@@ -160,15 +180,18 @@ function provideZoneJsCompatibilityDetector(): Provider[] {
  * transferring this cache to the client to avoid extra HTTP requests. Learn more about data caching
  * [here](guide/ssr#caching-data-when-using-httpclient).
  *
- * These functions allow you to disable some of the default features or configure features
+ * These functions allow you to disable some of the default features or enable new ones:
+ *
  * * {@link withNoHttpTransferCache} to disable HTTP transfer cache
  * * {@link withHttpTransferCacheOptions} to configure some HTTP transfer cache options
+ * * {@link withI18nSupport} to enable hydration support for i18n blocks
+ * * {@link withEventReplay} to enable support for replaying user events
  *
  * @usageNotes
  *
  * Basic example of how you can enable hydration in your application when
  * `bootstrapApplication` function is used:
- * ```
+ * ```ts
  * bootstrapApplication(AppComponent, {
  *   providers: [provideClientHydration()]
  * });
@@ -176,7 +199,7 @@ function provideZoneJsCompatibilityDetector(): Provider[] {
  *
  * Alternatively if you are using NgModules, you would add `provideClientHydration`
  * to your root app module's provider list.
- * ```
+ * ```ts
  * @NgModule({
  *   declarations: [RootCmp],
  *   bootstrap: [RootCmp],
@@ -187,20 +210,19 @@ function provideZoneJsCompatibilityDetector(): Provider[] {
  *
  * @see {@link withNoHttpTransferCache}
  * @see {@link withHttpTransferCacheOptions}
+ * @see {@link withI18nSupport}
+ * @see {@link withEventReplay}
  *
- * @param features Optional features to configure additional router behaviors.
+ * @param features Optional features to configure additional hydration behaviors.
  * @returns A set of providers to enable hydration.
  *
- * @publicApi
+ * @publicApi 17.0
  */
 export function provideClientHydration(
   ...features: HydrationFeature<HydrationFeatureKind>[]
 ): EnvironmentProviders {
   const providers: Provider[] = [];
   const featuresKind = new Set<HydrationFeatureKind>();
-  const hasHttpTransferCacheOptions = featuresKind.has(
-    HydrationFeatureKind.HttpTransferCacheOptions,
-  );
 
   for (const {ɵproviders, ɵkind} of features) {
     featuresKind.add(ɵkind);
@@ -210,20 +232,26 @@ export function provideClientHydration(
     }
   }
 
+  const hasHttpTransferCacheOptions = featuresKind.has(
+    HydrationFeatureKind.HttpTransferCacheOptions,
+  );
+
   if (
     typeof ngDevMode !== 'undefined' &&
     ngDevMode &&
     featuresKind.has(HydrationFeatureKind.NoHttpTransferCache) &&
     hasHttpTransferCacheOptions
   ) {
-    // TODO: Make this a runtime error
-    throw new Error(
+    throw new RuntimeError(
+      RuntimeErrorCode.HYDRATION_CONFLICTING_FEATURES,
       'Configuration error: found both withHttpTransferCacheOptions() and withNoHttpTransferCache() in the same call to provideClientHydration(), which is a contradiction.',
     );
   }
 
   return makeEnvironmentProviders([
-    typeof ngDevMode !== 'undefined' && ngDevMode ? provideZoneJsCompatibilityDetector() : [],
+    typeof ngDevMode !== 'undefined' && ngDevMode
+      ? provideEnabledBlockingInitialNavigationDetector()
+      : [],
     withDomHydration(),
     featuresKind.has(HydrationFeatureKind.NoHttpTransferCache) || hasHttpTransferCacheOptions
       ? []

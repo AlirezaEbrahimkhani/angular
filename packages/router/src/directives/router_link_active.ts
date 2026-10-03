@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {
@@ -43,7 +43,7 @@ import {RouterLink} from './router_link';
  * For example, the following code highlights the word "Bob" when the router
  * activates the associated route:
  *
- * ```
+ * ```html
  * <a routerLink="/user/bob" routerLinkActive="active-link">Bob</a>
  * ```
  *
@@ -53,14 +53,14 @@ import {RouterLink} from './router_link';
  * You can set more than one class using a space-separated string or an array.
  * For example:
  *
- * ```
+ * ```html
  * <a routerLink="/user/bob" routerLinkActive="class1 class2">Bob</a>
  * <a routerLink="/user/bob" [routerLinkActive]="['class1', 'class2']">Bob</a>
  * ```
  *
  * To add the classes only when the URL matches the link exactly, add the option `exact: true`:
  *
- * ```
+ * ```html
  * <a routerLink="/user/bob" routerLinkActive="active-link" [routerLinkActiveOptions]="{exact:
  * true}">Bob</a>
  * ```
@@ -69,7 +69,7 @@ import {RouterLink} from './router_link';
  * instance to a template variable.
  * For example, the following checks the status without assigning any CSS classes:
  *
- * ```
+ * ```html
  * <a routerLink="/user/bob" routerLinkActive #rla="routerLinkActive">
  *   Bob {{ rla.isActive ? '(already open)' : ''}}
  * </a>
@@ -79,7 +79,7 @@ import {RouterLink} from './router_link';
  * For example, the following sets the active-link class on the `<div>`  parent tag
  * when the URL is either '/user/jim' or '/user/bob'.
  *
- * ```
+ * ```html
  * <div routerLinkActive="active-link" [routerLinkActiveOptions]="{exact: true}">
  *   <a routerLink="/user/jim">Jim</a>
  *   <a routerLink="/user/bob">Bob</a>
@@ -92,9 +92,12 @@ import {RouterLink} from './router_link';
  * For example, the following code adds the 'active' class to the Home Page link when it is
  * indeed active and in such case also sets its aria-current attribute to 'page':
  *
- * ```
+ * ```html
  * <a routerLink="/" routerLinkActive="active" ariaCurrentWhenActive="page">Home Page</a>
  * ```
+ *
+ * NOTE: RouterLinkActive is a `ContentChildren` query.
+ * Content children queries do not retrieve elements or directives that are in other components' templates, since a component's template is always a black box to its ancestors.
  *
  * @ngModule RouterModule
  *
@@ -103,7 +106,6 @@ import {RouterLink} from './router_link';
 @Directive({
   selector: '[routerLinkActive]',
   exportAs: 'routerLinkActive',
-  standalone: true,
 })
 export class RouterLinkActive implements OnChanges, OnDestroy, AfterContentInit {
   @ContentChildren(RouterLink, {descendants: true}) links!: QueryList<RouterLink>;
@@ -113,7 +115,7 @@ export class RouterLinkActive implements OnChanges, OnDestroy, AfterContentInit 
   private linkInputChangesSubscription?: Subscription;
   private _isActive = false;
 
-  get isActive() {
+  get isActive(): boolean {
     return this._isActive;
   }
 
@@ -144,7 +146,7 @@ export class RouterLinkActive implements OnChanges, OnDestroy, AfterContentInit 
    * true  -> Route is active
    * false -> Route is inactive
    *
-   * ```
+   * ```html
    * <a
    *  routerLink="/user/bob"
    *  routerLinkActive="active-link"
@@ -167,7 +169,7 @@ export class RouterLinkActive implements OnChanges, OnDestroy, AfterContentInit 
     });
   }
 
-  /** @nodoc */
+  /** @docs-private */
   ngAfterContentInit(): void {
     // `of(null)` is used to force subscribe body to execute once immediately (like `startWith`).
     of(this.links.changes, of(null))
@@ -198,11 +200,11 @@ export class RouterLinkActive implements OnChanges, OnDestroy, AfterContentInit 
     this.classes = classes.filter((c) => !!c);
   }
 
-  /** @nodoc */
+  /** @docs-private */
   ngOnChanges(changes: SimpleChanges): void {
     this.update();
   }
-  /** @nodoc */
+  /** @docs-private */
   ngOnDestroy(): void {
     this.routerEventsSubscription.unsubscribe();
     this.linkInputChangesSubscription?.unsubscribe();

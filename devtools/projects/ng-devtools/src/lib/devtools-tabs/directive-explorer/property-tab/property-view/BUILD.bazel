@@ -1,65 +1,26 @@
-load("@io_bazel_rules_sass//:defs.bzl", "sass_binary")
-load("//devtools/tools:ng_module.bzl", "ng_module")
+load("//devtools/tools:defaults.bzl", "ng_project", "sass_binary")
 
-package(default_visibility = ["//visibility:public"])
+package(default_visibility = ["//devtools:__subpackages__"])
 
-_STYLE_SRCS = [
-    "property-editor.component.scss",
-    "property-preview.component.scss",
-    "property-tab-body.component.scss",
-    "property-view.component.scss",
-    "property-view-body.component.scss",
-    "property-view-header.component.scss",
-    "property-view-tree.component.scss",
-]
+sass_binary(
+    name = "property-view_styles",
+    src = "property-view.component.scss",
+)
 
-_STYLE_LABELS = [
-    src[:-len(".component.scss")].replace("-", "_") + "_styles"
-    for src in _STYLE_SRCS
-]
-
-[
-    sass_binary(
-        name = label,
-        src = src,
-    )
-    for label, src in zip(_STYLE_LABELS, _STYLE_SRCS)
-]
-
-ng_module(
+ng_project(
     name = "property-view",
     srcs = [
-        "property-editor.component.ts",
-        "property-preview.component.ts",
-        "property-tab-body.component.ts",
         "property-view.component.ts",
-        "property-view-body.component.ts",
-        "property-view-header.component.ts",
-        "property-view-tree.component.ts",
     ],
     angular_assets = [
         "property-view.component.html",
-        "property-view-tree.component.html",
-        "property-view-header.component.html",
-        "property-view-body.component.html",
-        "property-preview.component.html",
-        "property-editor.component.html",
-        "property-tab-body.component.html",
-    ] + _STYLE_LABELS,
+        ":property-view_styles",
+    ],
     deps = [
-        "//devtools/projects/ng-devtools/src/lib:frame_manager",
-        "//devtools/projects/ng-devtools/src/lib/application-environment",
-        "//devtools/projects/ng-devtools/src/lib/devtools-tabs/dependency-injection:injector_tree_visualizer",
-        "//devtools/projects/ng-devtools/src/lib/devtools-tabs/dependency-injection:resolution_path",
-        "//devtools/projects/ng-devtools/src/lib/devtools-tabs/directive-explorer/directive-forest/index-forest",
+        "//:node_modules/@angular/core",
         "//devtools/projects/ng-devtools/src/lib/devtools-tabs/directive-explorer/property-resolver",
+        "//devtools/projects/ng-devtools/src/lib/devtools-tabs/directive-explorer/property-tab/property-view/property-view-body",
+        "//devtools/projects/ng-devtools/src/lib/devtools-tabs/directive-explorer/property-tab/property-view/property-view-header",
         "//devtools/projects/protocol",
-        "//packages/common",
-        "//packages/core",
-        "//packages/forms",
-        "@npm//@angular/cdk",
-        "@npm//@angular/material",
-        "@npm//@types",
-        "@npm//rxjs",
     ],
 )

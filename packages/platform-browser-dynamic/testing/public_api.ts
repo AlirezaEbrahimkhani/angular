@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 /**
@@ -11,4 +11,9 @@
  * @description
  * Entry point for all public APIs of this package.
  */
+
+// Note: Historically people relied on `platform-browser-dynamic` magically
+// exposing the compiler for JIT. This is now made more explicit via this import.
+import '@angular/compiler';
+
 export * from './src/testing';

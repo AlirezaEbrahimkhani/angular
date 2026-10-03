@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {NgIf} from '@angular/common';
@@ -11,14 +11,15 @@ import {
   Component,
   Directive,
   inject,
+  provideZoneChangeDetection,
   TemplateRef,
   Type,
   ViewChild,
   ViewContainerRef,
-} from '@angular/core';
-import {RuntimeErrorCode} from '@angular/core/src/errors';
-import {global} from '@angular/core/src/util/global';
-import {ComponentFixture, TestBed} from '@angular/core/testing';
+} from '../../src/core';
+import {RuntimeErrorCode} from '../../src/errors';
+import {global} from '../../src/util/global';
+import {ComponentFixture, TestBed} from '../../testing';
 import {DomSanitizer} from '@angular/platform-browser';
 
 describe('comment node text escaping', () => {
@@ -32,7 +33,10 @@ describe('comment node text escaping', () => {
     it(
       'should not be possible to do XSS through comment reflect data when writing: ' + xssValue,
       () => {
-        @Component({template: `<div><span *ngIf="xssValue"></span><div>`})
+        @Component({
+          template: `<div><span *ngIf="xssValue"></span><div>`,
+          standalone: false,
+        })
         class XSSComp {
           // ngIf serializes the `xssValue` into a comment for debugging purposes.
           xssValue: string = xssValue + '<script>"evil"</script>';
@@ -57,6 +61,11 @@ describe('comment node text escaping', () => {
 });
 
 describe('iframe processing', () => {
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      providers: [provideZoneChangeDetection()],
+    });
+  });
   function getErrorMessageRegexp() {
     const errorMessagePart = 'NG0' + Math.abs(RuntimeErrorCode.UNSAFE_IFRAME_ATTRS).toString();
     return new RegExp(errorMessagePart);
@@ -137,7 +146,6 @@ describe('iframe processing', () => {
               `as a static attribute (checking \`${securityAttr}\`)`,
             () => {
               @Component({
-                standalone: true,
                 selector: 'my-comp',
                 template: `
                   <iframe
@@ -157,7 +165,6 @@ describe('iframe processing', () => {
               `making sure it's case-insensitive)`,
             () => {
               @Component({
-                standalone: true,
                 selector: 'my-comp',
                 template: `
                   <iframe
@@ -176,7 +183,6 @@ describe('iframe processing', () => {
               `using a property binding (checking \`${securityAttr}\`)`,
             () => {
               @Component({
-                standalone: true,
                 selector: 'my-comp',
                 template: `<iframe ${srcAttr}="${TEST_IFRAME_URL}" [${securityAttr}]="''"></iframe>`,
               })
@@ -191,7 +197,6 @@ describe('iframe processing', () => {
               `using a property interpolation (checking \`${securityAttr}\`)`,
             () => {
               @Component({
-                standalone: true,
                 selector: 'my-comp',
                 template: `<iframe ${srcAttr}="${TEST_IFRAME_URL}" ${securityAttr}="{{''}}"></iframe>`,
               })
@@ -207,7 +212,6 @@ describe('iframe processing', () => {
               `sure it's case-insensitive)`,
             () => {
               @Component({
-                standalone: true,
                 selector: 'my-comp',
                 template: `
                     <iframe
@@ -227,7 +231,6 @@ describe('iframe processing', () => {
               `using a property binding (checking \`${securityAttr}\`)`,
             () => {
               @Component({
-                standalone: true,
                 selector: 'my-comp',
                 template: `
                     <iframe
@@ -248,7 +251,6 @@ describe('iframe processing', () => {
               `sure it's case-insensitive)`,
             () => {
               @Component({
-                standalone: true,
                 selector: 'my-comp',
                 template: `
                     <iframe
@@ -265,7 +267,6 @@ describe('iframe processing', () => {
 
           it(`should allow changing \`${srcAttr}\` after initial render`, () => {
             @Component({
-              standalone: true,
               selector: 'my-comp',
               template: `
                     <iframe
@@ -299,7 +300,6 @@ describe('iframe processing', () => {
 
       it('should work when a directive sets a security-sensitive attribute as a static attribute', () => {
         @Directive({
-          standalone: true,
           selector: '[dir]',
           host: {
             'src': TEST_IFRAME_URL,
@@ -308,7 +308,6 @@ describe('iframe processing', () => {
         })
         class IframeDir {}
         @Component({
-          standalone: true,
           imports: [IframeDir],
           selector: 'my-comp',
           template: '<iframe dir></iframe>',
@@ -320,7 +319,6 @@ describe('iframe processing', () => {
 
       it('should work when a directive sets a security-sensitive host attribute on a non-iframe element', () => {
         @Directive({
-          standalone: true,
           selector: '[dir]',
           host: {
             'src': TEST_IFRAME_URL,
@@ -330,7 +328,6 @@ describe('iframe processing', () => {
         class Dir {}
 
         @Component({
-          standalone: true,
           imports: [Dir],
           selector: 'my-comp',
           template: '<img dir>',
@@ -348,7 +345,6 @@ describe('iframe processing', () => {
           'which also has a structural directive (*ngIf)',
         () => {
           @Component({
-            standalone: true,
             imports: [NgIf],
             selector: 'my-comp',
             template: `<iframe *ngIf="visible" src="${TEST_IFRAME_URL}" sandbox=""></iframe>`,
@@ -363,7 +359,6 @@ describe('iframe processing', () => {
 
       it('should work when a security-sensitive attribute is set between `src` and `srcdoc`', () => {
         @Component({
-          standalone: true,
           selector: 'my-comp',
           template: `<iframe src="${TEST_IFRAME_URL}" sandbox srcdoc="Hi!"></iframe>`,
         })
@@ -374,7 +369,6 @@ describe('iframe processing', () => {
 
       it('should work when a directive sets a security-sensitive attribute before setting `src`', () => {
         @Directive({
-          standalone: true,
           selector: '[dir]',
           host: {
             'sandbox': '',
@@ -384,7 +378,6 @@ describe('iframe processing', () => {
         class IframeDir {}
 
         @Component({
-          standalone: true,
           imports: [IframeDir],
           selector: 'my-comp',
           template: '<iframe dir></iframe>',
@@ -400,7 +393,6 @@ describe('iframe processing', () => {
           '(directive attribute after `sandbox`)',
         () => {
           @Directive({
-            standalone: true,
             selector: '[dir]',
             host: {
               'src': TEST_IFRAME_URL,
@@ -409,7 +401,6 @@ describe('iframe processing', () => {
           class IframeDir {}
 
           @Component({
-            standalone: true,
             imports: [IframeDir],
             selector: 'my-comp',
             template: '<iframe sandbox dir></iframe>',
@@ -425,7 +416,6 @@ describe('iframe processing', () => {
           "as an attribute binding (checking that it's case-insensitive)",
         () => {
           @Directive({
-            standalone: true,
             selector: '[dir]',
             host: {
               '[attr.SANDBOX]': "''",
@@ -434,7 +424,6 @@ describe('iframe processing', () => {
           class IframeDir {}
 
           @Component({
-            standalone: true,
             imports: [IframeDir],
             selector: 'my-comp',
             template: `<IFRAME dir src="${TEST_IFRAME_URL}"></IFRAME>`,
@@ -451,7 +440,6 @@ describe('iframe processing', () => {
           '(directive attribute before `sandbox`)',
         () => {
           @Directive({
-            standalone: true,
             selector: '[dir]',
             host: {
               'src': TEST_IFRAME_URL,
@@ -460,7 +448,6 @@ describe('iframe processing', () => {
           class IframeDir {}
 
           @Component({
-            standalone: true,
             imports: [IframeDir],
             selector: 'my-comp',
             template: '<iframe dir sandbox></iframe>',
@@ -477,7 +464,6 @@ describe('iframe processing', () => {
           '(directive attribute after `src`)',
         () => {
           @Directive({
-            standalone: true,
             selector: '[dir]',
             host: {
               'sandbox': '',
@@ -486,7 +472,6 @@ describe('iframe processing', () => {
           class IframeDir {}
 
           @Component({
-            standalone: true,
             imports: [IframeDir],
             selector: 'my-comp',
             template: `<iframe src="${TEST_IFRAME_URL}" dir></iframe>`,
@@ -499,7 +484,6 @@ describe('iframe processing', () => {
 
       it('should work when a security-sensitive attribute is set as a static attribute', () => {
         @Component({
-          standalone: true,
           selector: 'my-comp',
           template: `
             <iframe referrerPolicy="no-referrer" src="${TEST_IFRAME_URL}"></iframe>
@@ -518,7 +502,6 @@ describe('iframe processing', () => {
           'as a property binding and an <iframe> is wrapped into another element',
         () => {
           @Component({
-            standalone: true,
             selector: 'my-comp',
             template: `
                 <section>
@@ -540,7 +523,6 @@ describe('iframe processing', () => {
           '(directive attribute before `src`)',
         () => {
           @Directive({
-            standalone: true,
             selector: '[dir]',
             host: {
               'sandbox': '',
@@ -549,7 +531,6 @@ describe('iframe processing', () => {
           class IframeDir {}
 
           @Component({
-            standalone: true,
             imports: [IframeDir],
             selector: 'my-comp',
             template: `<iframe dir src="${TEST_IFRAME_URL}"></iframe>`,
@@ -565,7 +546,6 @@ describe('iframe processing', () => {
           'before the directive that sets an `src` attribute value',
         () => {
           @Directive({
-            standalone: true,
             selector: '[set-src]',
             host: {
               'src': TEST_IFRAME_URL,
@@ -574,7 +554,6 @@ describe('iframe processing', () => {
           class DirThatSetsSrc {}
 
           @Directive({
-            standalone: true,
             selector: '[set-sandbox]',
             host: {
               'sandbox': '',
@@ -583,7 +562,6 @@ describe('iframe processing', () => {
           class DirThatSetsSandbox {}
 
           @Component({
-            standalone: true,
             imports: [DirThatSetsSandbox, DirThatSetsSrc],
             selector: 'my-comp',
             // Important note: even though the `set-sandbox` goes after the `set-src`,
@@ -602,7 +580,6 @@ describe('iframe processing', () => {
           'a host directive that sets an `src` attribute value',
         () => {
           @Directive({
-            standalone: true,
             selector: '[set-src-dir]',
             host: {
               'src': TEST_IFRAME_URL,
@@ -611,7 +588,6 @@ describe('iframe processing', () => {
           class DirThatSetsSrc {}
 
           @Directive({
-            standalone: true,
             selector: '[dir]',
             hostDirectives: [DirThatSetsSrc],
             host: {
@@ -621,7 +597,6 @@ describe('iframe processing', () => {
           class DirThatSetsSandbox {}
 
           @Component({
-            standalone: true,
             imports: [DirThatSetsSandbox],
             selector: 'my-comp',
             template: '<iframe dir></iframe>',
@@ -637,7 +612,6 @@ describe('iframe processing', () => {
           'a host directive that sets a security-sensitive attribute value',
         () => {
           @Directive({
-            standalone: true,
             selector: '[set-sandbox-dir]',
             host: {
               'sandbox': '',
@@ -646,7 +620,6 @@ describe('iframe processing', () => {
           class DirThatSetsSandbox {}
 
           @Directive({
-            standalone: true,
             selector: '[dir]',
             hostDirectives: [DirThatSetsSandbox],
             host: {
@@ -656,7 +629,6 @@ describe('iframe processing', () => {
           class DirThatSetsSrc {}
 
           @Component({
-            standalone: true,
             imports: [DirThatSetsSrc],
             selector: 'my-comp',
             template: '<iframe dir></iframe>',
@@ -672,7 +644,6 @@ describe('iframe processing', () => {
           'with security-sensitive attributes set via property bindings',
         () => {
           @Component({
-            standalone: true,
             selector: 'my-comp',
             template: `
                 <ng-container #container></ng-container>
@@ -708,7 +679,6 @@ describe('iframe processing', () => {
             'a property binding on an <iframe> inside i18n block',
           () => {
             @Component({
-              standalone: true,
               selector: 'my-comp',
               template: `
                   <section i18n>
@@ -728,7 +698,6 @@ describe('iframe processing', () => {
             'a property binding on an <iframe> annotated with i18n attribute',
           () => {
             @Component({
-              standalone: true,
               selector: 'my-comp',
               template: `
                   <iframe i18n src="${TEST_IFRAME_URL}" [sandbox]="''">
@@ -743,7 +712,6 @@ describe('iframe processing', () => {
 
         it('should work when a security-sensitive attributes are marked for translation', () => {
           @Component({
-            standalone: true,
             selector: 'my-comp',
             template: `
               <iframe src="${TEST_IFRAME_URL}" i18n-sandbox sandbox="">

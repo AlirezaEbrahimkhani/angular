@@ -3,122 +3,136 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {isPlatformBrowser} from '@angular/common';
 import {
-  APP_INITIALIZER,
   ApplicationRef,
   EnvironmentProviders,
+  inject,
   InjectionToken,
   Injector,
   makeEnvironmentProviders,
   NgZone,
-  PLATFORM_ID,
+  provideAppInitializer,
+  ɵRuntimeError as RuntimeError,
+  ɵformatRuntimeError as formatRuntimeError,
 } from '@angular/core';
-import {merge, Observable, of} from 'rxjs';
-import {delay, filter, take} from 'rxjs/operators';
+import type {Observable} from 'rxjs';
 
 import {NgswCommChannel} from './low_level';
 import {SwPush} from './push';
 import {SwUpdate} from './update';
+import {RuntimeErrorCode} from './errors';
 
-export const SCRIPT = new InjectionToken<string>(ngDevMode ? 'NGSW_REGISTER_SCRIPT' : '');
+export const SCRIPT = new InjectionToken<string>(
+  typeof ngDevMode !== undefined && ngDevMode ? 'NGSW_REGISTER_SCRIPT' : '',
+);
 
-export function ngswAppInitializer(
-  injector: Injector,
-  script: string,
-  options: SwRegistrationOptions,
-  platformId: string,
-): Function {
-  return () => {
-    if (
-      !(isPlatformBrowser(platformId) && 'serviceWorker' in navigator && options.enabled !== false)
-    ) {
-      return;
-    }
+export function ngswAppInitializer(): void {
+  if (typeof ngServerMode !== 'undefined' && ngServerMode) {
+    return;
+  }
 
-    const ngZone = injector.get(NgZone);
-    const appRef = injector.get(ApplicationRef);
+  const options = inject(SwRegistrationOptions);
 
-    // Set up the `controllerchange` event listener outside of
-    // the Angular zone to avoid unnecessary change detections,
-    // as this event has no impact on view updates.
-    ngZone.runOutsideAngular(() => {
-      // Wait for service worker controller changes, and fire an INITIALIZE action when a new SW
-      // becomes active. This allows the SW to initialize itself even if there is no application
-      // traffic.
-      const sw = navigator.serviceWorker;
-      const onControllerChange = () => sw.controller?.postMessage({action: 'INITIALIZE'});
+  if (!('serviceWorker' in navigator && options.enabled !== false)) {
+    return;
+  }
 
-      sw.addEventListener('controllerchange', onControllerChange);
+  const script = inject(SCRIPT);
+  const ngZone = inject(NgZone);
+  const appRef = inject(ApplicationRef);
 
-      appRef.onDestroy(() => {
-        sw.removeEventListener('controllerchange', onControllerChange);
-      });
+  // Set up the `controllerchange` event listener outside of
+  // the Angular zone to avoid unnecessary change detections,
+  // as this event has no impact on view updates.
+  ngZone.runOutsideAngular(() => {
+    // Wait for service worker controller changes, and fire an INITIALIZE action when a new SW
+    // becomes active. This allows the SW to initialize itself even if there is no application
+    // traffic.
+    const sw = navigator.serviceWorker;
+    const onControllerChange = () => sw.controller?.postMessage({action: 'INITIALIZE'});
+
+    sw.addEventListener('controllerchange', onControllerChange);
+
+    appRef.onDestroy(() => {
+      sw.removeEventListener('controllerchange', onControllerChange);
     });
+  });
 
-    let readyToRegister$: Observable<unknown>;
+  // Run outside the Angular zone to avoid preventing the app from stabilizing (especially
+  // given that some registration strategies wait for the app to stabilize).
+  ngZone.runOutsideAngular(() => {
+    let readyToRegister: Promise<void>;
 
-    if (typeof options.registrationStrategy === 'function') {
-      readyToRegister$ = options.registrationStrategy();
+    const {registrationStrategy} = options;
+    if (typeof registrationStrategy === 'function') {
+      readyToRegister = new Promise((resolve) => registrationStrategy().subscribe(() => resolve()));
     } else {
-      const [strategy, ...args] = (
-        options.registrationStrategy || 'registerWhenStable:30000'
-      ).split(':');
+      const [strategy, ...args] = (registrationStrategy || 'registerWhenStable:30000').split(':');
 
       switch (strategy) {
         case 'registerImmediately':
-          readyToRegister$ = of(null);
+          readyToRegister = Promise.resolve();
           break;
         case 'registerWithDelay':
-          readyToRegister$ = delayWithTimeout(+args[0] || 0);
+          readyToRegister = delayWithTimeout(+args[0] || 0);
           break;
         case 'registerWhenStable':
-          readyToRegister$ = !args[0]
-            ? whenStable(injector)
-            : merge(whenStable(injector), delayWithTimeout(+args[0]));
+          readyToRegister = Promise.race([appRef.whenStable(), delayWithTimeout(+args[0])]);
           break;
         default:
           // Unknown strategy.
-          throw new Error(
-            `Unknown ServiceWorker registration strategy: ${options.registrationStrategy}`,
+          throw new RuntimeError(
+            RuntimeErrorCode.UNKNOWN_REGISTRATION_STRATEGY,
+            (typeof ngDevMode === 'undefined' || ngDevMode) &&
+              `Unknown ServiceWorker registration strategy: ${options.registrationStrategy}`,
           );
       }
     }
 
     // Don't return anything to avoid blocking the application until the SW is registered.
-    // Also, run outside the Angular zone to avoid preventing the app from stabilizing (especially
-    // given that some registration strategies wait for the app to stabilize).
     // Catch and log the error if SW registration fails to avoid uncaught rejection warning.
-    ngZone.runOutsideAngular(() =>
-      readyToRegister$
-        .pipe(take(1))
-        .subscribe(() =>
-          navigator.serviceWorker
-            .register(script, {scope: options.scope})
-            .catch((err) => console.error('Service worker registration failed with:', err)),
-        ),
-    );
-  };
+    readyToRegister.then(() => {
+      // If the registration strategy has resolved after the application has
+      // been explicitly destroyed by the user (e.g., by navigating away to
+      // another application), we simply should not register the worker.
+      if (appRef.destroyed) {
+        return;
+      }
+
+      navigator.serviceWorker
+        .register(script, {
+          scope: options.scope,
+          updateViaCache: options.updateViaCache,
+          type: options.type,
+        })
+        .catch((err) =>
+          console.error(
+            formatRuntimeError(
+              RuntimeErrorCode.SERVICE_WORKER_REGISTRATION_FAILED,
+              (typeof ngDevMode === 'undefined' || ngDevMode) &&
+                'Service worker registration failed with: ' + err,
+            ),
+          ),
+        );
+    });
+  });
 }
 
-function delayWithTimeout(timeout: number): Observable<unknown> {
-  return of(null).pipe(delay(timeout));
+function delayWithTimeout(timeout: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, timeout));
 }
 
-function whenStable(injector: Injector): Observable<unknown> {
-  const appRef = injector.get(ApplicationRef);
-  return appRef.isStable.pipe(filter((stable) => stable));
-}
+export function ngswCommChannelFactory(): NgswCommChannel {
+  const opts = inject(SwRegistrationOptions);
+  const injector = inject(Injector);
+  const isBrowser = !(typeof ngServerMode !== 'undefined' && ngServerMode);
 
-export function ngswCommChannelFactory(
-  opts: SwRegistrationOptions,
-  platformId: string,
-): NgswCommChannel {
   return new NgswCommChannel(
-    isPlatformBrowser(platformId) && opts.enabled !== false ? navigator.serviceWorker : undefined,
+    isBrowser && opts.enabled !== false ? navigator.serviceWorker : undefined,
+    injector,
   );
 }
 
@@ -142,6 +156,23 @@ export abstract class SwRegistrationOptions {
    * Default: true
    */
   enabled?: boolean;
+
+  /**
+   * The value of the setting used to determine the circumstances in which the browser
+   * will consult the HTTP cache when it tries to update the service worker or any scripts that are imported via importScripts().
+   * [ServiceWorkerRegistration.updateViaCache](https://developer.mozilla.org/en-US/docs/Web/API/ServiceWorkerRegistration/updateViaCache)
+   */
+  updateViaCache?: ServiceWorkerUpdateViaCache;
+
+  /**
+   * The type of the ServiceWorker script to register.
+   * [ServiceWorkerRegistration#type](https://developer.mozilla.org/en-US/docs/Web/API/ServiceWorkerContainer/register#type)
+   * - `classic`: Registers the script as a classic worker. ES module features such as `import` and `export` are NOT allowed in the script.
+   * - `module`: Registers the script as an ES module. Allows use of `import`/`export` syntax and module features.
+   *
+   * @default 'classic'
+   */
+  type?: WorkerType;
 
   /**
    * A URL that defines the ServiceWorker's registration scope; that is, what range of URLs it can
@@ -211,13 +242,7 @@ export function provideServiceWorker(
     {
       provide: NgswCommChannel,
       useFactory: ngswCommChannelFactory,
-      deps: [SwRegistrationOptions, PLATFORM_ID],
     },
-    {
-      provide: APP_INITIALIZER,
-      useFactory: ngswAppInitializer,
-      deps: [Injector, SCRIPT, SwRegistrationOptions, PLATFORM_ID],
-      multi: true,
-    },
+    provideAppInitializer(ngswAppInitializer),
   ]);
 }

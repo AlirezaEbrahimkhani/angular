@@ -75,7 +75,25 @@ bootstrapApplication(App, {
 });
 ```
 
-IMPORTANT: the Event Replay feature is currently in [Developer Preview](/reference/releases#developer-preview).
+### How event replay works
+Event Replay is a feature that improves user experience by capturing user events that were triggered before the hydration process is complete. Then those events are replayed, ensuring none of that interaction was lost.
+
+The Event Replay is divided into three main phases:
+
+- **Capturing user interactions**<br>
+Prior to **Hydration**, Event Replay captures and stores all interactions that the user may perform, such as clicks and other browser native events.
+
+- **Storing events**<br>
+The **Event Contract** keeps in memory all the interactions recorded in the previous step, ensuring that they are not lost for later replay.
+
+- **Relaunch of events**<br>
+Once **Hydration** is complete, Angular re-invokes the captured events.
+
+Event replay supports _native browser events_, for example `click`, `mouseover`, and `focusin`. If you'd like to learn more about JSAction, the library that powers event replay, you can read more [on the readme](https://github.com/angular/angular/tree/main/packages/core/primitives/event-dispatch#readme).
+
+---
+
+This feature ensures a consistent user experience, preventing user actions performed before Hydration from being ignored. NOTE: if you have [incremental hydration](guide/incremental-hydration) enabled, event replay is automatically enabled under the hood.
 
 ## Constraints
 
@@ -99,12 +117,13 @@ There are a few cases where if you have a component template that does not have 
 
 As an example, here are some of the most common cases of this issue.
 
-* `<table>` without a `<tbody>`
-* `<div>` inside a `<p>`
-* `<a>` inside an `<h1>`
-* `<a>` inside another `<a>`
+- `<table>` without a `<tbody>`
+- `<div>` inside a `<p>`
+- `<a>` inside another `<a>`
 
 If you are uncertain about whether your HTML is valid, you can use a [syntax validator](https://validator.w3.org/) to check it.
+
+NOTE: While the HTML standard does not require the `<tbody>` element inside tables, modern browsers automatically create a `<tbody>` element in tables that do not declare one. Because of this inconsistency, always explicitly declare a `<tbody>` element in tables to avoid hydration errors.
 
 ### Preserve Whitespaces Configuration
 
@@ -130,7 +149,7 @@ For a full reference on hydration related errors, visit the [Errors Reference Gu
 
 Some components may not work properly with hydration enabled due to some of the aforementioned issues, like [Direct DOM Manipulation](#direct-dom-manipulation). As a workaround, you can add the `ngSkipHydration` attribute to a component's tag in order to skip hydrating the entire component.
 
-```html
+```angular-html
 <app-example ngSkipHydration />
 ```
 
@@ -152,9 +171,13 @@ The `ngSkipHydration` attribute can only be used on component host nodes. Angula
 
 Keep in mind that adding the `ngSkipHydration` attribute to your root application component would effectively disable hydration for your entire application. Be careful and thoughtful about using this attribute. It is intended as a last resort workaround. Components that break hydration should be considered bugs that need to be fixed.
 
+## Hydration Timing and Application Stability
+
+Application stability is an important part of the hydration process. Hydration and any post-hydration processes only occur once the application has reported stability. There are a number of ways that stability can be delayed. Examples include setting timeouts and intervals, unresolved promises, and pending microtasks. In those cases, you may encounter the [Application remains unstable](errors/NG0506) error, which indicates that your app has not yet reached the stable state after 10 seconds. If you're finding that your application is not hydrating right away, take a look at what is impacting application stability and refactor to avoid causing these delays.
+
 ## I18N
 
-HELPFUL: Support for internationalization with hydration is currently in [developer preview](/reference/releases#developer-preview). By default, Angular will skip hydration for components that use i18n blocks, effectively re-rendering those components from scratch.
+HELPFUL: By default, Angular will skip hydration for components that use i18n blocks, effectively re-rendering those components from scratch.
 
 To enable hydration for i18n blocks, you can add [`withI18nSupport`](/api/platform-browser/withI18nSupport) to your `provideClientHydration` call.
 
@@ -171,6 +194,17 @@ bootstrapApplication(AppComponent, {
 });
 ```
 
+## Consistent rendering across server-side and client-side
+Avoid introducing `@if` blocks and other conditionals that display different content when server-side rendering than client-side rendering, such as using an `@if` block with Angular's `isPlatformBrowser` function. These rendering differences cause layout shifts, negatively impacting end-user experience and core web vitals.
+
 ## Third Party Libraries with DOM Manipulation
 
 There are a number of third party libraries that depend on DOM manipulation to be able to render. D3 charts is a prime example. These libraries worked without hydration, but they may cause DOM mismatch errors when hydration is enabled. For now, if you encounter DOM mismatch errors using one of these libraries, you can add the `ngSkipHydration` attribute to the component that renders using that library.
+
+## Third Party Scripts with DOM Manipulation
+
+Many third party scripts, such as ad trackers and analytics, modify the DOM before hydration can occur. These scripts may cause hydration errors because the page no longer matches the structure expected by Angular. Prefer deferring this type of script until after hydration whenever possible. Consider using [`AfterNextRender`](api/core/afterNextRender) to delay the script until post-hydration processes have occurred.
+
+## Incremental Hydration
+
+Incremental hydration is an advanced form of hydration that allows for more granular control over when hydration happens. See the [incremental hydration guide](guide/incremental-hydration) for more information.

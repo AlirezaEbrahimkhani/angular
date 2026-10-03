@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {EnvironmentInjector} from '@angular/core';
@@ -40,6 +40,7 @@ export function matchWithChecks(
   segments: UrlSegment[],
   injector: EnvironmentInjector,
   urlSerializer: UrlSerializer,
+  abortSignal?: AbortSignal,
 ): Observable<MatchResult> {
   const result = match(segmentGroup, route, segments);
   if (!result.matched) {
@@ -49,7 +50,7 @@ export function matchWithChecks(
   // Only create the Route's `EnvironmentInjector` if it matches the attempted
   // navigation
   injector = getOrCreateRouteInjectorIfNeeded(route, injector);
-  return runCanMatchGuards(injector, route, segments, urlSerializer).pipe(
+  return runCanMatchGuards(injector, route, segments, urlSerializer, abortSignal).pipe(
     map((v) => (v === true ? result : {...noMatch})),
   );
 }
@@ -115,7 +116,10 @@ export function split(
   consumedSegments: UrlSegment[],
   slicedSegments: UrlSegment[],
   config: Route[],
-) {
+): {
+  segmentGroup: UrlSegmentGroup;
+  slicedSegments: UrlSegment[];
+} {
   if (
     slicedSegments.length > 0 &&
     containsEmptyPathMatchesWithNamedOutlets(segmentGroup, slicedSegments, config)
@@ -195,7 +199,7 @@ function containsEmptyPathMatches(
   return routes.some((r) => emptyPathMatch(segmentGroup, slicedSegments, r));
 }
 
-function emptyPathMatch(
+export function emptyPathMatch(
   segmentGroup: UrlSegmentGroup,
   slicedSegments: UrlSegment[],
   r: Route,
@@ -205,37 +209,6 @@ function emptyPathMatch(
   }
 
   return r.path === '';
-}
-
-/**
- * Determines if `route` is a path match for the `rawSegment`, `segments`, and `outlet` without
- * verifying that its children are a full match for the remainder of the `rawSegment` children as
- * well.
- */
-export function isImmediateMatch(
-  route: Route,
-  rawSegment: UrlSegmentGroup,
-  segments: UrlSegment[],
-  outlet: string,
-): boolean {
-  // We allow matches to empty paths when the outlets differ so we can match a url like `/(b:b)` to
-  // a config like
-  // * `{path: '', children: [{path: 'b', outlet: 'b'}]}`
-  // or even
-  // * `{path: '', outlet: 'a', children: [{path: 'b', outlet: 'b'}]`
-  //
-  // The exception here is when the segment outlet is for the primary outlet. This would
-  // result in a match inside the named outlet because all children there are written as primary
-  // outlets. So we need to prevent child named outlet matches in a url like `/b` in a config like
-  // * `{path: '', outlet: 'x' children: [{path: 'b'}]}`
-  // This should only match if the url is `/(x:b)`.
-  if (
-    getOutlet(route) !== outlet &&
-    (outlet === PRIMARY_OUTLET || !emptyPathMatch(rawSegment, segments, route))
-  ) {
-    return false;
-  }
-  return match(rawSegment, route, segments).matched;
 }
 
 export function noLeftoversInUrl(

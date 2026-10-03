@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 /* tslint:disable:no-console  */
@@ -15,8 +15,9 @@ import {NgForm} from '@angular/forms';
   selector: 'example-app',
   template: `
     <form #f="ngForm" (ngSubmit)="onSubmit(f)">
-      <p *ngIf="nameCtrl.invalid">Name is invalid.</p>
-
+      @if(nameCtrl.invalid) {
+        <p>Name is invalid.</p>
+      }
       <div ngModelGroup="name" #nameCtrl="ngModelGroup">
         <input name="first" [ngModel]="name.first" minlength="2" />
         <input name="middle" [ngModel]="name.middle" maxlength="2" />
@@ -29,6 +30,7 @@ import {NgForm} from '@angular/forms';
 
     <button (click)="setValue()">Set value</button>
   `,
+  standalone: false,
 })
 export class NgModelGroupComp {
   name = {first: 'Nancy', middle: 'J', last: 'Drew'};

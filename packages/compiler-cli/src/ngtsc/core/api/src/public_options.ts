@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {ExtendedTemplateDiagnosticName} from '../../../../ngtsc/diagnostics';
@@ -89,11 +89,14 @@ export interface LegacyNgcOptions {
 }
 
 /**
- * Options related to template type-checking and its strictness.
+ * Options related to Angular-specific type-checking and its strictness.
  *
  * @publicApi
  */
-export interface StrictTemplateOptions {
+export interface TypeCheckingOptions {
+  /** Whether type checking of host bindings is enabled. */
+  typeCheckHostBindings?: boolean;
+
   /**
    * If `true`, implies all template strictness flags below (unless individually disabled).
    *
@@ -261,6 +264,11 @@ export interface DiagnosticOptions {
      */
     checks?: {[Name in ExtendedTemplateDiagnosticName]?: DiagnosticCategoryLabel};
   };
+
+  /**
+   * If enabled, non-standalone declarations are prohibited and result in build errors.
+   */
+  strictStandalone?: boolean;
 }
 
 /**
@@ -283,14 +291,14 @@ export interface BazelAndG3Options {
    *
    * A consumer of such a path-mapped library will write an import like:
    *
-   * ```typescript
+   * ```ts
    * import {LibModule} from 'lib/deep/path/to/module';
    * ```
    *
    * The compiler will attempt to generate imports of directives/pipes from that same module
    * specifier (the compiler does not rewrite the user's given import path, unlike View Engine).
    *
-   * ```typescript
+   * ```ts
    * import {LibDir, LibCmp, LibPipe} from 'lib/deep/path/to/module';
    * ```
    *
@@ -334,6 +342,20 @@ export interface BazelAndG3Options {
    * extra imports are needed for bundling purposes in g3.
    */
   generateExtraImportsInLocalMode?: boolean;
+
+  /**
+   * Whether to allow the experimental declaration-only emission mode when the `emitDeclarationOnly`
+   * TS compiler option is enabled.
+   *
+   * The declaration-only emission mode relies on the local compilation mode for fast type
+   * declaration emission, i.e. emitting `.d.ts` files without type-checking. Certain restrictions
+   * on supported code constructs apply due to the absence of type information for external
+   * references.
+   *
+   * The mode is experimental and specifically tailored to support fast type declaration emission
+   * for the Gemini app in g3 for the initial phase of the experiment.
+   */
+  _experimentalAllowEmitDeclarationOnly?: boolean;
 }
 
 /**
@@ -390,6 +412,14 @@ export interface I18nOptions {
    * The default is `false`, but this will be switched in a future major release.
    */
   i18nNormalizeLineEndingsInICUs?: boolean;
+
+  /**
+   * Whether or not to preserve whitespace when extracting messages with the legacy (View Engine)
+   * pipeline.
+   *
+   * Defaults to `true`.
+   */
+  i18nPreserveWhitespaceForLegacyExtraction?: boolean;
 }
 
 /**

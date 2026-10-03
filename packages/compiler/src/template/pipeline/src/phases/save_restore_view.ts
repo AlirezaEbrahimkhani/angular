@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import * as o from '../../../../output/output_ast';
@@ -31,7 +31,12 @@ export function saveAndRestoreView(job: ComponentCompilationJob): void {
     ]);
 
     for (const op of unit.create) {
-      if (op.kind !== ir.OpKind.Listener && op.kind !== ir.OpKind.TwoWayListener) {
+      if (
+        op.kind !== ir.OpKind.Listener &&
+        op.kind !== ir.OpKind.TwoWayListener &&
+        op.kind !== ir.OpKind.Animation &&
+        op.kind !== ir.OpKind.AnimationListener
+      ) {
         continue;
       }
 
@@ -58,7 +63,7 @@ export function saveAndRestoreView(job: ComponentCompilationJob): void {
 
 function addSaveRestoreViewOperationToListener(
   unit: ViewCompilationUnit,
-  op: ir.ListenerOp | ir.TwoWayListenerOp,
+  op: ir.ListenerOp | ir.TwoWayListenerOp | ir.AnimationOp | ir.AnimationListenerOp,
 ) {
   op.handlerOps.prepend([
     ir.createVariableOp<ir.UpdateOp>(

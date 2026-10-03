@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {
@@ -13,7 +13,7 @@ import {
   HttpRequest,
   HttpResponse,
   HttpStatusCode,
-} from '@angular/common/http';
+} from '../../index';
 import {Observer} from 'rxjs';
 
 /**
@@ -116,9 +116,6 @@ export class TestRequest {
   error(error: ProgressEvent | ErrorEvent, opts: TestRequestErrorOptions = {}): void {
     if (this.cancelled) {
       throw new Error(`Cannot return an error for a cancelled request.`);
-    }
-    if (opts.status && opts.status >= 200 && opts.status < 300) {
-      throw new Error(`error() called with a successful status.`);
     }
     const headers =
       opts.headers instanceof HttpHeaders ? opts.headers : new HttpHeaders(opts.headers);

@@ -6,12 +6,6 @@
   "deprecated": false,
   "options": [
     {
-      "name": "browser-target",
-      "type": "string",
-      "deprecated": "Use 'buildTarget' instead.",
-      "description": "A browser builder target to extract i18n messages in the format of `project:target[:configuration]`. You can also pass in more than one configuration name as a comma-separated list. Example: `project:target:production,staging`."
-    },
-    {
       "name": "build-target",
       "type": "string",
       "description": "A builder target to extract i18n messages in the format of `project:target[:configuration]`. You can also pass in more than one configuration name as a comma-separated list. Example: `project:target:production,staging`."
@@ -29,15 +23,15 @@
       "type": "string",
       "default": "xlf",
       "enum": [
-        "xmb",
+        "arb",
+        "json",
+        "legacy-migrate",
         "xlf",
+        "xlf2",
         "xlif",
         "xliff",
-        "xlf2",
         "xliff2",
-        "json",
-        "arb",
-        "legacy-migrate"
+        "xmb"
       ],
       "description": "Output format for the generated file."
     },
@@ -45,6 +39,16 @@
       "name": "help",
       "type": "boolean",
       "description": "Shows a help message for this command in the console."
+    },
+    {
+      "name": "i18n-duplicate-translation",
+      "type": "string",
+      "enum": [
+        "error",
+        "ignore",
+        "warning"
+      ],
+      "description": "How to handle duplicate translations."
     },
     {
       "name": "out-file",

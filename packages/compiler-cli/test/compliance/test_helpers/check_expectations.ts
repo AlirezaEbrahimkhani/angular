@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 import {ReadonlyFileSystem} from '../../../src/ngtsc/file_system';
 
@@ -58,7 +58,7 @@ export function checkExpectations(
         `The generated file at ${generatedPath} does not exist.\n` +
           'Perhaps there is no matching input source file in the TEST_CASES.json file for this test case.\n' +
           'Or maybe you need to regenerate the GOLDEN_PARTIAL.js file by running:\n\n' +
-          `    yarn bazel run //packages/compiler-cli/test/compliance/test_cases:${testPath}.golden.update`,
+          `    pnpm bazel run //packages/compiler-cli/test/compliance/test_cases:${testPath}.golden`,
       );
       // Clear the stack so that we get a nice error message
       error.stack = '';
@@ -110,7 +110,9 @@ function runExtraChecks(
     }
     if (!fn(generated, ...args)) {
       throw new Error(
-        `Extra check ${fnName}(${args.map((arg) => JSON.stringify(arg)).join(',')}) in ${testPath} failed for generated code:\n\n${generated}`,
+        `Extra check ${fnName}(${args
+          .map((arg) => JSON.stringify(arg))
+          .join(',')}) in ${testPath} failed for generated code:\n\n${generated}`,
       );
     }
   }

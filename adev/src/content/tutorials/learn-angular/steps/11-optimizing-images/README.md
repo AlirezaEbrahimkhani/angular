@@ -2,7 +2,11 @@
 
 Images are a big part of many applications, and can be a major contributor to application performance problems, including low [Core Web Vitals](https://web.dev/explore/learn-core-web-vitals) scores.
 
-Image optimization can be a complex topic, but Angular handles most of it for you, with the `NgOptimizedImage` directive. In this activity, you'll learn how to use `NgOptimizedImage` to ensure your images are loaded efficiently.
+Image optimization can be a complex topic, but Angular handles most of it for you, with the `NgOptimizedImage` directive.
+
+Note: Learn more about [image optimization with NgOptimizedImage in the in-depth guide](/guide/image-optimization).
+
+In this activity, you'll learn how to use `NgOptimizedImage` to ensure your images are loaded efficiently.
 
 <hr>
 
@@ -16,7 +20,6 @@ In order to leverage the `NgOptimizedImage` directive, first import it from the 
 import { NgOptimizedImage } from '@angular/common';
 
 @Component({
-  standalone: true,
   imports: [NgOptimizedImage],
   ...
 })
@@ -28,11 +31,10 @@ import { NgOptimizedImage } from '@angular/common';
 
 To enable the `NgOptimizedImage` directive, swap out the `src` attribute for `ngSrc`. This applies for both static image sources (i.e., `src`) and dynamic image sources (i.e., `[src]`).
 
-<docs-code language="ts" highlight="[[9], [13]]">
+<docs-code language="angular-ts" highlight="[[9], [13]]">
 import { NgOptimizedImage } from '@angular/common';
 
 @Component({
-  standalone: true,
   template: `
     ...
     <li>
@@ -57,13 +59,13 @@ Note that in the above code example, each image has both `width` and `height` at
 
 In situations where you can't or don't want to specify a static `height` and `width` for images, you can use [the `fill` attribute](https://web.dev/articles/cls) to tell the image to act like a "background image", filling its containing element:
 
-```ts
+```angular-html
 <div class="image-container"> //Container div has 'position: "relative"'
   <img ngSrc="www.example.com/image.png" fill />
 </div>
 ```
 
-Note: For the `fill` image to render properly, its parent element must be styled with `position: "relative"`, `position: "fixed"`, or `position: "absolute"`.
+NOTE: For the `fill` image to render properly, its parent element must be styled with `position: "relative"`, `position: "fixed"`, or `position: "absolute"`.
 
 </docs-step>
 
@@ -85,9 +87,11 @@ One of the most important optimizations for loading performance is to prioritize
 providers: [
   provideImgixLoader('https://my.base.url/'),
 ]
+```
 
-// ...
-// Final URL will be 'https://my.base.url/image.png'
+Final URL will be 'https://my.base.url/image.png'
+
+```angular-html
 <img ngSrc="image.png" height="600" width="800" />
 ```
 

@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 import {
   absoluteFrom,
@@ -12,7 +12,7 @@ import {
   getFileSystem,
 } from '@angular/compiler-cli/src/ngtsc/file_system';
 import {runInEachFileSystem} from '@angular/compiler-cli/src/ngtsc/file_system/testing';
-import {ɵParsedTranslation, ɵparseTranslation} from '@angular/localize';
+import {ɵParsedTranslation, ɵparseTranslation} from '../../../../index';
 
 import {DiagnosticHandlingStrategy, Diagnostics} from '../../../src/diagnostics';
 import {TranslationLoader} from '../../../src/translate/translation_files/translation_loader';

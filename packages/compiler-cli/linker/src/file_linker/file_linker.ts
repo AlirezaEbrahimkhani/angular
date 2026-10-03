@@ -3,11 +3,10 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 import {R3PartialDeclaration} from '@angular/compiler';
 
-import {AbsoluteFsPath} from '../../../src/ngtsc/file_system';
 import {AstObject} from '../ast/ast_value';
 
 import {DeclarationScope} from './declaration_scope';
@@ -15,6 +14,7 @@ import {EmitScope} from './emit_scopes/emit_scope';
 import {LocalEmitScope} from './emit_scopes/local_emit_scope';
 import {LinkerEnvironment} from './linker_environment';
 import {createLinkerMap, PartialLinkerSelector} from './partial_linkers/partial_linker_selector';
+import {AbsoluteFsPath} from '../../../src/ngtsc/file_system/src/types';
 
 export const NO_STATEMENTS: Readonly<any[]> = [] as const;
 

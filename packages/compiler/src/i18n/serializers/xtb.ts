@@ -3,13 +3,13 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import * as ml from '../../ml_parser/ast';
 import {XmlParser} from '../../ml_parser/xml_parser';
+import {ParseError} from '../../parse_util';
 import * as i18n from '../i18n_ast';
-import {I18nError} from '../parse_util';
 
 import {PlaceholderMapper, Serializer, SimplePlaceholderMapper} from './serializer';
 import {digest, toPublicName} from './xmb';
@@ -84,7 +84,7 @@ function createLazyProperty(messages: any, id: string, valueFn: () => any) {
 class XtbParser implements ml.Visitor {
   // using non-null assertions because they're (re)set by parse()
   private _bundleDepth!: number;
-  private _errors!: I18nError[];
+  private _errors!: ParseError[];
   private _msgIdToHtml!: {[msgId: string]: string};
   private _locale: string | null = null;
 
@@ -160,15 +160,23 @@ class XtbParser implements ml.Visitor {
 
   visitLetDeclaration(decl: ml.LetDeclaration, context: any) {}
 
+  visitComponent(component: ml.Component, context: any) {
+    this._addError(component, 'Unexpected node');
+  }
+
+  visitDirective(directive: ml.Directive, context: any) {
+    this._addError(directive, 'Unexpected node');
+  }
+
   private _addError(node: ml.Node, message: string): void {
-    this._errors.push(new I18nError(node.sourceSpan, message));
+    this._errors.push(new ParseError(node.sourceSpan, message));
   }
 }
 
 // Convert ml nodes (xtb syntax) to i18n nodes
 class XmlToI18n implements ml.Visitor {
   // using non-null assertion because it's (re)set by convert()
-  private _errors!: I18nError[];
+  private _errors!: ParseError[];
 
   convert(message: string, url: string) {
     const xmlIcu = new XmlParser().parse(message, url, {tokenizeExpansionForms: true});
@@ -230,7 +238,15 @@ class XmlToI18n implements ml.Visitor {
 
   visitLetDeclaration(decl: ml.LetDeclaration, context: any) {}
 
+  visitComponent(component: ml.Component, context: any) {
+    this._addError(component, 'Unexpected node');
+  }
+
+  visitDirective(directive: ml.Directive, context: any) {
+    this._addError(directive, 'Unexpected node');
+  }
+
   private _addError(node: ml.Node, message: string): void {
-    this._errors.push(new I18nError(node.sourceSpan, message));
+    this._errors.push(new ParseError(node.sourceSpan, message));
   }
 }

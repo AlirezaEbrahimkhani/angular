@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {CommonModule, NgIfContext, ɵgetDOM as getDOM} from '@angular/common';
@@ -22,15 +22,16 @@ import {
   NO_ERRORS_SCHEMA,
   OnInit,
   Output,
+  provideZoneChangeDetection,
   Renderer2,
   TemplateRef,
   ViewChild,
   ViewContainerRef,
-} from '@angular/core';
-import {ComponentFixture, TestBed, waitForAsync} from '@angular/core/testing';
-import {By} from '@angular/platform-browser/src/dom/debug/by';
-import {createMouseEvent, hasClass} from '@angular/platform-browser/testing/src/browser_util';
-import {expect} from '@angular/platform-browser/testing/src/matchers';
+} from '../../src/core';
+import {ComponentFixture, TestBed, waitForAsync} from '../../testing';
+import {By} from '@angular/platform-browser';
+import {createMouseEvent, hasClass} from '@angular/private/testing';
+import {expect} from '@angular/private/testing/matchers';
 
 @Injectable()
 class Logger {
@@ -45,7 +46,11 @@ class Logger {
   }
 }
 
-@Directive({selector: '[message]', inputs: ['message']})
+@Directive({
+  selector: '[message]',
+  inputs: ['message'],
+  standalone: false,
+})
 class MessageDir {
   logger: Logger;
 
@@ -58,7 +63,11 @@ class MessageDir {
   }
 }
 
-@Directive({selector: '[with-title]', inputs: ['title']})
+@Directive({
+  selector: '[with-title]',
+  inputs: ['title'],
+  standalone: false,
+})
 class WithTitleDir {
   title = '';
 }
@@ -69,6 +78,7 @@ class WithTitleDir {
                <span class="childnested" message="nestedchild">Child</span>
              </div>
              <span class="child" [innerHtml]="childBinding"></span>`,
+  standalone: false,
 })
 class ChildComp {
   childBinding: string;
@@ -86,6 +96,7 @@ class ChildComp {
              </div>
              <span class="parent" [innerHtml]="parentBinding"></span>
              <child-comp class="child-comp-class"></child-comp>`,
+  standalone: false,
 })
 class ParentComp {
   parentBinding: string;
@@ -94,7 +105,11 @@ class ParentComp {
   }
 }
 
-@Directive({selector: 'custom-emitter', outputs: ['myevent']})
+@Directive({
+  selector: 'custom-emitter',
+  outputs: ['myevent'],
+  standalone: false,
+})
 class CustomEmitter {
   myevent: EventEmitter<any>;
 
@@ -107,6 +122,7 @@ class CustomEmitter {
   selector: 'events-comp',
   template: `<button (click)="handleClick()"></button>
              <custom-emitter (myevent)="handleCustom()"></custom-emitter>`,
+  standalone: false,
 })
 class EventsComp {
   clicked: boolean;
@@ -130,6 +146,7 @@ class EventsComp {
   selector: 'cond-content-comp',
   viewProviders: [Logger],
   template: `<div class="child" message="child" *ngIf="myBool"><ng-content></ng-content></div>`,
+  standalone: false,
 })
 class ConditionalContentComp {
   myBool: boolean = false;
@@ -142,6 +159,7 @@ class ConditionalContentComp {
             <cond-content-comp class="cond-content-comp-class">
               <span class="from-parent"></span>
             </cond-content-comp>`,
+  standalone: false,
 })
 class ConditionalParentComp {
   parentBinding: string;
@@ -157,6 +175,7 @@ class ConditionalParentComp {
             <ul message="list">
               <li *ngFor="let item of stuff" [innerHtml]="item"></li>
             </ul>`,
+  standalone: false,
 })
 class UsingFor {
   stuff: string[];
@@ -165,7 +184,11 @@ class UsingFor {
   }
 }
 
-@Directive({selector: '[mydir]', exportAs: 'mydir'})
+@Directive({
+  selector: '[mydir]',
+  exportAs: 'mydir',
+  standalone: false,
+})
 class MyDir {}
 
 @Component({
@@ -173,6 +196,7 @@ class MyDir {}
   template: `
    <div mydir #alice="mydir"></div>
  `,
+  standalone: false,
 })
 class LocalsComp {}
 
@@ -187,6 +211,7 @@ class LocalsComp {}
     '[class.absent-class]': 'false',
     '[class.present-class]': 'true',
   },
+  standalone: false,
 })
 class BankAccount {
   @Input() bank: string | undefined;
@@ -199,6 +224,7 @@ class BankAccount {
   template: `
     <div class="content" #content>Some content</div>
  `,
+  standalone: false,
 })
 class SimpleContentComp {
   @ViewChild('content') content!: ElementRef;
@@ -214,6 +240,7 @@ class SimpleContentComp {
                  [class.closed]="isClosed"
                  [class.open]="!isClosed"></bank-account>
  `,
+  standalone: false,
 })
 class TestApp {
   width = 200;
@@ -222,20 +249,36 @@ class TestApp {
   constructor(public renderer: Renderer2) {}
 }
 
-@Component({selector: 'test-cmpt', template: ``})
+@Component({
+  selector: 'test-cmpt',
+  template: ``,
+  standalone: false,
+})
 class TestCmpt {}
 
-@Component({selector: 'test-cmpt-renderer', template: ``})
+@Component({
+  selector: 'test-cmpt-renderer',
+  template: ``,
+  standalone: false,
+})
 class TestCmptWithRenderer {
   constructor(public renderer: Renderer2) {}
 }
 
-@Component({selector: 'host-class-binding', template: ''})
+@Component({
+  selector: 'host-class-binding',
+  template: '',
+  standalone: false,
+})
 class HostClassBindingCmp {
   @HostBinding('class') hostClasses = 'class-one class-two';
 }
 
-@Component({selector: 'test-cmpt-vcref', template: `<div></div>`})
+@Component({
+  selector: 'test-cmpt-vcref',
+  template: `<div></div>`,
+  standalone: false,
+})
 class TestCmptWithViewContainerRef {
   constructor(private vcref: ViewContainerRef) {}
 }
@@ -247,6 +290,7 @@ class TestCmptWithViewContainerRef {
     [tabIndex]="tabIndex"
     [title]="title">Click me</button>
 `,
+  standalone: false,
 })
 class TestCmptWithPropBindings {
   disabled = true;
@@ -267,6 +311,7 @@ class TestCmptWithPropBindings {
   <button title="a{{1}}b{{2}}c{{3}}d{{4}}e{{5}}f{{6}}g{{7}}h{{8}}i"></button>
   <button title="a{{1}}b{{2}}c{{3}}d{{4}}e{{5}}f{{6}}g{{7}}h{{8}}i{{9}}j"></button>
 `,
+  standalone: false,
 })
 class TestCmptWithPropInterpolation {}
 
@@ -297,7 +342,7 @@ describe('debug element', () => {
         TestCmptWithRenderer,
         WithTitleDir,
       ],
-      providers: [Logger],
+      providers: [Logger, provideZoneChangeDetection()],
       schemas: [NO_ERRORS_SCHEMA],
     });
   }));
@@ -450,7 +495,10 @@ describe('debug element', () => {
   });
 
   it('should query projected child elements by directive', () => {
-    @Directive({selector: 'example-directive-a'})
+    @Directive({
+      selector: 'example-directive-a',
+      standalone: false,
+    })
     class ExampleDirectiveA {}
 
     @Component({
@@ -458,6 +506,7 @@ describe('debug element', () => {
       template: `
           <ng-content select="example-directive-a"></ng-content>
         `,
+      standalone: false,
     })
     class WrapperComponent {}
 
@@ -481,7 +530,10 @@ describe('debug element', () => {
   });
 
   it('should query re-projected child elements by directive', () => {
-    @Directive({selector: 'example-directive-a'})
+    @Directive({
+      selector: 'example-directive-a',
+      standalone: false,
+    })
     class ExampleDirectiveA {}
 
     @Component({
@@ -489,6 +541,7 @@ describe('debug element', () => {
       template: `
           <ng-content></ng-content>
         `,
+      standalone: false,
     })
     class ProxyComponent {}
 
@@ -500,6 +553,7 @@ describe('debug element', () => {
             <ng-content select="example-directive-a"></ng-content>
           </proxy-component>
         `,
+      standalone: false,
     })
     class WrapperComponent {}
 
@@ -523,7 +577,10 @@ describe('debug element', () => {
   });
 
   it('should query directives on containers before directives in a view', () => {
-    @Directive({selector: '[text]'})
+    @Directive({
+      selector: '[text]',
+      standalone: false,
+    })
     class TextDirective {
       @Input() text: string | undefined;
     }
@@ -544,12 +601,18 @@ describe('debug element', () => {
   });
 
   it('should query directives on views moved in the DOM', () => {
-    @Directive({selector: '[text]'})
+    @Directive({
+      selector: '[text]',
+      standalone: false,
+    })
     class TextDirective {
       @Input() text: string | undefined;
     }
 
-    @Directive({selector: '[moveView]'})
+    @Directive({
+      selector: '[moveView]',
+      standalone: false,
+    })
     class ViewManipulatingDirective {
       constructor(
         private _vcRef: ViewContainerRef,
@@ -605,6 +668,7 @@ describe('debug element', () => {
   it('DebugElement.query should work with dynamically created elements', () => {
     @Directive({
       selector: '[dir]',
+      standalone: false,
     })
     class MyDir {
       @Input('dir') dir: number | undefined;
@@ -619,6 +683,7 @@ describe('debug element', () => {
     @Component({
       selector: 'app-test',
       template: '<div dir></div>',
+      standalone: false,
     })
     class MyComponent {}
 
@@ -650,6 +715,7 @@ describe('debug element', () => {
     beforeEach(() => {
       @Directive({
         selector: '[dir]',
+        standalone: false,
       })
       class MyDir {
         @Input('dir') dir: number | undefined;
@@ -671,6 +737,7 @@ describe('debug element', () => {
       @Component({
         selector: 'app-test',
         template: '<div dir></div>',
+        standalone: false,
       })
       class MyComponent {}
 
@@ -691,7 +758,10 @@ describe('debug element', () => {
   });
 
   describe("DebugElement.query doesn't fail on elements outside Angular context", () => {
-    @Component({template: '<div></div>'})
+    @Component({
+      template: '<div></div>',
+      standalone: false,
+    })
     class NativeEl {
       constructor(private elementRef: ElementRef) {}
 
@@ -765,6 +835,7 @@ describe('debug element', () => {
   it('DebugElement.queryAll should pick up both elements inserted via the view and through Renderer2', () => {
     @Directive({
       selector: '[dir]',
+      standalone: false,
     })
     class MyDir {
       @Input('dir') dir: number | undefined;
@@ -779,6 +850,7 @@ describe('debug element', () => {
     @Component({
       selector: 'app-test',
       template: '<div dir></div><span class="myclass"></span>',
+      standalone: false,
     })
     class MyComponent {}
 
@@ -938,7 +1010,10 @@ describe('debug element', () => {
   });
 
   it('should trigger events registered via Renderer2', () => {
-    @Component({template: ''})
+    @Component({
+      template: '',
+      standalone: false,
+    })
     class TestComponent implements OnInit {
       count = 0;
       eventObj1: any;
@@ -981,7 +1056,10 @@ describe('debug element', () => {
   it('should be able to trigger an event with a null value', () => {
     let value = undefined;
 
-    @Component({template: '<button (click)="handleClick($event)"></button>'})
+    @Component({
+      template: '<button (click)="handleClick($event)"></button>',
+      standalone: false,
+    })
     class TestComponent {
       handleClick(_event: any) {
         value = _event;
@@ -1056,7 +1134,11 @@ describe('debug element', () => {
 
   describe('context on DebugNode', () => {
     it('should return component associated with the node if both a structural directive and a component match the node', () => {
-      @Component({selector: 'example-component', template: ''})
+      @Component({
+        selector: 'example-component',
+        template: '',
+        standalone: false,
+      })
       class ExampleComponent {}
 
       TestBed.configureTestingModule({imports: [CommonModule], declarations: [ExampleComponent]});
@@ -1168,6 +1250,7 @@ describe('debug element', () => {
             </p>
           </div>
         `,
+      standalone: false,
     })
     class MyComp {}
 
@@ -1187,11 +1270,18 @@ describe('debug element', () => {
   });
 
   it('should preserve the attribute case in DebugNode.attributes', () => {
-    @Component({selector: 'my-icon', template: ''})
+    @Component({
+      selector: 'my-icon',
+      template: '',
+      standalone: false,
+    })
     class Icon {
       @Input() svgIcon: any = '';
     }
-    @Component({template: `<my-icon svgIcon="test"></my-icon>`})
+    @Component({
+      template: `<my-icon svgIcon="test"></my-icon>`,
+      standalone: false,
+    })
     class App {}
 
     TestBed.configureTestingModule({declarations: [App, Icon]});
@@ -1209,6 +1299,7 @@ describe('debug element', () => {
   it('should include namespaced attributes in DebugNode.attributes', () => {
     @Component({
       template: `<div xlink:href="foo"></div>`,
+      standalone: false,
     })
     class Comp {}
 
@@ -1222,6 +1313,7 @@ describe('debug element', () => {
   it('should include attributes added via Renderer2 in DebugNode.attributes', () => {
     @Component({
       template: '<div></div>',
+      standalone: false,
     })
     class Comp {
       constructor(public renderer: Renderer2) {}
@@ -1241,6 +1333,7 @@ describe('debug element', () => {
     @Component({
       selector: 'cancel-button',
       template: '',
+      standalone: false,
     })
     class CancelButton {
       @Output() cancel = new EventEmitter<void>();
@@ -1248,6 +1341,7 @@ describe('debug element', () => {
 
     @Component({
       template: '<cancel-button *ngIf="visible" (cancel)="cancel()"></cancel-button>',
+      standalone: false,
     })
     class App {
       visible = true;
@@ -1274,7 +1368,10 @@ describe('debug element', () => {
   });
 
   it('should not error when accessing node name', () => {
-    @Component({template: ''})
+    @Component({
+      template: '',
+      standalone: false,
+    })
     class EmptyComponent {}
 
     const fixture = TestBed.configureTestingModule({
@@ -1292,10 +1389,17 @@ describe('debug element', () => {
   });
 
   it('should match node name with declared casing', () => {
-    @Component({template: `<div></div><myComponent></myComponent>`})
+    @Component({
+      template: `<div></div><myComponent></myComponent>`,
+      standalone: false,
+    })
     class Wrapper {}
 
-    @Component({selector: 'myComponent', template: ''})
+    @Component({
+      selector: 'myComponent',
+      template: '',
+      standalone: false,
+    })
     class MyComponent {}
 
     const fixture = TestBed.configureTestingModule({
@@ -1311,7 +1415,10 @@ describe('debug element', () => {
     function listener() {
       listenerCalled = true;
     }
-    @Component({template: ''})
+    @Component({
+      template: '',
+      standalone: false,
+    })
     class MyComp {
       constructor(
         private readonly zone: NgZone,

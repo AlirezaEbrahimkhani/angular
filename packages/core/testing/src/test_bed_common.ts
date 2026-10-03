@@ -3,14 +3,14 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {
   InjectionToken,
   SchemaMetadata,
   ɵDeferBlockBehavior as DeferBlockBehavior,
-} from '@angular/core';
+} from '../../src/core';
 
 /** Whether test modules should be torn down by default. */
 export const TEARDOWN_TESTING_MODULE_ON_DESTROY_DEFAULT = true;
@@ -24,13 +24,16 @@ export const THROW_ON_UNKNOWN_PROPERTIES_DEFAULT = false;
 /** Whether defer blocks should use manual triggering or play through normally. */
 export const DEFER_BLOCK_DEFAULT_BEHAVIOR = DeferBlockBehavior.Playthrough;
 
+/** Whether animations are enabled or disabled. */
+export const ANIMATIONS_ENABLED_DEFAULT = false;
+
 /**
  * An abstract class for inserting the root test component element in a platform independent way.
  *
  * @publicApi
  */
 export class TestComponentRenderer {
-  insertRootElement(rootElementId: string) {}
+  insertRootElement(rootElementId: string, tagName?: string) {}
   removeAllRootElements?() {}
 }
 
@@ -69,10 +72,36 @@ export interface TestModuleMetadata {
   errorOnUnknownProperties?: boolean;
 
   /**
+   * Whether errors that happen during application change detection should be rethrown.
+   *
+   * When `true`, errors that are caught during application change detection will
+   * be reported to the `ErrorHandler` and rethrown to prevent them from going
+   * unnoticed in tests.
+   *
+   * When `false`, errors are only forwarded to the `ErrorHandler`, which by default
+   * simply logs them to the console.
+   *
+   * Defaults to `true`.
+   */
+  rethrowApplicationErrors?: boolean;
+
+  /**
    * Whether defer blocks should behave with manual triggering or play through normally.
    * Defaults to `manual`.
    */
   deferBlockBehavior?: DeferBlockBehavior;
+
+  /**
+   * Whether to infer the tag name of test components from their selectors.
+   * Otherwise `div` will be used as the tag name for test components.
+   */
+  inferTagName?: boolean;
+
+  /**
+   * Whether animate.enter / animate.leave should trigger as normal or be disabled.
+   * Defaults to `false`.
+   */
+  animationsEnabled?: boolean;
 }
 
 /**

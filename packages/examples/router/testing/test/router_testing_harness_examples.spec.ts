@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {AsyncPipe} from '@angular/common';
@@ -63,7 +63,6 @@ describe('navigate for test examples', () => {
   it('test a ActivatedRoute', async () => {
     // #docregion ActivatedRoute
     @Component({
-      standalone: true,
       imports: [AsyncPipe],
       template: `search: {{ (route.queryParams | async)?.query }}`,
     })

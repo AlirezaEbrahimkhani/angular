@@ -3,10 +3,10 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {isStyleUrlResolvable} from '@angular/compiler/src/style_url_resolver';
+import {isStyleUrlResolvable} from '../src/style_url_resolver';
 
 describe('isStyleUrlResolvable', () => {
   it('should resolve relative urls', () => {

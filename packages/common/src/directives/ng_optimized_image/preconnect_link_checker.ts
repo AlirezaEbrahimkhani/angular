@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {
@@ -11,10 +11,9 @@ import {
   Injectable,
   InjectionToken,
   ɵformatRuntimeError as formatRuntimeError,
-  ɵRuntimeError as RuntimeError,
+  DOCUMENT,
 } from '@angular/core';
 
-import {DOCUMENT} from '../../dom_tokens';
 import {RuntimeErrorCode} from '../../errors';
 
 import {assertDevMode} from './asserts';
@@ -29,13 +28,13 @@ const INTERNAL_PRECONNECT_CHECK_BLOCKLIST = new Set(['localhost', '127.0.0.1', '
  * from the preconnect checks. It can either be a single string or an array of strings
  * to represent a group of origins, for example:
  *
- * ```typescript
+ * ```ts
  *  {provide: PRECONNECT_CHECK_BLOCKLIST, useValue: 'https://your-domain.com'}
  * ```
  *
  * or:
  *
- * ```typescript
+ * ```ts
  *  {provide: PRECONNECT_CHECK_BLOCKLIST,
  *   useValue: ['https://your-domain-1.com', 'https://your-domain-2.com']}
  * ```
@@ -43,7 +42,7 @@ const INTERNAL_PRECONNECT_CHECK_BLOCKLIST = new Set(['localhost', '127.0.0.1', '
  * @publicApi
  */
 export const PRECONNECT_CHECK_BLOCKLIST = new InjectionToken<Array<string | string[]>>(
-  ngDevMode ? 'PRECONNECT_CHECK_BLOCKLIST' : '',
+  typeof ngDevMode !== undefined && ngDevMode ? 'PRECONNECT_CHECK_BLOCKLIST' : '',
 );
 
 /**
@@ -68,16 +67,12 @@ export class PreconnectLinkChecker {
    */
   private alreadySeen = new Set<string>();
 
-  private window: Window | null = null;
+  private window: Window | null = this.document.defaultView;
 
   private blocklist = new Set<string>(INTERNAL_PRECONNECT_CHECK_BLOCKLIST);
 
   constructor() {
     assertDevMode('preconnect link checker');
-    const win = this.document.defaultView;
-    if (typeof win !== 'undefined') {
-      this.window = win;
-    }
     const blocklist = inject(PRECONNECT_CHECK_BLOCKLIST, {optional: true});
     if (blocklist) {
       this.populateBlocklist(blocklist);
@@ -102,9 +97,9 @@ export class PreconnectLinkChecker {
    * @param originalNgSrc ngSrc value
    */
   assertPreconnect(rewrittenSrc: string, originalNgSrc: string): void {
-    if (!this.window) return;
+    if (typeof ngServerMode !== 'undefined' && ngServerMode) return;
 
-    const imgUrl = getUrl(rewrittenSrc, this.window);
+    const imgUrl = getUrl(rewrittenSrc, this.window!);
     if (this.blocklist.has(imgUrl.hostname) || this.alreadySeen.has(imgUrl.origin)) return;
 
     // Register this origin as seen, so we don't check it again later.
@@ -132,9 +127,8 @@ export class PreconnectLinkChecker {
 
   private queryPreconnectLinks(): Set<string> {
     const preconnectUrls = new Set<string>();
-    const selector = 'link[rel=preconnect]';
-    const links: HTMLLinkElement[] = Array.from(this.document.querySelectorAll(selector));
-    for (let link of links) {
+    const links = this.document.querySelectorAll<HTMLLinkElement>('link[rel=preconnect]');
+    for (const link of links) {
       const url = getUrl(link.href, this.window!);
       preconnectUrls.add(url.origin);
     }

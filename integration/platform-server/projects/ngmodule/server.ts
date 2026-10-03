@@ -3,13 +3,13 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 /* tslint:disable:no-console  */
 import {APP_BASE_HREF} from '@angular/common';
 import {renderModule} from '@angular/platform-server';
 import express from 'express';
-import {AppServerModule} from './src/main.server';
+import AppServerModule from './src/main.server';
 import {fileURLToPath} from 'node:url';
 import {dirname, join, resolve} from 'node:path';
 import {readFileSync} from 'node:fs';
@@ -21,8 +21,7 @@ const browserDistFolder = resolve(serverDistFolder, '../browser');
 const indexHtml = readFileSync(join(browserDistFolder, 'index.csr.html'), 'utf-8');
 
 // Serve static files from /browser
-app.get(
-  '*.*',
+app.use(
   express.static(browserDistFolder, {
     maxAge: '1y',
   }),
@@ -38,7 +37,7 @@ app.get('/api-2', (req, res) => {
 });
 
 // All regular routes use the Universal engine
-app.get('*', (req, res) => {
+app.use((req, res) => {
   const {protocol, originalUrl, baseUrl, headers} = req;
 
   renderModule(AppServerModule, {

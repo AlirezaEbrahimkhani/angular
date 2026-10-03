@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {
@@ -11,13 +11,13 @@ import {
   ImageLoader,
   ImageLoaderConfig,
   provideNetlifyLoader,
-} from '@angular/common/src/directives/ng_optimized_image';
-import {provideCloudflareLoader} from '@angular/common/src/directives/ng_optimized_image/image_loaders/cloudflare_loader';
-import {provideCloudinaryLoader} from '@angular/common/src/directives/ng_optimized_image/image_loaders/cloudinary_loader';
-import {provideImageKitLoader} from '@angular/common/src/directives/ng_optimized_image/image_loaders/imagekit_loader';
-import {provideImgixLoader} from '@angular/common/src/directives/ng_optimized_image/image_loaders/imgix_loader';
-import {isValidPath} from '@angular/common/src/directives/ng_optimized_image/url';
-import {RuntimeErrorCode} from '@angular/common/src/errors';
+} from '../../src/directives/ng_optimized_image';
+import {provideCloudflareLoader} from '../../src/directives/ng_optimized_image/image_loaders/cloudflare_loader';
+import {provideCloudinaryLoader} from '../../src/directives/ng_optimized_image/image_loaders/cloudinary_loader';
+import {provideImageKitLoader} from '../../src/directives/ng_optimized_image/image_loaders/imagekit_loader';
+import {provideImgixLoader} from '../../src/directives/ng_optimized_image/image_loaders/imgix_loader';
+import {isValidPath} from '../../src/directives/ng_optimized_image/url';
+import {RuntimeErrorCode} from '../../src/errors';
 import {createEnvironmentInjector, EnvironmentInjector} from '@angular/core';
 import {TestBed} from '@angular/core/testing';
 
@@ -72,7 +72,7 @@ describe('Built-in image directive loaders', () => {
 
     it('should throw if an absolute URL is provided as a loader input', () => {
       const path = 'https://somesite.imgix.net';
-      const src = 'https://angular.io/img.png';
+      const src = 'https://angular.dev/img.png';
       const loader = createImgixLoader(path);
       expect(() => loader({src})).toThrowError(absoluteUrlError(src, path));
     });
@@ -115,7 +115,7 @@ describe('Built-in image directive loaders', () => {
     describe('input validation', () => {
       it('should throw if an absolute URL is provided as a loader input', () => {
         const path = 'https://res.cloudinary.com/mysite';
-        const src = 'https://angular.io/img.png';
+        const src = 'https://angular.dev/img.png';
         const loader = createCloudinaryLoader(path);
         expect(() => loader({src})).toThrowError(absoluteUrlError(src, path));
       });
@@ -140,6 +140,16 @@ describe('Built-in image directive loaders', () => {
         const path = 'https://res.cloudinary.com/mysite';
         const loader = createCloudinaryLoader(path);
         expect(loader({src: '/img.png'})).toBe(`${path}/image/upload/f_auto,q_auto/img.png`);
+      });
+    });
+
+    describe('config validation', () => {
+      it('should add the r_max cloudinary transformation to the URL when the rounded option is provided', () => {
+        const path = 'https://res.cloudinary.com/mysite';
+        const loader = createCloudinaryLoader(path);
+        expect(loader({src: '/img.png', loaderParams: {rounded: true}})).toBe(
+          `${path}/image/upload/f_auto,q_auto,r_max/img.png`,
+        );
       });
     });
   });
@@ -183,7 +193,7 @@ describe('Built-in image directive loaders', () => {
     describe('input validation', () => {
       it('should throw if an absolute URL is provided as a loader input', () => {
         const path = 'https://ik.imageengine.io/imagetest';
-        const src = 'https://angular.io/img.png';
+        const src = 'https://angular.dev/img.png';
         const loader = createImageKitLoader(path);
         expect(() => loader({src})).toThrowError(absoluteUrlError(src, path));
       });
@@ -232,7 +242,7 @@ describe('Built-in image directive loaders', () => {
 
     it('should throw if an absolute URL is provided as a loader input', () => {
       const path = 'https://mysite.com';
-      const src = 'https://angular.io/img.png';
+      const src = 'https://angular.dev/img.png';
       const loader = createCloudflareLoader(path);
       expect(() => loader({src})).toThrowError(absoluteUrlError(src, path));
     });
@@ -279,10 +289,10 @@ describe('Built-in image directive loaders', () => {
 
     it('should construct an image with an absolute URL', () => {
       const path = 'https://mysite.com';
-      const src = 'https://angular.io/img.png';
+      const src = 'https://angular.dev/img.png';
       const loader = createNetlifyLoader(path);
       expect(loader({src})).toBe(
-        'https://mysite.com/.netlify/images?url=https%3A%2F%2Fangular.io%2Fimg.png',
+        'https://mysite.com/.netlify/images?url=https%3A%2F%2Fangular.dev%2Fimg.png',
       );
     });
 

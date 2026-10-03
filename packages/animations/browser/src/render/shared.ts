@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 import {
   AnimationEvent,
@@ -13,7 +13,7 @@ import {
   ɵAnimationGroupPlayer,
   ɵPRE_STYLE as PRE_STYLE,
   ɵStyleDataMap,
-} from '@angular/animations';
+} from '../../../src/animations';
 
 import {AnimationStyleNormalizer} from '../../src/dsl/style_normalization/animation_style_normalizer';
 import {animationFailed} from '../error_helpers';

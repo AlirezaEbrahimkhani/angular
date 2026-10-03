@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {SanitizerFn} from './sanitization';
@@ -34,7 +34,7 @@ export interface I18nRemoveOpCodes extends Array<number> {
  * 3322 2222 2222 1111 1111 1110 0000 0000
  * 1098 7654 3210 9876 5432 1098 7654 3210
  *
- * ```
+ * ```ts
  * var parent = lView[opCode >>> SHIFT_PARENT];
  * var refNode = lView[((opCode & MASK_REF) >>> SHIFT_REF)];
  * var instruction = opCode & MASK_OPCODE;
@@ -43,6 +43,8 @@ export interface I18nRemoveOpCodes extends Array<number> {
  * See: `I18nCreateOpCodes` for example of usage.
  */
 export const enum IcuCreateOpCode {
+  /* tslint:disable:no-duplicate-enum-values */
+
   /**
    * Stores shift amount for bits 17-3 that contain reference index.
    */
@@ -72,6 +74,7 @@ export const enum IcuCreateOpCode {
    * Instruction to set the attribute of a node.
    */
   Attr = 0b1,
+  /* tslint:enable:no-duplicate-enum-values */
 }
 
 /**
@@ -126,6 +129,7 @@ export interface IcuCreateOpCodes
 }
 
 export const enum I18nUpdateOpCode {
+  /* tslint:disable:no-duplicate-enum-values */
   /**
    * Stores shift amount for bits 17-2 that contain reference index.
    */
@@ -151,6 +155,7 @@ export const enum I18nUpdateOpCode {
    * Instruction to update the current ICU case.
    */
   IcuUpdate = 0b11,
+  /* tslint:enable:no-duplicate-enum-values */
 }
 
 /**
@@ -199,7 +204,7 @@ export interface I18nDebug {
  * The number is shifted and encoded according to `I18nCreateOpCode`
  *
  * Pseudocode:
- * ```
+ * ```ts
  * const i18nCreateOpCodes = [
  *   10 << I18nCreateOpCode.SHIFT, "Text Node add to DOM",
  *   11 << I18nCreateOpCode.SHIFT | I18nCreateOpCode.COMMENT, "Comment Node add to DOM",
@@ -230,6 +235,7 @@ export interface I18nCreateOpCodes extends Array<number | string>, I18nDebug {
  * See `I18nCreateOpCodes`
  */
 export enum I18nCreateOpCode {
+  /* tslint:disable:no-duplicate-enum-values */
   /**
    * Number of bits to shift index so that it can be combined with the `APPEND_EAGERLY` and
    * `COMMENT`.
@@ -245,6 +251,7 @@ export enum I18nCreateOpCode {
    * If set the node should be comment (rather than a text) node.
    */
   COMMENT = 0b10,
+  /* tslint:enable:no-duplicate-enum-values */
 }
 
 /**
@@ -345,6 +352,11 @@ export interface TI18n {
    * while the Update and Create OpCodes are used at runtime.
    */
   ast: Array<I18nNode>;
+
+  /**
+   * Index of a parent TNode, which represents a host node for this i18n block.
+   */
+  parentTNodeIndex: number;
 }
 
 /**

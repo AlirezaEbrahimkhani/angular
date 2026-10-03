@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 import {
   absoluteFrom,
@@ -122,7 +122,7 @@ runInEachFileSystem(() => {
     constructor(private _canTranslate: boolean = true) {}
 
     canTranslate(relativePath: string, contents: Uint8Array) {
-      this.log.push(`canTranslate(${relativePath}, ${contents})`);
+      this.log.push(`canTranslate(${relativePath}, ${Buffer.from(contents).toString('utf8')})`);
       return this._canTranslate;
     }
 
@@ -136,7 +136,7 @@ runInEachFileSystem(() => {
       sourceLocale?: string,
     ) {
       this.log.push(
-        `translate(${rootPath}, ${relativePath}, ${contents}, ...` +
+        `translate(${rootPath}, ${relativePath}, ${Buffer.from(contents).toString('utf8')}, ...` +
           (sourceLocale !== undefined ? `, ${sourceLocale})` : ')'),
       );
     }

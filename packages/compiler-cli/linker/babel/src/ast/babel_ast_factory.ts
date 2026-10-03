@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 import {types as t} from '@babel/core';
 
@@ -16,7 +16,7 @@ import {
   SourceMapRange,
   TemplateLiteral,
   VariableDeclarationType,
-} from '../../../../src/ngtsc/translator';
+} from '../../../../src/ngtsc/translator/src/api/ast_factory';
 
 /**
  * A Babel flavored implementation of the AstFactory.
@@ -27,7 +27,7 @@ export class BabelAstFactory implements AstFactory<t.Statement, t.Expression> {
     private sourceUrl: string,
   ) {}
 
-  attachComments(statement: t.Statement, leadingComments: LeadingComment[]): void {
+  attachComments(statement: t.Statement | t.Expression, leadingComments: LeadingComment[]): void {
     // We must process the comments in reverse because `t.addComment()` will add new ones in front.
     for (let i = leadingComments.length - 1; i >= 0; i--) {
       const comment = leadingComments[i];
@@ -37,9 +37,13 @@ export class BabelAstFactory implements AstFactory<t.Statement, t.Expression> {
 
   createArrayLiteral = t.arrayExpression;
 
-  createAssignment(target: t.Expression, value: t.Expression): t.Expression {
+  createAssignment(
+    target: t.Expression,
+    operator: BinaryOperator,
+    value: t.Expression,
+  ): t.Expression {
     assert(target, isLExpression, 'must be a left hand side expression');
-    return t.assignmentExpression('=', target, value);
+    return t.assignmentExpression(operator, target, value);
   }
 
   createBinaryExpression(
@@ -52,6 +56,17 @@ export class BabelAstFactory implements AstFactory<t.Statement, t.Expression> {
       case '||':
       case '??':
         return t.logicalExpression(operator, leftOperand, rightOperand);
+      case '=':
+      case '+=':
+      case '-=':
+      case '*=':
+      case '/=':
+      case '%=':
+      case '**=':
+      case '&&=':
+      case '||=':
+      case '??=':
+        throw new Error(`Unexpected assignment operator ${operator}`);
       default:
         return t.binaryExpression(operator, leftOperand, rightOperand);
     }
@@ -119,8 +134,12 @@ export class BabelAstFactory implements AstFactory<t.Statement, t.Expression> {
 
   createIfStatement = t.ifStatement;
 
-  createDynamicImport(url: string): t.Expression {
-    return this.createCallExpression(t.import(), [t.stringLiteral(url)], false /* pure */);
+  createDynamicImport(url: string | t.Expression): t.Expression {
+    return this.createCallExpression(
+      t.import(),
+      [typeof url === 'string' ? t.stringLiteral(url) : url],
+      false /* pure */,
+    );
   }
 
   createLiteral(value: string | number | boolean | null | undefined): t.Expression {
@@ -161,19 +180,27 @@ export class BabelAstFactory implements AstFactory<t.Statement, t.Expression> {
   createReturnStatement = t.returnStatement;
 
   createTaggedTemplate(tag: t.Expression, template: TemplateLiteral<t.Expression>): t.Expression {
+    return t.taggedTemplateExpression(tag, this.createTemplateLiteral(template));
+  }
+
+  createTemplateLiteral(template: TemplateLiteral<t.Expression>): t.TemplateLiteral {
     const elements = template.elements.map((element, i) =>
       this.setSourceMapRange(
         t.templateElement(element, i === template.elements.length - 1),
         element.range,
       ),
     );
-    return t.taggedTemplateExpression(tag, t.templateLiteral(elements, template.expressions));
+    return t.templateLiteral(elements, template.expressions);
   }
 
   createThrowStatement = t.throwStatement;
 
   createTypeOfExpression(expression: t.Expression): t.Expression {
     return t.unaryExpression('typeof', expression);
+  }
+
+  createVoidExpression(expression: t.Expression): t.Expression {
+    return t.unaryExpression('void', expression);
   }
 
   createUnaryExpression = t.unaryExpression;
@@ -186,6 +213,10 @@ export class BabelAstFactory implements AstFactory<t.Statement, t.Expression> {
     return t.variableDeclaration(type, [
       t.variableDeclarator(t.identifier(variableName), initializer),
     ]);
+  }
+
+  createRegularExpressionLiteral(body: string, flags: string | null): t.Expression {
+    return t.regExpLiteral(body, flags ?? undefined);
   }
 
   setSourceMapRange<T extends t.Statement | t.Expression | t.TemplateElement>(

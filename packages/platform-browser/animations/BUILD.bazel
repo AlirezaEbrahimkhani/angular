@@ -1,10 +1,10 @@
-load("//tools:defaults.bzl", "generate_api_docs", "ng_module", "tsec_test")
+load("//tools:defaults.bzl", "generate_api_docs", "ng_project", "tsec_test")
 
 package(default_visibility = ["//visibility:public"])
 
 exports_files(["package.json"])
 
-ng_module(
+ng_project(
     name = "animations",
     srcs = glob(
         [
@@ -23,8 +23,8 @@ ng_module(
 
 tsec_test(
     name = "tsec_test",
-    target = "animations",
-    tsconfig = "//packages:tsec_config",
+    target = ":animations",
+    tsconfig = "//packages:tsconfig_build",
 )
 
 filegroup(

@@ -3,23 +3,19 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {ASTWithName, TmplAstElement} from '@angular/compiler';
-import {
-  ErrorCode as NgCompilerErrorCode,
-  ngErrorCode,
-} from '@angular/compiler-cli/src/ngtsc/diagnostics/index';
-import {
-  PotentialDirective,
-  PotentialImportMode,
-  PotentialPipe,
-} from '@angular/compiler-cli/src/ngtsc/typecheck/api';
+import {ErrorCode as NgCompilerErrorCode, ngErrorCode} from '@angular/compiler-cli';
+import {PotentialDirective, PotentialPipe} from '@angular/compiler-cli/src/ngtsc/typecheck/api';
 import ts from 'typescript';
 
 import {getTargetAtPosition, TargetNodeKind} from '../template_target';
-import {getCodeActionToImportTheDirectiveDeclaration, standaloneTraitOrNgModule} from '../ts_utils';
+import {
+  getCodeActionToImportTheDirectiveDeclaration,
+  standaloneTraitOrNgModule,
+} from '../utils/ts_utils';
 import {getDirectiveMatchesForElementTag} from '../utils';
 
 import {CodeActionContext, CodeActionMeta, FixIdForCodeFixesAll} from './utils';
@@ -44,20 +40,14 @@ export const missingImportMeta: CodeActionMeta = {
   },
 };
 
-function getCodeActions({
-  templateInfo,
-  start,
-  compiler,
-  formatOptions,
-  preferences,
-  errorCode,
-  tsLs,
-}: CodeActionContext) {
+function getCodeActions({typeCheckInfo, start, compiler, tsLs, preferences}: CodeActionContext) {
+  if (typeCheckInfo === null) {
+    return [];
+  }
+
   let codeActions: ts.CodeFixAction[] = [];
   const checker = compiler.getTemplateTypeChecker();
-  const tsChecker = compiler.programDriver.getProgram().getTypeChecker();
-
-  const target = getTargetAtPosition(templateInfo.template, start);
+  const target = getTargetAtPosition(typeCheckInfo.nodes, start);
   if (target === null) {
     return [];
   }
@@ -67,27 +57,40 @@ function getCodeActions({
     target.context.kind === TargetNodeKind.ElementInTagContext &&
     target.context.node instanceof TmplAstElement
   ) {
-    const allPossibleDirectives = checker.getPotentialTemplateDirectives(templateInfo.component);
+    const allPossibleDirectives = checker.getPotentialTemplateDirectives(
+      typeCheckInfo.declaration,
+      tsLs,
+      {
+        includeExternalModule: preferences.includeCompletionsForModuleExports ?? false,
+      },
+    );
     matches = getDirectiveMatchesForElementTag(target.context.node, allPossibleDirectives);
   } else if (
     target.context.kind === TargetNodeKind.RawExpression &&
     target.context.node instanceof ASTWithName
   ) {
     const name = (target.context.node as any).name;
-    const allPossiblePipes = checker.getPotentialPipes(templateInfo.component);
+    const allPossiblePipes = checker.getPotentialPipes(typeCheckInfo.declaration);
     matches = new Set(allPossiblePipes.filter((p) => p.name === name));
   } else {
     return [];
   }
 
   // Find all possible importable directives with a matching selector.
-  const importOn = standaloneTraitOrNgModule(checker, templateInfo.component);
+  const importOn = standaloneTraitOrNgModule(checker, typeCheckInfo.declaration);
   if (importOn === null) {
     return [];
   }
   for (const currMatch of matches.values()) {
     const currentMatchCodeAction =
-      getCodeActionToImportTheDirectiveDeclaration(compiler, importOn, currMatch) ?? [];
+      getCodeActionToImportTheDirectiveDeclaration(
+        compiler,
+        typeCheckInfo.declaration,
+        importOn,
+        currMatch,
+        tsLs,
+        preferences.includeCompletionsForModuleExports,
+      ) ?? [];
 
     codeActions.push(
       ...currentMatchCodeAction.map<ts.CodeFixAction>((action) => {

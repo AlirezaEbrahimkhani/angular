@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {Type} from '../../interface/type';
@@ -394,19 +394,3 @@ export interface ModuleWithProviders<T> {
   ngModule: Type<T>;
   providers?: Array<Provider | EnvironmentProviders>;
 }
-
-/**
- * Providers that were imported from NgModules via the `importProvidersFrom` function.
- *
- * These providers are meant for use in an application injector (or other environment injectors) and
- * should not be used in component injectors.
- *
- * This type cannot be directly implemented. It's returned from the `importProvidersFrom` function
- * and serves to prevent the extracted NgModule providers from being used in the wrong contexts.
- *
- * @see {@link importProvidersFrom}
- *
- * @publicApi
- * @deprecated replaced by `EnvironmentProviders`
- */
-export type ImportedNgModuleProviders = EnvironmentProviders;

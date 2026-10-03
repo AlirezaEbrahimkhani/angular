@@ -3,13 +3,13 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {ComponentFixture, TestBed} from '@angular/core/testing';
 
 import {ApplicationOperations} from '../../application-operations';
-import {DirectivePosition, MessageBus, PropType, PropertyQueryTypes} from 'protocol';
+import {DirectivePosition, MessageBus, PropType, PropertyQueryTypes} from '../../../../../protocol';
 
 import {DirectiveExplorerComponent} from './directive-explorer.component';
 import {DirectiveForestComponent} from './directive-forest/directive-forest.component';
@@ -17,51 +17,48 @@ import {IndexedNode} from './directive-forest/index-forest';
 
 import SpyObj = jasmine.SpyObj;
 import {By} from '@angular/platform-browser';
-import {FrameManager} from '../../frame_manager';
-import {TabUpdate} from '../tab-update';
-import {Component, EventEmitter, Input, Output, CUSTOM_ELEMENTS_SCHEMA} from '@angular/core';
+import {FrameManager} from '../../application-services/frame_manager';
+import {Component, CUSTOM_ELEMENTS_SCHEMA, output, input} from '@angular/core';
 import {ElementPropertyResolver, FlatNode} from './property-resolver/element-property-resolver';
 import {BreadcrumbsComponent} from './directive-forest/breadcrumbs/breadcrumbs.component';
 import {PropertyTabComponent} from './property-tab/property-tab.component';
+import {SignalGraphManager} from './signal-graph/signal-graph-manager';
 
 @Component({
   selector: 'ng-directive-forest',
   template: '',
-  standalone: true,
 })
 class MockDirectiveForestComponent {
-  @Input() forest: IndexedNode[] = [];
-  @Input() currentSelectedElement: IndexedNode | null = null;
-  @Input() showCommentNodes = false;
-  @Output() selectNode = new EventEmitter<IndexedNode>();
-  @Output() selectDomElement = new EventEmitter<IndexedNode>();
-  @Output() setParents = new EventEmitter<IndexedNode>();
-  @Output() highlightComponent = new EventEmitter<IndexedNode>();
-  @Output() removeComponentHighlight = new EventEmitter<void>();
-  @Output() toggleInspector = new EventEmitter<void>();
+  readonly forest = input<IndexedNode[]>([]);
+  readonly currentSelectedElement = input<IndexedNode | null>(null);
+  readonly showCommentNodes = input(false);
+  readonly selectNode = output<IndexedNode>();
+  readonly selectDomElement = output<IndexedNode>();
+  readonly setParents = output<IndexedNode>();
+  readonly highlightComponent = output<IndexedNode>();
+  readonly removeComponentHighlight = output<void>();
+  readonly toggleInspector = output<void>();
 }
 
 @Component({
   selector: 'ng-breadcrumbs',
   template: '',
-  standalone: true,
 })
 class MockBreadcrumbsComponent {
-  @Input() parents: IndexedNode[] = [];
-  @Output() handleSelect = new EventEmitter<any>();
-  @Output() mouseLeaveNode = new EventEmitter<any>();
-  @Output() mouseOverNode = new EventEmitter<any>();
+  readonly parents = input<IndexedNode[]>([]);
+  readonly handleSelect = output<any>();
+  readonly mouseLeaveNode = output<any>();
+  readonly mouseOverNode = output<any>();
 }
 
 @Component({
   selector: 'ng-property-tab',
   template: '',
-  standalone: true,
 })
 class MockPropertyTabComponent {
-  @Input() currentSelectedElement: IndexedNode | null = null;
-  @Output() inspect = new EventEmitter<{node: FlatNode; directivePosition: DirectivePosition}>();
-  @Output() viewSource = new EventEmitter<string>();
+  readonly currentSelectedElement = input<IndexedNode | null>(null);
+  readonly inspect = output<{node: FlatNode; directivePosition: DirectivePosition}>();
+  readonly viewSource = output<string>();
 }
 
 describe('DirectiveExplorerComponent', () => {
@@ -111,9 +108,21 @@ describe('DirectiveExplorerComponent', () => {
     });
 
     fixture = TestBed.overrideComponent(DirectiveExplorerComponent, {
-      remove: {imports: [DirectiveForestComponent, BreadcrumbsComponent, PropertyTabComponent]},
+      remove: {
+        imports: [DirectiveForestComponent, BreadcrumbsComponent, PropertyTabComponent],
+        providers: [SignalGraphManager],
+      },
       add: {
         imports: [MockDirectiveForestComponent, MockBreadcrumbsComponent, MockPropertyTabComponent],
+        providers: [
+          {
+            provide: SignalGraphManager,
+            useValue: {
+              listen: () => {},
+              destroy: () => {},
+            },
+          },
+        ],
       },
     }).createComponent(DirectiveExplorerComponent);
     comp = fixture.componentInstance;
@@ -157,9 +166,9 @@ describe('DirectiveExplorerComponent', () => {
       ]);
       currentSelectedElement.position = [0];
       currentSelectedElement.children = [];
-      comp.currentSelectedElement = currentSelectedElement;
+      comp.currentSelectedElement.set(currentSelectedElement);
       comp.refresh();
-      expect(comp.currentSelectedElement).toBeTruthy();
+      expect(comp.currentSelectedElement()).toBeTruthy();
       expect(messageBusMock.emit).toHaveBeenCalledWith('getLatestComponentExplorerView', [
         undefined,
       ]);
@@ -199,12 +208,12 @@ describe('DirectiveExplorerComponent', () => {
     });
 
     it('should show hydration slide toggle', () => {
-      comp.isHydrationEnabled = true;
+      fixture.componentRef.setInput('isHydrationEnabled', true);
       fixture.detectChanges();
       const toggle = fixture.debugElement.query(By.css('mat-slide-toggle'));
       expect(toggle).toBeTruthy();
 
-      comp.isHydrationEnabled = false;
+      fixture.componentRef.setInput('isHydrationEnabled', false);
       fixture.detectChanges();
       const toggle2 = fixture.debugElement.query(By.css('mat-slide-toggle'));
       expect(toggle2).toBeFalsy();
@@ -215,11 +224,11 @@ describe('DirectiveExplorerComponent', () => {
     describe('view source', () => {
       it('should not call application operations view source if no frames are detected', () => {
         const directiveName = 'test';
-        comp.currentSelectedElement = {
+        comp.currentSelectedElement.set({
           directives: [{name: directiveName}],
           position: [0],
           children: [] as IndexedNode[],
-        } as IndexedNode;
+        } as IndexedNode);
         comp.viewSource(directiveName);
         expect(applicationOperationsSpy.viewSource).toHaveBeenCalledTimes(0);
       });
@@ -229,11 +238,11 @@ describe('DirectiveExplorerComponent', () => {
         contentScriptConnected(1, 'test2', 'http://localhost:4200/url');
 
         const directiveName = 'test';
-        comp.currentSelectedElement = {
+        comp.currentSelectedElement.set({
           directives: [{name: directiveName}],
           position: [0],
           children: [] as IndexedNode[],
-        } as IndexedNode;
+        } as IndexedNode);
 
         comp.viewSource(directiveName);
 
@@ -252,11 +261,11 @@ describe('DirectiveExplorerComponent', () => {
         contentScriptConnected(1, 'test2', 'http://localhost:4200/url2');
 
         const directiveName = 'test';
-        comp.currentSelectedElement = {
+        comp.currentSelectedElement.set({
           directives: [{name: directiveName}],
           position: [0],
           children: [] as IndexedNode[],
-        } as IndexedNode;
+        } as IndexedNode);
 
         comp.viewSource(directiveName);
 
@@ -264,8 +273,8 @@ describe('DirectiveExplorerComponent', () => {
         expect(messageBusMock.emit).toHaveBeenCalledWith('enableFrameConnection', [0, 123]);
         expect(applicationOperationsSpy.viewSource).toHaveBeenCalledWith(
           [0], // current selected element position
+          {name: 'test1', id: 0, url: new URL('http://localhost:4200/url')},
           0, // directive index
-          new URL('http://localhost:4200/url'), // selected frame url
         );
       });
     });
@@ -302,7 +311,7 @@ describe('DirectiveExplorerComponent', () => {
         expect(messageBusMock.emit).toHaveBeenCalledWith('enableFrameConnection', [0, 123]);
         expect(applicationOperationsSpy.selectDomElement).toHaveBeenCalledWith(
           [0], // current selected element position
-          new URL('http://localhost:4200/url'), // selected frame url
+          {name: 'test1', id: 0, url: new URL('http://localhost:4200/url')},
         );
       });
     });
@@ -359,11 +368,11 @@ describe('DirectiveExplorerComponent', () => {
 
         expect(applicationOperationsSpy.inspect).toHaveBeenCalledTimes(1);
         expect(messageBusMock.emit).toHaveBeenCalledWith('enableFrameConnection', [0, 123]);
-        expect(applicationOperationsSpy.inspect).toHaveBeenCalledWith(
-          directivePosition,
-          ['foo'],
-          new URL('http://localhost:4200/url'), // selected frame url
-        );
+        expect(applicationOperationsSpy.inspect).toHaveBeenCalledWith(directivePosition, ['foo'], {
+          name: 'test1',
+          id: 0,
+          url: new URL('http://localhost:4200/url'),
+        });
       });
     });
   });

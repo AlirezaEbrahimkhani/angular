@@ -3,8 +3,23 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
+
+/** The JSON data file format for extracted API reference info. */
+export interface EntryCollection {
+  moduleName: string;
+
+  // The normalized name is shared so rendering and manifest use the same common field
+  normalizedModuleName: string;
+
+  moduleLabel: string;
+  entries: DocEntry[];
+
+  repo: string; // The github repo
+
+  symbols?: string[][];
+}
 
 /** Type of top-level documentation entry. */
 export enum EntryType {
@@ -89,13 +104,17 @@ export interface ConstantEntry extends DocEntry {
 }
 
 /** Documentation entity for a type alias. */
-export type TypeAliasEntry = ConstantEntry;
+export interface TypeAliasEntry extends ConstantEntry {
+  generics: GenericEntry[];
+}
 
 /** Documentation entity for a TypeScript class. */
 export interface ClassEntry extends DocEntry {
   isAbstract: boolean;
   members: MemberEntry[];
+  extends?: string;
   generics: GenericEntry[];
+  implements: string[];
 }
 
 // From an API doc perspective, class and interfaces are identical.
@@ -111,7 +130,14 @@ export interface EnumEntry extends DocEntry {
 /** Documentation entity for an Angular decorator. */
 export interface DecoratorEntry extends DocEntry {
   decoratorType: DecoratorType;
-  members: PropertyEntry[];
+  // Used when the decorator matches 1-to-1 an Interface, ex: Component, Interface
+  members: PropertyEntry[] | null;
+
+  // For all other cases, the decorator is akin to a function
+  signatures: {
+    parameters: ParameterEntry[];
+    jsdocTags: JsDocTagEntry[];
+  }[];
 }
 
 /** Documentation entity for an Angular directives and components. */
@@ -122,12 +148,13 @@ export interface DirectiveEntry extends ClassEntry {
 }
 
 export interface PipeEntry extends ClassEntry {
-  pipeName: string;
+  pipeName: string | null;
   isStandalone: boolean;
-  // TODO: add `isPure`.
+  usage: string;
+  isPure: boolean;
 }
 
-export interface FunctionEntry extends DocEntry {
+export interface FunctionSignatureMetadata extends DocEntry {
   params: ParameterEntry[];
   returnType: string;
   returnDescription?: string;
@@ -171,11 +198,16 @@ export interface ParameterEntry {
   isRestParam: boolean;
 }
 
+export type FunctionEntry = FunctionDefinitionEntry &
+  DocEntry & {
+    implementation: FunctionSignatureMetadata;
+  };
+
 /** Interface describing a function with overload signatures. */
-export interface FunctionWithOverloads {
+export interface FunctionDefinitionEntry {
   name: string;
-  signatures: FunctionEntry[];
-  implementation: FunctionEntry | null;
+  signatures: FunctionSignatureMetadata[];
+  implementation: FunctionSignatureMetadata | null;
 }
 
 /**
@@ -192,8 +224,8 @@ export interface FunctionWithOverloads {
  * constructs. Initializer APIs are explicitly denoted via a JSDoc tag.
  */
 export interface InitializerApiFunctionEntry extends DocEntry {
-  callFunction: FunctionWithOverloads;
-  subFunctions: FunctionWithOverloads[];
+  callFunction: FunctionDefinitionEntry;
+  subFunctions: FunctionDefinitionEntry[];
 
   __docsMetadata__?: {
     /**

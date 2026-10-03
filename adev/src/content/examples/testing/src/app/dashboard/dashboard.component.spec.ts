@@ -65,11 +65,10 @@ describe('DashboardComponent (shallow)', () => {
 
 /** Add TestBed providers, compile, and create DashboardComponent */
 function compileAndCreate() {
-  beforeEach(waitForAsync(() => {
+  beforeEach(async () => {
     // #docregion router-harness
     TestBed.configureTestingModule(
       Object.assign({}, appConfig, {
-        imports: [DashboardComponent],
         providers: [
           provideRouter([{path: '**', component: DashboardComponent}]),
           provideHttpClient(),
@@ -77,15 +76,12 @@ function compileAndCreate() {
           HeroService,
         ],
       }),
-    )
-      .compileComponents()
-      .then(async () => {
-        harness = await RouterTestingHarness.create();
-        comp = await harness.navigateByUrl('/', DashboardComponent);
-        TestBed.inject(HttpTestingController).expectOne('api/heroes').flush(getTestHeroes());
-      });
+    );
+    harness = await RouterTestingHarness.create();
+    comp = await harness.navigateByUrl('/', DashboardComponent);
+    TestBed.inject(HttpTestingController).expectOne('api/heroes').flush(getTestHeroes());
     // #enddocregion router-harness
-  }));
+  });
 }
 
 /**

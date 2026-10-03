@@ -3,16 +3,10 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {
-  Compiler,
-  createEnvironmentInjector,
-  EnvironmentInjector,
-  Injectable,
-  OnDestroy,
-} from '@angular/core';
+import {createEnvironmentInjector, EnvironmentInjector, Injectable, OnDestroy} from '@angular/core';
 import {from, Observable, of, Subscription} from 'rxjs';
 import {catchError, concatMap, filter, mergeAll, mergeMap} from 'rxjs/operators';
 
@@ -37,7 +31,7 @@ export abstract class PreloadingStrategy {
  *
  * Provides a preloading strategy that preloads all modules as quickly as possible.
  *
- * ```
+ * ```ts
  * RouterModule.forRoot(ROUTES, {preloadingStrategy: PreloadAllModules})
  * ```
  *
@@ -84,7 +78,6 @@ export class RouterPreloader implements OnDestroy {
 
   constructor(
     private router: Router,
-    compiler: Compiler,
     private injector: EnvironmentInjector,
     private preloadingStrategy: PreloadingStrategy,
     private loader: RouterConfigLoader,
@@ -103,7 +96,7 @@ export class RouterPreloader implements OnDestroy {
     return this.processRoutes(this.injector, this.router.config);
   }
 
-  /** @nodoc */
+  /** @docs-private */
   ngOnDestroy(): void {
     if (this.subscription) {
       this.subscription.unsubscribe();
@@ -167,7 +160,7 @@ export class RouterPreloader implements OnDestroy {
         }),
       );
       if (route.loadComponent && !route._loadedComponent) {
-        const loadComponent$ = this.loader.loadComponent(route);
+        const loadComponent$ = this.loader.loadComponent(injector, route);
         return from([recursiveLoadChildren$, loadComponent$]).pipe(mergeAll());
       } else {
         return recursiveLoadChildren$;

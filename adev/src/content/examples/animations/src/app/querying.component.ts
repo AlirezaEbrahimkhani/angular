@@ -11,14 +11,12 @@ import {
 } from '@angular/animations';
 
 import {HEROES} from './mock-heroes';
-import {NgIf} from '@angular/common';
 
 @Component({
-  standalone: true,
   selector: 'app-querying',
   template: `
     <nav>
-      <button class="toggle" (click)="show = !show" [disabled]="toggleDisabled">Toggle View</button>
+      <button type="button" class="toggle" (click)="show = !show" [disabled]="toggleDisabled">Toggle View</button>
     </nav>
     @if (show) {
       <section @query (@query.start)="toggleDisabled = true" (@query.done)="toggleDisabled = false">
@@ -35,7 +33,6 @@ import {NgIf} from '@angular/common';
     }
   `,
   styleUrls: ['./querying.component.css'],
-  imports: [NgIf],
   animations: [
     trigger('query', [
       transition(':enter', [

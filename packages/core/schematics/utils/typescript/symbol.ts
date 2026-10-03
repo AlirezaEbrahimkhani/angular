@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import ts from 'typescript';
@@ -25,8 +25,18 @@ export function getValueSymbolOfDeclaration(
 export function isReferenceToImport(
   typeChecker: ts.TypeChecker,
   node: ts.Node,
-  importSpecifier: ts.ImportSpecifier,
+  importSpecifier: ts.ImportSpecifier | null,
 ): boolean {
+  // If this function is called on an identifier (should be most cases), we can quickly rule out
+  // non-matches by comparing the identifier's string and the local name of the import specifier
+  // which saves us some calls to the type checker.
+  if (
+    importSpecifier === null ||
+    (ts.isIdentifier(node) && node.text !== importSpecifier.name.text)
+  ) {
+    return false;
+  }
+
   const nodeSymbol = typeChecker.getTypeAtLocation(node).getSymbol();
   const importSymbol = typeChecker.getTypeAtLocation(importSpecifier).getSymbol();
   return (

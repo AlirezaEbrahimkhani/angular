@@ -8,13 +8,14 @@ function MyComponent_li_2_Template(rf, ctx) {
     const $myComp$ = $r3$.ɵɵnextContext();
     const $foo$ = $r3$.ɵɵreference(1);
     $r3$.ɵɵadvance();
-    $r3$.ɵɵtextInterpolate2("", $myComp$.salutation, " ", $foo$, "");
+    $r3$.ɵɵtextInterpolate2("", $myComp$.salutation, " ", $foo$);
   }
 }
 // ...
 MyComponent.ɵcmp = /*@__PURE__*/ $r3$.ɵɵdefineComponent({
   type: MyComponent,
   selectors: [["my-component"]],
+  standalone: false,
   decls: 3,
   vars: 0,
   consts: [["foo", ""], [__AttributeMarker.Template__, "if"]],

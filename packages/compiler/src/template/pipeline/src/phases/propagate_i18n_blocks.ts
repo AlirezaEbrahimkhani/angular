@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import * as i18n from '../../../../i18n/i18n_ast';
@@ -41,6 +41,8 @@ function propagateI18nBlocksToTemplates(
         }
         i18nBlock = null;
         break;
+      case ir.OpKind.ConditionalCreate:
+      case ir.OpKind.ConditionalBranchCreate:
       case ir.OpKind.Template:
         subTemplateIndex = propagateI18nBlocksForView(
           unit.job.views.get(op.xref)!,
@@ -64,6 +66,16 @@ function propagateI18nBlocksToTemplates(
             unit.job.views.get(op.emptyView)!,
             i18nBlock,
             op.emptyI18nPlaceholder,
+            subTemplateIndex,
+          );
+        }
+        break;
+      case ir.OpKind.Projection:
+        if (op.fallbackView !== null) {
+          subTemplateIndex = propagateI18nBlocksForView(
+            unit.job.views.get(op.fallbackView)!,
+            i18nBlock,
+            op.fallbackViewI18nPlaceholder,
             subTemplateIndex,
           );
         }

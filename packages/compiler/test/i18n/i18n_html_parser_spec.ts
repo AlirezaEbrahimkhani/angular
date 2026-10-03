@@ -3,12 +3,12 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {I18NHtmlParser} from '@angular/compiler/src/i18n/i18n_html_parser';
-import {TranslationBundle} from '@angular/compiler/src/i18n/translation_bundle';
-import {HtmlParser} from '@angular/compiler/src/ml_parser/html_parser';
+import {I18NHtmlParser} from '../../src/i18n/i18n_html_parser';
+import {TranslationBundle} from '../../src/i18n/translation_bundle';
+import {HtmlParser} from '../../src/ml_parser/html_parser';
 
 describe('I18N html parser', () => {
   // https://github.com/angular/angular/issues/14322

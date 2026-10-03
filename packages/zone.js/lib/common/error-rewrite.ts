@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 /**
  * @fileoverview
@@ -143,7 +143,7 @@ export function patchError(Zone: ZoneType): void {
         // We got called with a `new` operator AND we are subclass of ZoneAwareError
         // in that case we have to copy all of our properties to `this`.
         Object.keys(error)
-          .concat('stack', 'message')
+          .concat('stack', 'message', 'cause')
           .forEach((key) => {
             const value = (error as any)[key];
             if (value !== undefined) {

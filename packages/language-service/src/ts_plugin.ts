@@ -3,12 +3,14 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import ts from 'typescript';
 
 import {
+  ApplyRefactoringProgressFn,
+  ApplyRefactoringResult,
   GetComponentLocationsForTemplateResponse,
   GetTcbResponse,
   GetTemplateLocationForComponentResponse,
@@ -36,6 +38,15 @@ export function create(info: ts.server.PluginCreateInfo): NgLanguageService {
     // Template files do not currently produce separate syntactic diagnostics and
     // are instead produced during the semantic diagnostic analysis.
     return [];
+  }
+
+  function getSuggestionDiagnostics(fileName: string): ts.DiagnosticWithLocation[] {
+    const diagnostics: ts.DiagnosticWithLocation[] = [];
+    if (!angularOnly && isTypeScriptFile(fileName)) {
+      diagnostics.push(...tsLS.getSuggestionDiagnostics(fileName));
+    }
+    diagnostics.push(...ngLS.getSuggestionDiagnostics(fileName));
+    return diagnostics;
   }
 
   function getSemanticDiagnostics(fileName: string): ts.Diagnostic[] {
@@ -118,6 +129,31 @@ export function create(info: ts.server.PluginCreateInfo): NgLanguageService {
     // See the comment in `findRenameLocations` explaining why we don't check the `angularOnly`
     // flag.
     return ngLS.getRenameInfo(fileName, position);
+  }
+
+  function getEncodedSemanticClassifications(
+    fileName: string,
+    span: ts.TextSpan,
+    format?: ts.SemanticClassificationFormat,
+  ): ts.Classifications {
+    if (angularOnly || !isTypeScriptFile(fileName)) {
+      return ngLS.getEncodedSemanticClassifications(fileName, span, format);
+    } else {
+      const ngClassifications = ngLS.getEncodedSemanticClassifications(fileName, span, format);
+      const tsClassifications = tsLS.getEncodedSemanticClassifications(fileName, span, format);
+      const spans = [...ngClassifications.spans, ...tsClassifications.spans];
+      return {
+        spans,
+        endOfLineState: tsClassifications.endOfLineState,
+      };
+    }
+  }
+
+  function getTokenTypeFromClassification(classification: number): number | undefined {
+    return ngLS.getTokenTypeFromClassification(classification);
+  }
+  function getTokenModifierFromClassification(classification: number): number {
+    return ngLS.getTokenModifierFromClassification(classification);
   }
 
   function getCompletionsAtPosition(
@@ -253,6 +289,28 @@ export function create(info: ts.server.PluginCreateInfo): NgLanguageService {
     return ngLS.getTemplateLocationForComponent(fileName, position);
   }
 
+  function getApplicableRefactors(
+    fileName: string,
+    positionOrRange: number | ts.TextRange,
+  ): ts.ApplicableRefactorInfo[] {
+    // We never forward to TS for refactors because those are not handled
+    // properly by the LSP server implementation of the extension. The extension
+    // will only take care of refactorings from Angular language service.
+    // Code actions are tied to their provider, so this is unproblematic and will
+    // not hide built-in TypeScript refactorings:
+    // https://github.com/microsoft/vscode/blob/ea4d99921cc790d49194e897021faee02a1847f7/src/vs/editor/contrib/codeAction/codeAction.ts#L30-L31
+    return ngLS.getPossibleRefactorings(fileName, positionOrRange);
+  }
+
+  function applyRefactoring(
+    fileName: string,
+    positionOrRange: number | ts.TextRange,
+    refactorName: string,
+    reportProgress: ApplyRefactoringProgressFn,
+  ): Promise<ApplyRefactoringResult | undefined> {
+    return ngLS.applyRefactoring(fileName, positionOrRange, refactorName, reportProgress);
+  }
+
   function getCodeFixesAtPosition(
     fileName: string,
     start: number,
@@ -311,6 +369,7 @@ export function create(info: ts.server.PluginCreateInfo): NgLanguageService {
     ...tsLS,
     getSyntacticDiagnostics,
     getSemanticDiagnostics,
+    getSuggestionDiagnostics,
     getTypeDefinitionAtPosition,
     getQuickInfoAtPosition,
     getDefinitionAtPosition,
@@ -318,6 +377,9 @@ export function create(info: ts.server.PluginCreateInfo): NgLanguageService {
     getReferencesAtPosition,
     findRenameLocations,
     getRenameInfo,
+    getEncodedSemanticClassifications,
+    getTokenTypeFromClassification,
+    getTokenModifierFromClassification,
     getCompletionsAtPosition,
     getCompletionEntryDetails,
     getCompletionEntrySymbol,
@@ -327,9 +389,12 @@ export function create(info: ts.server.PluginCreateInfo): NgLanguageService {
     getSignatureHelpItems,
     getOutliningSpans,
     getTemplateLocationForComponent,
+    hasCodeFixesForErrorCode: ngLS.hasCodeFixesForErrorCode.bind(ngLS),
     getCodeFixesAtPosition,
     getCombinedCodeFix,
     getTypescriptLanguageService,
+    getApplicableRefactors,
+    applyRefactoring,
   };
 }
 

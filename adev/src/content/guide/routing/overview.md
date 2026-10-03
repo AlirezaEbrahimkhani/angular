@@ -2,26 +2,31 @@
 Routing helps you change what the user sees in a single-page app.
 </docs-decorative-header>
 
-In a single-page app, you change what the user sees by showing or hiding portions of the display that correspond to particular components, rather than going out to the server to get a new page.
+Angular Router (`@angular/router`) is the official library for managing navigation in Angular applications and a core part of the framework. It is included by default in all projects created by Angular CLI.
 
-As users perform application tasks, they need to move between the different views that you have defined.
+## Why is routing necessary in a SPA?
 
-To handle the navigation from one view to the next, you use the Angular **`Router`**.
-The **`Router`** enables navigation by interpreting a browser URL as an instruction to change the view.
+When you navigate to a URL in your web browser, the browser normally makes a network request to a web server and displays the returned HTML page. When you navigate to a different URL, such as clicking a link, the browser makes another network request and replaces the entire page with a new one.
 
-## Learn about Angular routing
+A single-page application (SPA) differs in that the browser only makes a request to a web server for the first page, the `index.html`. After that, a client-side router takes over, controlling which content displays based on the URL. When a user navigates to a different URL, the router updates the page's content in place without triggering a full-page reload.
 
-<docs-card-container>
-  <docs-card title="Common routing tasks" href="guide/routing/common-router-tasks">
-    Learn how to implement many of the common tasks associated with Angular routing.
-  </docs-card>
-  <docs-card title="Routing SPA tutorial" href="guide/routing/router-tutorial">
-    A tutorial that covers patterns associated with Angular routing.
-  </docs-card>
-  <docs-card title="Creating custom route matches tutorial" href="guide/routing/routing-with-urlmatcher">
-    A tutorial that covers how to use custom matching strategy patterns with Angular routing.
-  </docs-card>
-  <docs-card title="Router reference" href="guide/routing/router-reference">
-    Describes some core router API concepts.
-  </docs-card>
-</docs-card-container>
+## How Angular manages routing
+
+Routing in Angular is comprised of three primary parts:
+
+1. **Routes** define which component displays when a user visits a specific URL.
+2. **Outlets** are placeholders in your templates that dynamically load and render components based on the active route.
+3. **Links** provide a way for users to navigate between different routes in your application without triggering a full page reload.
+
+In addition, the Angular Routing library offers additional functionality such as:
+
+- Nested routes
+- Programmatic navigation
+- Route params, queries and wildcards
+- Activated route information with `ActivatedRoute`
+- View transition effects
+- Navigation guards
+
+## Next steps
+
+Learn about how you can [define routes using Angular router](/guide/routing/define-routes).

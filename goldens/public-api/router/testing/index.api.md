@@ -4,20 +4,39 @@
 
 ```ts
 
+import { AfterContentInit } from '@angular/core';
+import { ChangeDetectorRef } from '@angular/core';
 import { ComponentFixture } from '@angular/core/testing';
+import { ComponentRef } from '@angular/core';
 import { DebugElement } from '@angular/core';
-import { ExtraOptions } from '@angular/router';
+import { ElementRef } from '@angular/core';
+import { EnvironmentInjector } from '@angular/core';
+import { EnvironmentProviders } from '@angular/core';
+import { EventEmitter } from '@angular/core';
 import * as i0 from '@angular/core';
-import * as i1 from '@angular/router';
+import { LocationStrategy } from '@angular/common';
 import { ModuleWithProviders } from '@angular/core';
-import { Routes } from '@angular/router';
+import { NgModuleFactory } from '@angular/core';
+import { Observable } from 'rxjs';
+import { OnChanges } from '@angular/core';
+import { OnDestroy } from '@angular/core';
+import { OnInit } from '@angular/core';
+import { Provider } from '@angular/core';
+import { ProviderToken } from '@angular/core';
+import { QueryList } from '@angular/core';
+import { Renderer2 } from '@angular/core';
+import { Signal } from '@angular/core';
+import { SimpleChanges } from '@angular/core';
 import { Type } from '@angular/core';
+import { WritableSignal } from '@angular/core';
 
 // @public
 export class RouterTestingHarness {
     static create(initialUrl?: string): Promise<RouterTestingHarness>;
     detectChanges(): void;
-    readonly fixture: ComponentFixture<unknown>;
+    readonly fixture: ComponentFixture<{
+        routerOutletData: WritableSignal<unknown>;
+    }>;
     navigateByUrl(url: string): Promise<null | {}>;
     navigateByUrl<T>(url: string, requiredRoutedComponentType: Type<T>): Promise<T>;
     get routeDebugElement(): DebugElement | null;
@@ -33,7 +52,7 @@ export class RouterTestingModule {
     // (undocumented)
     static ɵinj: i0.ɵɵInjectorDeclaration<RouterTestingModule>;
     // (undocumented)
-    static ɵmod: i0.ɵɵNgModuleDeclaration<RouterTestingModule, never, never, [typeof i1.RouterModule]>;
+    static ɵmod: i0.ɵɵNgModuleDeclaration<RouterTestingModule, never, never, [typeof RouterModule]>;
 }
 
 // (No @packageDocumentation comment for this package)

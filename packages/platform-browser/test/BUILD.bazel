@@ -1,29 +1,23 @@
-load("@build_bazel_rules_nodejs//:index.bzl", "js_library")
-load("//tools:defaults.bzl", "jasmine_node_test", "karma_web_test_suite", "ts_library")
-load("//tools/circular_dependency_test:index.bzl", "circular_dependency_test")
+load("//tools:defaults.bzl", "angular_jasmine_test", "copy_to_bin", "js_library", "ng_web_test_suite", "ts_project")
 
-exports_files([
-    "browser/static_assets/200.html",
-    "static_assets/test.html",
-])
-
-circular_dependency_test(
-    name = "circular_deps_test",
-    entry_point = "angular/packages/platform-browser/index.mjs",
-    deps = ["//packages/platform-browser"],
+copy_to_bin(
+    name = "static_assets",
+    srcs = [
+        "browser/static_assets/200.html",
+        "static_assets/test.html",
+    ],
+    visibility = [
+        "//packages/platform-browser-dynamic/test:__subpackages__",
+    ],
 )
 
-circular_dependency_test(
-    name = "testing_circular_deps_test",
-    entry_point = "angular/packages/platform-browser/testing/index.mjs",
-    deps = ["//packages/platform-browser/testing"],
-)
-
-ts_library(
+ts_project(
     name = "test_lib",
     testonly = True,
     srcs = glob(["**/*.ts"]),
     deps = [
+        "//:node_modules/rxjs",
+        "//:node_modules/zone.js",
         "//packages:types",
         "//packages/animations",
         "//packages/animations/browser",
@@ -35,11 +29,9 @@ ts_library(
         "//packages/core",
         "//packages/core/testing",
         "//packages/platform-browser",
-        "//packages/platform-browser-dynamic",
         "//packages/platform-browser/animations",
         "//packages/platform-browser/testing",
         "//packages/private/testing",
-        "@npm//rxjs",
     ],
 )
 
@@ -48,21 +40,20 @@ js_library(
     srcs = ["dom/events/zone_event_unpatched.init.mjs"],
 )
 
-jasmine_node_test(
+angular_jasmine_test(
     name = "test",
-    bootstrap = ["//tools/testing:node"],
-    deps = [
+    data = [
         ":test_lib",
     ],
 )
 
-karma_web_test_suite(
+ng_web_test_suite(
     name = "test_web",
     bootstrap = [
         ":zone_event_unpatched_init_lib",
     ],
-    static_files = [
-        ":static_assets/test.html",
+    data = [
+        ":static_assets",
     ],
     deps = [
         ":test_lib",

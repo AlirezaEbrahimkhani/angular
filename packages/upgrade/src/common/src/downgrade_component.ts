@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {ComponentFactory, ComponentFactoryResolver, Injector, NgZone, Type} from '@angular/core';
@@ -78,10 +78,9 @@ import {
  *   <br />
  *   (This option is only necessary when using `downgradeModule()` to downgrade more than one
  *   Angular module.)
- * - `propagateDigest?: boolean`: Whether to perform {@link ChangeDetectorRef#detectChanges} on the
- * component on every
- *   [$digest](https://docs.angularjs.org/api/ng/type/$rootScope.Scope#$digest). If set to `false`,
- *   change detection will still be performed when any of the component's inputs changes.
+ * - `propagateDigest?: boolean`: Whether to perform {@link /api/core/ChangeDetectorRef#detectChanges detectChanges} on the
+ * component on every {@link https://docs.angularjs.org/api/ng/type/$rootScope.Scope#$digest $digest}.
+ *   If set to `false`, change detection will still be performed when any of the component's inputs changes.
  *   (Default: true)
  *
  * @returns a factory function that can be used to register the component in an
@@ -105,6 +104,8 @@ export function downgradeComponent(info: {
     $injector: IInjectorService,
     $parse: IParseService,
   ): IDirective {
+    const unsafelyOverwriteSignalInputs =
+      (info as {unsafelyOverwriteSignalInputs?: boolean}).unsafelyOverwriteSignalInputs ?? false;
     // When using `downgradeModule()`, we need to handle certain things specially. For example:
     // - We always need to attach the component view to the `ApplicationRef` for it to be
     //   dirty-checked.
@@ -216,6 +217,7 @@ export function downgradeComponent(info: {
             $parse,
             componentFactory,
             wrapCallback,
+            unsafelyOverwriteSignalInputs,
           );
 
           const projectableNodes = facade.compileContents();

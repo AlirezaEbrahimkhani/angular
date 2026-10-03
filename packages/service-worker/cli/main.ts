@@ -3,10 +3,10 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {Config, Generator} from '@angular/service-worker/config';
+import {Config, Generator} from '../config';
 import * as fs from 'fs';
 import * as path from 'path';
 

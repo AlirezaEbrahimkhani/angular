@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import * as i18n from '../../../../i18n/i18n_ast';
@@ -41,12 +41,18 @@ function resolvePlaceholdersForView(
   unit: ViewCompilationUnit,
   i18nContexts: Map<ir.XrefId, ir.I18nContextOp>,
   elements: Map<ir.XrefId, ir.ElementStartOp>,
-  pendingStructuralDirective?: ir.TemplateOp,
+  pendingStructuralDirective?:
+    | ir.TemplateOp
+    | ir.ConditionalCreateOp
+    | ir.ConditionalBranchCreateOp,
 ) {
   // Track the current i18n op and corresponding i18n context op as we step through the creation
   // IR.
   let currentOps: {i18nBlock: ir.I18nStartOp; i18nContext: ir.I18nContextOp} | null = null;
-  let pendingStructuralDirectiveCloses = new Map<ir.XrefId, ir.TemplateOp>();
+  let pendingStructuralDirectiveCloses = new Map<
+    ir.XrefId,
+    ir.TemplateOp | ir.ConditionalCreateOp | ir.ConditionalBranchCreateOp
+  >();
   for (const op of unit.create) {
     switch (op.kind) {
       case ir.OpKind.I18nStart:
@@ -122,7 +128,41 @@ function resolvePlaceholdersForView(
           // Clear out the pending structural directive now that its been accounted for.
           pendingStructuralDirective = undefined;
         }
+
+        if (op.fallbackView !== null) {
+          const view = job.views.get(op.fallbackView)!;
+          if (op.fallbackViewI18nPlaceholder === undefined) {
+            resolvePlaceholdersForView(job, view, i18nContexts, elements);
+          } else {
+            if (currentOps === null) {
+              throw Error('i18n tag placeholder should only occur inside an i18n block');
+            }
+            recordTemplateStart(
+              job,
+              view,
+              op.handle.slot!,
+              op.fallbackViewI18nPlaceholder,
+              currentOps.i18nContext,
+              currentOps.i18nBlock,
+              pendingStructuralDirective,
+            );
+            resolvePlaceholdersForView(job, view, i18nContexts, elements);
+            recordTemplateClose(
+              job,
+              view,
+              op.handle.slot!,
+              op.fallbackViewI18nPlaceholder,
+              currentOps.i18nContext,
+              currentOps.i18nBlock,
+              pendingStructuralDirective,
+            );
+            pendingStructuralDirective = undefined;
+          }
+        }
+
         break;
+      case ir.OpKind.ConditionalCreate:
+      case ir.OpKind.ConditionalBranchCreate:
       case ir.OpKind.Template:
         const view = job.views.get(op.xref)!;
         if (op.i18nPlaceholder === undefined) {
@@ -251,7 +291,7 @@ function recordElementStart(
   op: ir.ElementStartOp | ir.ProjectionOp,
   i18nContext: ir.I18nContextOp,
   i18nBlock: ir.I18nStartOp,
-  structuralDirective?: ir.TemplateOp,
+  structuralDirective?: ir.TemplateOp | ir.ConditionalCreateOp | ir.ConditionalBranchCreateOp,
 ) {
   const {startName, closeName} = op.i18nPlaceholder!;
   let flags = ir.I18nParamValueFlags.ElementTag | ir.I18nParamValueFlags.OpenTag;
@@ -276,7 +316,7 @@ function recordElementClose(
   op: ir.ElementStartOp | ir.ProjectionOp,
   i18nContext: ir.I18nContextOp,
   i18nBlock: ir.I18nStartOp,
-  structuralDirective?: ir.TemplateOp,
+  structuralDirective?: ir.TemplateOp | ir.ConditionalCreateOp | ir.ConditionalBranchCreateOp,
 ) {
   const {closeName} = op.i18nPlaceholder!;
   // Self-closing tags don't have a closing tag placeholder, instead the element closing is
@@ -303,7 +343,7 @@ function recordTemplateStart(
   i18nPlaceholder: i18n.TagPlaceholder | i18n.BlockPlaceholder,
   i18nContext: ir.I18nContextOp,
   i18nBlock: ir.I18nStartOp,
-  structuralDirective?: ir.TemplateOp,
+  structuralDirective?: ir.TemplateOp | ir.ConditionalCreateOp | ir.ConditionalBranchCreateOp,
 ) {
   let {startName, closeName} = i18nPlaceholder;
   let flags = ir.I18nParamValueFlags.TemplateTag | ir.I18nParamValueFlags.OpenTag;
@@ -345,7 +385,7 @@ function recordTemplateClose(
   i18nPlaceholder: i18n.TagPlaceholder | i18n.BlockPlaceholder,
   i18nContext: ir.I18nContextOp,
   i18nBlock: ir.I18nStartOp,
-  structuralDirective?: ir.TemplateOp,
+  structuralDirective?: ir.TemplateOp | ir.ConditionalCreateOp | ir.ConditionalBranchCreateOp,
 ) {
   const {closeName} = i18nPlaceholder;
   const flags = ir.I18nParamValueFlags.TemplateTag | ir.I18nParamValueFlags.CloseTag;

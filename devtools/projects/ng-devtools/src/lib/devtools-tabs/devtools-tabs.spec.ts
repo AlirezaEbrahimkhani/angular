@@ -3,28 +3,29 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {Component} from '@angular/core';
+import {Component, signal} from '@angular/core';
 import {TestBed} from '@angular/core/testing';
 import {MatMenuModule} from '@angular/material/menu';
 import {MatTooltip} from '@angular/material/tooltip';
-import {Events, MessageBus} from 'protocol';
+import {Events, MessageBus} from '../../../../protocol';
 import {Subject} from 'rxjs';
 
 import {ApplicationEnvironment} from '../application-environment';
-import {Theme, ThemeService} from '../theme-service';
+import {ThemeService} from '../application-services/theme_service';
 
 import {DevToolsTabsComponent} from './devtools-tabs.component';
 import {TabUpdate} from './tab-update/index';
 import {DirectiveExplorerComponent} from './directive-explorer/directive-explorer.component';
-import {FrameManager} from '../frame_manager';
+import {FrameManager} from '../application-services/frame_manager';
+import {SETTINGS_MOCK} from '../application-services/test-utils/settings_mock';
+import {ThemeUi} from '../application-services/theme_types';
 
 @Component({
   selector: 'ng-directive-explorer',
   template: '',
-  standalone: true,
   imports: [MatTooltip, MatMenuModule],
 })
 export class MockDirectiveExplorerComponent {}
@@ -34,23 +35,26 @@ describe('DevtoolsTabsComponent', () => {
   let applicationEnvironmentMock: ApplicationEnvironment;
   let comp: DevToolsTabsComponent;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     messageBusMock = jasmine.createSpyObj('messageBus', ['on', 'once', 'emit', 'destroy']);
     applicationEnvironmentMock = jasmine.createSpyObj('applicationEnvironment', ['environment']);
 
-    TestBed.configureTestingModule({
+    await TestBed.configureTestingModule({
       imports: [MatTooltip, MatMenuModule, DevToolsTabsComponent],
       providers: [
         TabUpdate,
-        {provide: ThemeService, useFactory: () => ({currentTheme: new Subject<Theme>()})},
+        SETTINGS_MOCK,
+        {provide: ThemeService, useFactory: () => ({currentTheme: new Subject<ThemeUi>()})},
         {provide: MessageBus, useValue: messageBusMock},
         {provide: ApplicationEnvironment, useValue: applicationEnvironmentMock},
         {provide: FrameManager, useFactory: () => FrameManager.initialize(123)},
       ],
-    }).overrideComponent(DevToolsTabsComponent, {
-      remove: {imports: [DirectiveExplorerComponent]},
-      add: {imports: [MockDirectiveExplorerComponent]},
-    });
+    })
+      .overrideComponent(DevToolsTabsComponent, {
+        remove: {imports: [DirectiveExplorerComponent]},
+        add: {imports: [MockDirectiveExplorerComponent]},
+      })
+      .compileComponents();
 
     const fixture = TestBed.createComponent(DevToolsTabsComponent);
     comp = fixture.componentInstance;
@@ -61,11 +65,11 @@ describe('DevtoolsTabsComponent', () => {
   });
 
   it('toggles inspector flag', () => {
-    expect(comp.inspectorRunning).toBe(false);
+    expect(comp.inspectorRunning()).toBe(false);
     comp.toggleInspectorState();
-    expect(comp.inspectorRunning).toBe(true);
+    expect(comp.inspectorRunning()).toBe(true);
     comp.toggleInspectorState();
-    expect(comp.inspectorRunning).toBe(false);
+    expect(comp.inspectorRunning()).toBe(false);
   });
 
   it('emits inspector event', () => {
@@ -93,8 +97,12 @@ describe('DevtoolsTabsComponent', () => {
     expect(contentScriptConnected).toEqual(jasmine.any(Function));
     contentScriptConnected(frameId, 'name', 'http://localhost:4200/url');
     spyOn(comp.frameSelected, 'emit');
-    comp.emitSelectedFrame('1');
+    comp.emitSelectedFrame({
+      target: {
+        value: '1',
+      },
+    } as unknown as Event);
 
-    expect(comp.frameSelected.emit).toHaveBeenCalledWith(comp.frameManager.frames[0]);
+    expect(comp.frameSelected.emit).toHaveBeenCalledWith(comp.frameManager.frames()[0]);
   });
 });

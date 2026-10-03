@@ -1,13 +1,6 @@
-load("//tools:defaults.bzl", "jasmine_node_test", "ts_library")
-load("//tools/circular_dependency_test:index.bzl", "circular_dependency_test")
+load("//tools:defaults.bzl", "jasmine_test", "ts_project")
 
-circular_dependency_test(
-    name = "circular_deps_test",
-    entry_point = "angular/packages/platform-server/init/index.mjs",
-    deps = ["//packages/platform-server/init"],
-)
-
-ts_library(
+ts_project(
     name = "test_lib",
     testonly = True,
     srcs = glob(["**/*.ts"]),
@@ -17,10 +10,9 @@ ts_library(
     ],
 )
 
-jasmine_node_test(
+jasmine_test(
     name = "test",
-    bootstrap = ["//tools/testing:node_no_angular"],
-    deps = [
+    data = [
         ":test_lib",
     ],
 )

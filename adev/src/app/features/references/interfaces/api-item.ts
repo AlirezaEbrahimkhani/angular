@@ -12,7 +12,10 @@ export interface ApiItem {
   title: string;
   itemType: ApiItemType;
   url: string;
-  isFeatured?: boolean;
-  isDeprecated?: boolean;
+  deprecated: {version: string | undefined} | undefined;
+  developerPreview: {version: string | undefined} | undefined;
+  experimental: {version: string | undefined} | undefined;
+  stable: {version: string | undefined} | undefined;
+  category: string | undefined;
   groupName?: string;
 }

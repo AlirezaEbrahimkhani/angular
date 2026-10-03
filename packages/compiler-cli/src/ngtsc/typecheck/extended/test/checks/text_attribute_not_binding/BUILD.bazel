@@ -1,10 +1,11 @@
-load("//tools:defaults.bzl", "jasmine_node_test", "ts_library")
+load("//tools:defaults.bzl", "jasmine_test", "ts_project")
 
-ts_library(
+ts_project(
     name = "test_lib",
     testonly = True,
     srcs = ["text_attribute_not_binding_spec.ts"],
     deps = [
+        "//:node_modules/typescript",
         "//packages/compiler",
         "//packages/compiler-cli/src/ngtsc/core:api",
         "//packages/compiler-cli/src/ngtsc/diagnostics",
@@ -14,17 +15,13 @@ ts_library(
         "//packages/compiler-cli/src/ngtsc/typecheck/extended",
         "//packages/compiler-cli/src/ngtsc/typecheck/extended/checks/text_attribute_not_binding",
         "//packages/compiler-cli/src/ngtsc/typecheck/testing",
-        "@npm//typescript",
     ],
 )
 
-jasmine_node_test(
+jasmine_test(
     name = "test",
-    bootstrap = ["//tools/testing:node_no_angular"],
     data = [
-        "//packages/core:npm_package",
-    ],
-    deps = [
         ":test_lib",
+        "//packages/core:npm_package",
     ],
 )

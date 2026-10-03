@@ -52,12 +52,11 @@ function getResultQuote(accuracy: number) {
 
 @Component({
   selector: 'app-root',
-  standalone: true,
   imports: [CommonModule, MatSlideToggleModule, A11yModule],
   styleUrl: 'game.css',
   templateUrl: 'game.html',
 })
-export class PlaygroundComponent {
+export class Playground {
   protected readonly isGuessModalOpen = signal(false);
   protected readonly isAccessiblePanelOpen = signal(false);
   protected readonly rotateVal = signal(40);
@@ -209,7 +208,7 @@ export class PlaygroundComponent {
     for (let i = 0; i < 5; i++) {
       emojiAccuracy += roundedAcc >= 20 * (i + 1) ? '🟩' : '⬜️';
     }
-    return encodeURIComponent(
+    return encodeURI(
       `📐 ${emojiAccuracy} \n My angles are ${roundedAcc}% accurate on level ${
         this.gameStats().level
       }. \n\nHow @Angular are you? \nhttps://angular.dev/playground`,
@@ -221,4 +220,4 @@ export class PlaygroundComponent {
   }
 }
 
-bootstrapApplication(PlaygroundComponent);
+bootstrapApplication(Playground);

@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import * as o from '../../../../output/output_ast';
@@ -81,8 +81,15 @@ function generateTemporaries(
     );
     opCount++;
 
-    if (op.kind === ir.OpKind.Listener || op.kind === ir.OpKind.TwoWayListener) {
+    if (
+      op.kind === ir.OpKind.Listener ||
+      op.kind === ir.OpKind.Animation ||
+      op.kind === ir.OpKind.AnimationListener ||
+      op.kind === ir.OpKind.TwoWayListener
+    ) {
       op.handlerOps.prepend(generateTemporaries(op.handlerOps) as ir.UpdateOp[]);
+    } else if (op.kind === ir.OpKind.RepeaterCreate && op.trackByOps !== null) {
+      op.trackByOps.prepend(generateTemporaries(op.trackByOps) as ir.UpdateOp[]);
     }
   }
 

@@ -3,32 +3,31 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {animate, style, transition, trigger} from '@angular/animations';
-import {Platform} from '@angular/cdk/platform';
-import {DOCUMENT} from '@angular/common';
 import {
+  ChangeDetectionStrategy,
   Component,
   computed,
   inject,
   OnDestroy,
-  OnInit,
   signal,
-  WritableSignal,
 } from '@angular/core';
-import {Events, MessageBus} from 'protocol';
+import {Events, MessageBus} from '../../../protocol';
 import {interval} from 'rxjs';
 
-import {FrameManager} from './frame_manager';
-import {ThemeService} from './theme-service';
+import {FrameManager} from './application-services/frame_manager';
+import {ThemeService} from './application-services/theme_service';
 import {MatTooltip, MatTooltipModule} from '@angular/material/tooltip';
 import {DevToolsTabsComponent} from './devtools-tabs/devtools-tabs.component';
 import {MatProgressSpinnerModule} from '@angular/material/progress-spinner';
 import {Frame} from './application-environment';
+import {BrowserStylesService} from './application-services/browser_styles_service';
+import {MatIconRegistry} from '@angular/material/icon';
+import {SUPPORTED_APIS} from './application-providers/supported_apis';
 
-const DETECT_ANGULAR_ATTEMPTS = 10;
+const DETECT_ANGULAR_ATTEMPTS = 20;
 
 enum AngularStatus {
   /**
@@ -54,24 +53,20 @@ const LAST_SUPPORTED_VERSION = 9;
   selector: 'ng-devtools',
   templateUrl: './devtools.component.html',
   styleUrls: ['./devtools.component.scss'],
-  animations: [
-    trigger('enterAnimation', [
-      transition(':enter', [style({opacity: 0}), animate('200ms', style({opacity: 1}))]),
-      transition(':leave', [style({opacity: 1}), animate('200ms', style({opacity: 0}))]),
-    ]),
-  ],
-  standalone: true,
   imports: [DevToolsTabsComponent, MatTooltip, MatProgressSpinnerModule, MatTooltipModule],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class DevToolsComponent implements OnInit, OnDestroy {
-  AngularStatus = AngularStatus;
-  angularStatus: AngularStatus = AngularStatus.UNKNOWN;
-  angularVersion: WritableSignal<string | undefined> = signal(undefined);
-  angularIsInDevMode = true;
-  hydration: boolean = false;
-  ivy: WritableSignal<boolean | undefined> = signal(undefined);
+export class DevToolsComponent implements OnDestroy {
+  protected readonly supportedApis = inject(SUPPORTED_APIS);
 
-  supportedVersion = computed(() => {
+  readonly AngularStatus = AngularStatus;
+  readonly angularStatus = signal(AngularStatus.UNKNOWN);
+  readonly angularVersion = signal<string | undefined>(undefined);
+  readonly angularIsInDevMode = signal(true);
+  readonly hydration = signal(false);
+  readonly ivy = signal<boolean | undefined>(undefined);
+
+  readonly supportedVersion = computed(() => {
     const version = this.angularVersion();
     if (!version) {
       return false;
@@ -83,52 +78,34 @@ export class DevToolsComponent implements OnInit, OnDestroy {
     return (majorVersion >= LAST_SUPPORTED_VERSION || majorVersion === 0) && this.ivy();
   });
 
-  private readonly _firefoxStyleName = 'firefox_styles.css';
-  private readonly _chromeStyleName = 'chrome_styles.css';
   private readonly _messageBus = inject<MessageBus<Events>>(MessageBus);
-  private readonly _themeService = inject(ThemeService);
-  private readonly _platform = inject(Platform);
-  private readonly _document = inject(DOCUMENT);
   private readonly _frameManager = inject(FrameManager);
 
   private _interval$ = interval(500).subscribe((attempt) => {
     if (attempt === DETECT_ANGULAR_ATTEMPTS) {
-      this.angularStatus = AngularStatus.DOES_NOT_EXIST;
+      this.angularStatus.set(AngularStatus.DOES_NOT_EXIST);
     }
     this._messageBus.emit('queryNgAvailability');
   });
 
-  inspectFrame(frame: Frame) {
-    this._frameManager.inspectFrame(frame);
-  }
+  constructor() {
+    inject(ThemeService).initializeThemeWatcher();
+    inject(BrowserStylesService).initBrowserSpecificStyles();
+    inject(MatIconRegistry).setDefaultFontSetClass('material-symbols-outlined');
 
-  ngOnInit(): void {
-    this._themeService.initializeThemeWatcher();
-
-    this._messageBus.once('ngAvailability', ({version, devMode, ivy, hydration}) => {
-      this.angularStatus = version ? AngularStatus.EXISTS : AngularStatus.DOES_NOT_EXIST;
+    this._messageBus.once('ngAvailability', ({version, devMode, ivy, hydration, supportedApis}) => {
+      this.angularStatus.set(version ? AngularStatus.EXISTS : AngularStatus.DOES_NOT_EXIST);
       this.angularVersion.set(version);
-      this.angularIsInDevMode = devMode;
+      this.angularIsInDevMode.set(devMode);
       this.ivy.set(ivy);
       this._interval$.unsubscribe();
-      this.hydration = hydration;
+      this.hydration.set(hydration);
+      this.supportedApis.init(supportedApis);
     });
-
-    const browserStyleName = this._platform.FIREFOX
-      ? this._firefoxStyleName
-      : this._chromeStyleName;
-    this._loadStyle(browserStyleName);
   }
 
-  /** Add a style file in header based on fileName */
-  private _loadStyle(styleName: string) {
-    const head = this._document.getElementsByTagName('head')[0];
-
-    const style = this._document.createElement('link');
-    style.rel = 'stylesheet';
-    style.href = `./styles/${styleName}`;
-
-    head.appendChild(style);
+  inspectFrame(frame: Frame) {
+    this._frameManager.inspectFrame(frame);
   }
 
   ngOnDestroy(): void {

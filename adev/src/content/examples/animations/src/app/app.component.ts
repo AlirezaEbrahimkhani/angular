@@ -1,6 +1,6 @@
 // #docplaster
 // #docregion imports
-import {Component, HostBinding} from '@angular/core';
+import {Component, HostBinding, inject} from '@angular/core';
 import {
   trigger,
   state,
@@ -16,7 +16,6 @@ import {slideInAnimation} from './animations';
 
 // #docregion decorator, toggle-app-animations, define
 @Component({
-  standalone: true,
   selector: 'app-root',
   templateUrl: 'app.component.html',
   styleUrls: ['app.component.css'],
@@ -37,7 +36,7 @@ export class AppComponent {
   // #enddocregion toggle-app-animations
 
   // #docregion get-route-animations-data
-  constructor(private contexts: ChildrenOutletContexts) {}
+  private contexts = inject(ChildrenOutletContexts);
 
   getRouteAnimationData() {
     return this.contexts.getContext('primary')?.route?.snapshot?.data?.['animation'];

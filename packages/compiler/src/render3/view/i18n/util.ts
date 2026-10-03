@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 import * as i18n from '../../../i18n/i18n_ast';
 import {toPublicName} from '../../../i18n/serializers/xmb';
@@ -21,8 +21,8 @@ export function isI18nAttribute(name: string): boolean {
   return name === I18N_ATTR || name.startsWith(I18N_ATTR_PREFIX);
 }
 
-export function hasI18nAttrs(element: html.Element): boolean {
-  return element.attrs.some((attr: html.Attribute) => isI18nAttribute(attr.name));
+export function hasI18nAttrs(node: html.Element | html.Component): boolean {
+  return node.attrs.some((attr: html.Attribute) => isI18nAttribute(attr.name));
 }
 
 export function icuFromI18nMessage(message: i18n.Message) {

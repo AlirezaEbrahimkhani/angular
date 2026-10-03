@@ -3,13 +3,14 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {TableCell} from '../util';
 
 export class TableComponent {
-  private _renderCells: any[][];
+  private _renderCells!: any[][];
+
   constructor(private _rootEl: any) {}
 
   set data(data: TableCell[][]) {
@@ -26,7 +27,7 @@ export class TableComponent {
     while (this._rootEl.lastChild) {
       this._rootEl.lastChild.remove();
     }
-    this._renderCells = null;
+    this._renderCells = [];
   }
 
   private _update(data: TableCell[][]) {
@@ -55,7 +56,7 @@ export class TableComponent {
       const dataRow = data[r];
       const tr = document.createElement('tr');
       tbody.appendChild(tr);
-      const renderRow = [];
+      const renderRow: any[] = [];
       this._renderCells[r] = renderRow;
       for (let c = 0; c < dataRow.length; c++) {
         const dataCell = dataRow[c];

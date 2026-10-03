@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {
@@ -13,8 +13,8 @@ import {
   LocationStrategy,
   PathLocationStrategy,
   PlatformLocation,
-} from '@angular/common';
-import {MockLocationStrategy, MockPlatformLocation} from '@angular/common/testing';
+} from '../../index';
+import {MockLocationStrategy, MockPlatformLocation} from '../../testing';
 import {TestBed} from '@angular/core/testing';
 
 const baseUrl = '/base';

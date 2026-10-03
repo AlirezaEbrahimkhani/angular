@@ -3,12 +3,12 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {getIntParameter} from '../util';
 
-export const numViews = getIntParameter('viewCount');
+export const numViews: number = getIntParameter('viewCount');
 
 export function newArray<T = any>(size: number): T[];
 export function newArray<T>(size: number, value: T): T[];

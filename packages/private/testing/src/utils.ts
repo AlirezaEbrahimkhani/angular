@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 import {ɵresetJitOptions as resetJitOptions} from '@angular/core';
 
@@ -21,7 +21,7 @@ import {ɵresetJitOptions as resetJitOptions} from '@angular/core';
  *
  * Example:
  *
- * ```
+ * ```ts
  * describe('something', () => {
  *   it('should do something', withBody('<app-root></app-root>', async () => {
  *     const fixture = TestBed.createComponent(MyApp);
@@ -55,7 +55,7 @@ export function withBody(
  *
  * Example:
  *
- * ```
+ * ```ts
  * describe('something', () => {
  *   it('should do something', withHead('<link rel="preconnect" href="...">', async () => {
  *     // ...
@@ -86,28 +86,6 @@ function wrapTestFn(
     elementGetter().innerHTML = html;
     return blockFn();
   };
-}
-
-/**
- * Runs jasmine expectations against the provided keys for `ngDevMode`.
- *
- * Will not perform expectations for keys that are not provided.
- *
- * ```ts
- * // Expect that `ngDevMode.styleMap` is `1`, and `ngDevMode.tNode` is `3`, but we don't care
- * // about the other values.
- * expectPerfCounters({
- *   stylingMap: 1,
- *   tNode: 3,
- * })
- * ```
- */
-export function expectPerfCounters(expectedCounters: Partial<NgDevModePerfCounters>): void {
-  Object.keys(expectedCounters).forEach((key) => {
-    const expected = (expectedCounters as any)[key];
-    const actual = (ngDevMode as any)[key];
-    expect(actual).toBe(expected, `ngDevMode.${key}`);
-  });
 }
 
 let savedDocument: Document | undefined = undefined;

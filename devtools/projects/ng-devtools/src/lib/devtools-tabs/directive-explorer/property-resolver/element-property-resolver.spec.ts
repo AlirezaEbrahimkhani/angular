@@ -3,10 +3,10 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {Properties, PropType} from 'protocol';
+import {Properties, PropType} from '../../../../../../protocol';
 
 import {IndexedNode} from '../directive-forest/index-forest';
 
@@ -29,6 +29,8 @@ const mockIndexedNode: IndexedNode = {
       name: 'BazDir',
     },
   ],
+  defer: null,
+  hasNativeElement: true,
   children: [],
   element: 'foo',
   position: [0],
@@ -110,7 +112,6 @@ describe('ElementPropertyResolver', () => {
     });
     const fooController = resolver.getDirectiveController('FooCmp');
     expect(fooController).toBeTruthy();
-    // tslint:disable-next-line: no-non-null-assertion
     const fooProps = fooController!.getExpandedProperties();
     expect(fooProps).toEqual([
       {
@@ -130,7 +131,6 @@ describe('ElementPropertyResolver', () => {
 
     const barController = resolver.getDirectiveController('BarDir');
     expect(barController).toBeTruthy();
-    // tslint:disable-next-line: no-non-null-assertion
     const barProps = barController!.getExpandedProperties();
     expect(barProps).toEqual([
       {

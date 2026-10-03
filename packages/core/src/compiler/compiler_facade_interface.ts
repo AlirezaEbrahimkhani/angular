@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 /**
@@ -15,7 +15,7 @@
  *  - packages/core/src/compiler/compiler_facade_interface.ts     (replica)
  *
  * Please ensure that the two files are in sync using this command:
- * ```
+ * ```shell
  * cp packages/compiler/src/compiler_facade_interface.ts \
  *    packages/core/src/compiler/compiler_facade_interface.ts
  * ```
@@ -146,7 +146,7 @@ export interface R3DeclareDependencyMetadataFacade {
 export interface R3PipeMetadataFacade {
   name: string;
   type: Type;
-  pipeName: string;
+  pipeName: string | null;
   pure: boolean;
   isStandalone: boolean;
 }
@@ -214,8 +214,8 @@ export interface R3ComponentMetadataFacade extends R3DirectiveMetadataFacade {
   styles: string[];
   encapsulation: ViewEncapsulation;
   viewProviders: Provider[] | null;
-  interpolation?: [string, string];
   changeDetection?: ChangeDetectionStrategy;
+  hasDirectiveDependencies: boolean;
 }
 
 // TODO(legacy-partial-output-inputs): Remove in v18.
@@ -227,6 +227,7 @@ export type LegacyInputPartialMapping =
 export interface R3DeclareDirectiveFacade {
   selector?: string;
   type: Type;
+  version: string;
   inputs?: {
     [fieldName: string]:
       | {
@@ -275,7 +276,6 @@ export interface R3DeclareComponentFacade extends R3DeclareDirectiveFacade {
   animations?: OpaqueValue;
   changeDetection?: ChangeDetectionStrategy;
   encapsulation?: ViewEncapsulation;
-  interpolation?: [string, string];
   preserveWhitespaces?: boolean;
 }
 
@@ -346,6 +346,7 @@ export enum ViewEncapsulation {
   // Historically the 1 value was for `Native` encapsulation which has been removed as of v11.
   None = 2,
   ShadowDom = 3,
+  IsolatedShadowDom = 4,
 }
 
 export type ChangeDetectionStrategy = number;
@@ -391,6 +392,7 @@ export interface R3DeclareNgModuleFacade {
 export interface R3DeclarePipeFacade {
   type: Type;
   name: string;
+  version: string;
   pure?: boolean;
   isStandalone?: boolean;
 }

@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {NgForOfContext} from '@angular/common';
@@ -13,6 +13,7 @@ import {
   Component,
   Input,
   NgModule,
+  provideZoneChangeDetection,
   TemplateRef,
   ViewChild,
 } from '@angular/core';
@@ -26,6 +27,7 @@ import {newArray} from '../util';
     <ng-container *ngFor="let n of views; template: template; trackBy: trackByIndex"></ng-container>
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,
+  standalone: false,
 })
 export class InsertionComponent {
   @Input() template!: TemplateRef<NgForOfContext<any, any[]>>;
@@ -49,6 +51,7 @@ export class InsertionComponent {
     <ng-template #template>{{ trackTemplateRefresh() }}</ng-template>
     <insertion-component [template]="template" [viewCount]="viewCount"></insertion-component>
   `,
+  standalone: false,
 })
 export class DeclarationComponent {
   @Input() viewCount = 1;
@@ -65,6 +68,7 @@ export class DeclarationComponent {
 @NgModule({
   declarations: [DeclarationComponent, InsertionComponent],
   bootstrap: [DeclarationComponent],
+  providers: [provideZoneChangeDetection()],
   imports: [BrowserModule],
 })
 export class TransplantedViewsModule {}

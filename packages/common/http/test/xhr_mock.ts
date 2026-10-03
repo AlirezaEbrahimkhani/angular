@@ -3,14 +3,13 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {XhrFactory} from '@angular/common';
-import {HttpHeaders} from '@angular/common/http/src/headers';
+import {XhrFactory} from '../../index';
+import {HttpHeaders} from '../src/headers';
 
 export class MockXhrFactory implements XhrFactory {
-  // TODO(issue/24571): remove '!'.
   mock!: MockXMLHttpRequest;
 
   build(): XMLHttpRequest {
@@ -33,9 +32,7 @@ export class MockXMLHttpRequestUpload {
 export class MockXMLHttpRequest {
   // Set by method calls.
   body: any;
-  // TODO(issue/24571): remove '!'.
   method!: string;
-  // TODO(issue/24571): remove '!'.
   url!: string;
   mockHeaders: {[key: string]: string} = {};
   mockAborted: boolean = false;
@@ -43,6 +40,7 @@ export class MockXMLHttpRequest {
   // Directly settable interface.
   withCredentials: boolean = false;
   responseType: string = 'text';
+  timeout: number | undefined = undefined;
 
   // Mocked response interface.
   response: any | undefined = undefined;

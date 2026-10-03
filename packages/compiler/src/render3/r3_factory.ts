@@ -3,8 +3,9 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
+import {FactoryTarget} from '../compiler_facade_interface';
 import {InjectFlags} from '../core';
 import * as o from '../output/output_ast';
 import {Identifiers as R3} from '../render3/r3_identifiers';
@@ -64,14 +65,6 @@ export type R3FactoryMetadata =
   | R3DelegatedFnOrClassMetadata
   | R3ExpressionFactoryMetadata;
 
-export enum FactoryTarget {
-  Directive = 0,
-  Component = 1,
-  Injectable = 2,
-  Pipe = 3,
-  NgModule = 4,
-}
-
 export interface R3DependencyMetadata {
   /**
    * An expression representing the token or value to be injected.
@@ -111,7 +104,7 @@ export interface R3DependencyMetadata {
  * Construct a factory function expression for the given `R3FactoryMetadata`.
  */
 export function compileFactoryFunction(meta: R3FactoryMetadata): R3CompiledExpression {
-  const t = o.variable('t');
+  const t = o.variable('__ngFactoryType__');
   let baseFactoryVar: o.ReadVarExpr | null = null;
 
   // The type to instantiate via constructor invocation. If there is no delegated factory, meaning
@@ -139,8 +132,8 @@ export function compileFactoryFunction(meta: R3FactoryMetadata): R3CompiledExpre
   let retExpr: o.Expression | null = null;
 
   function makeConditionalFactory(nonCtorExpr: o.Expression): o.ReadVarExpr {
-    const r = o.variable('r');
-    body.push(r.set(o.NULL_EXPR).toDeclStmt());
+    const r = o.variable('__ngConditionalFactory__');
+    body.push(new o.DeclareVarStmt(r.name, o.NULL_EXPR, o.INFERRED_TYPE));
     const ctorStmt =
       ctorExpr !== null
         ? r.set(ctorExpr).toStmt()
@@ -184,7 +177,7 @@ export function compileFactoryFunction(meta: R3FactoryMetadata): R3CompiledExpre
   }
 
   let factoryFn: o.Expression = o.fn(
-    [new o.FnParam('t', o.DYNAMIC_TYPE)],
+    [new o.FnParam(t.name, o.DYNAMIC_TYPE)],
     body,
     o.INFERRED_TYPE,
     undefined,

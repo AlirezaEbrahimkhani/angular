@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {ɵgetDOM as getDOM} from '@angular/common';
@@ -14,10 +14,16 @@ import {
   forwardRef,
   Input,
   OnDestroy,
+  provideZoneChangeDetection,
   Type,
   ViewChild,
 } from '@angular/core';
 import {ComponentFixture, fakeAsync, TestBed, tick} from '@angular/core/testing';
+import {By} from '@angular/platform-browser';
+import {dispatchEvent, isNode, sortedClassList} from '@angular/private/testing';
+import {expect} from '@angular/private/testing/matchers';
+import {merge, NEVER, Observable, of, Subject, Subscription, timer} from 'rxjs';
+import {map, tap} from 'rxjs/operators';
 import {
   AbstractControl,
   AsyncValidator,
@@ -25,6 +31,7 @@ import {
   COMPOSITION_BUFFER_MODE,
   ControlValueAccessor,
   FormArray,
+  FormArrayDirective,
   FormBuilder,
   FormControl,
   FormControlDirective,
@@ -40,12 +47,7 @@ import {
   ReactiveFormsModule,
   Validator,
   Validators,
-} from '@angular/forms';
-import {By} from '@angular/platform-browser/src/dom/debug/by';
-import {dispatchEvent, sortedClassList} from '@angular/platform-browser/testing/src/browser_util';
-import {expect} from '@angular/platform-browser/testing/src/matchers';
-import {merge, NEVER, Observable, of, Subject, Subscription, timer} from 'rxjs';
-import {map, tap} from 'rxjs/operators';
+} from '../index';
 
 import {
   ControlEvent,
@@ -71,6 +73,7 @@ function createValidatorClass(selector: string) {
         multi: true,
       },
     ],
+    standalone: false,
   })
   class CustomValidator implements Validator {
     validate(control: AbstractControl) {
@@ -91,6 +94,7 @@ function createAsyncValidatorClass(selector: string) {
         multi: true,
       },
     ],
+    standalone: false,
   })
   class CustomValidator implements AsyncValidator {
     validate(control: AbstractControl) {
@@ -111,6 +115,7 @@ function createControlValueAccessor(selector: string) {
         multi: true,
       },
     ],
+    standalone: false,
   })
   class CustomValueAccessor implements ControlValueAccessor {
     writeValue(value: any) {}
@@ -139,6 +144,7 @@ describe('reactive forms integration tests', () => {
     TestBed.configureTestingModule({
       declarations: [component, ...directives],
       imports: [FormsModule, ReactiveFormsModule],
+      providers: [provideZoneChangeDetection()],
     });
     return TestBed.createComponent(component);
   }
@@ -373,6 +379,7 @@ describe('reactive forms integration tests', () => {
               <input formControlName="input">
             </form>
           `,
+        standalone: false,
       })
       class App {
         form: FormGroup;
@@ -786,6 +793,7 @@ describe('reactive forms integration tests', () => {
                 </ng-container>
               </form>
             `,
+          standalone: false,
         })
         class App {
           showAsGroup = false;
@@ -845,6 +853,7 @@ describe('reactive forms integration tests', () => {
                 </ng-container>
               </form>
             `,
+          standalone: false,
         })
         class App {
           showAsArray = false;
@@ -906,6 +915,7 @@ describe('reactive forms integration tests', () => {
                 </ng-container>
               </form>
             `,
+          standalone: false,
         })
         class App {
           showAsArray = false;
@@ -1383,6 +1393,8 @@ describe('reactive forms integration tests', () => {
       expect(fcEvents.length).toBe(0);
       fc.markAsTouched({emitEvent: false});
       expect(fcEvents.length).toBe(0);
+      fc.markAllAsDirty({emitEvent: false});
+      expect(fcEvents.length).toBe(0);
       fc.markAllAsTouched({emitEvent: false});
       expect(fcEvents.length).toBe(0);
       fc.markAsUntouched({emitEvent: false});
@@ -1415,6 +1427,59 @@ describe('reactive forms integration tests', () => {
       expect(events[3].source).toBe(form);
     });
 
+    it('formControl should not emit an event when resetting a form with emit:false', () => {
+      const fixture = initTest(FormGroupComp);
+      const form = new FormGroup({'login': new FormControl('', Validators.required)});
+      fixture.componentInstance.form = form;
+      fixture.detectChanges();
+
+      const formGroupDir = fixture.debugElement.children[0].injector.get(FormGroupDirective);
+
+      const events: ControlEvent[] = [];
+      fixture.componentInstance.form.events.subscribe((event) => events.push(event));
+
+      formGroupDir.resetForm(undefined, {emitEvent: false});
+
+      expect(events.length).toBe(1);
+      expect(events[0]).toBeInstanceOf(TouchedChangeEvent);
+    });
+
+    it('formControl should only update self', () => {
+      const fixture = initTest(FormGroupComp);
+      const form = new FormGroup({'login': new FormControl('', Validators.required)});
+      const parentForm = new FormGroup({form});
+      fixture.componentInstance.form = form;
+      fixture.detectChanges();
+
+      const formGroupDir = fixture.debugElement.children[0].injector.get(FormGroupDirective);
+
+      const events: ControlEvent[] = [];
+      fixture.componentInstance.form.events.subscribe((event) => events.push(event));
+      const parentEvents: ControlEvent[] = [];
+      parentForm.events.subscribe((event) => parentEvents.push(event));
+
+      formGroupDir.resetForm(undefined, {onlySelf: true});
+
+      expect(events.length).toBe(4);
+      expect(events[0]).toBeInstanceOf(TouchedChangeEvent);
+      expect(events[1]).toBeInstanceOf(ValueChangeEvent);
+      expect(events[2]).toBeInstanceOf(StatusChangeEvent);
+
+      // The event that matters
+      expect(events[3]).toBeInstanceOf(FormResetEvent);
+      expect(events[3].source).toBe(form);
+
+      // Self:false = parent won't receive the events
+      expect(parentEvents.length).toBe(0);
+
+      // Not only self
+      formGroupDir.resetForm({login: 'new value'});
+      expect(parentEvents.length).toBe(3);
+      expect(parentEvents[0]).toBeInstanceOf(TouchedChangeEvent);
+      expect(parentEvents[1]).toBeInstanceOf(ValueChangeEvent);
+      expect(parentEvents[2]).toBeInstanceOf(StatusChangeEvent);
+    });
+
     it('formControl should emit an event when submitting a form', () => {
       const fixture = initTest(FormGroupComp);
       const form = new FormGroup({'login': new FormControl('', Validators.required)});
@@ -1431,6 +1496,132 @@ describe('reactive forms integration tests', () => {
       expect(events[0]).toBeInstanceOf(FormSubmittedEvent);
       expect(events[0].source).toBe(form);
     });
+
+    it('formArray should emit an event when resetting a form', () => {
+      @Component({
+        selector: 'form-array-comp',
+        template: `
+          <form #formElement [formArray]="form" (ngSubmit)="event=$event">
+            @for(_ of controls; track $index) {
+              <input type="text" [formControlName]="$index">
+            }
+          </form>`,
+        standalone: false,
+      })
+      class FormArrayComp {
+        controls = [new FormControl('fish'), new FormControl('cat'), new FormControl('dog')];
+        form = new FormArray(this.controls);
+        event!: Event;
+
+        @ViewChild('formElement') formElement!: ElementRef<HTMLFormElement>;
+      }
+
+      const fixture = initTest(FormArrayComp);
+      fixture.detectChanges();
+
+      const formArrayDir = fixture.debugElement.children[0].injector.get(FormArrayDirective);
+
+      const events: ControlEvent[] = [];
+      fixture.componentInstance.form.events.subscribe((event) => events.push(event));
+      formArrayDir.resetForm();
+
+      expect(events.length).toBe(4);
+      expect(events[0]).toBeInstanceOf(TouchedChangeEvent);
+      expect(events[1]).toBeInstanceOf(ValueChangeEvent);
+      expect(events[2]).toBeInstanceOf(StatusChangeEvent);
+
+      // The event that matters
+      expect(events[3]).toBeInstanceOf(FormResetEvent);
+      expect(events[3].source).toBe(fixture.componentInstance.form);
+    });
+
+    it('formControl should emit an event when resetting it', () => {
+      const fc = new FormControl<string | null>('foo', Validators.required);
+      const fcEvents: ControlEvent[] = [];
+      fc.events.subscribe((event) => fcEvents.push(event));
+      expect(fcEvents.length).toBe(0);
+
+      fc.reset('bar');
+      expect(fcEvents.length).toBe(3);
+      expect(fcEvents[0]).toBeInstanceOf(ValueChangeEvent);
+      expect(fcEvents[1]).toBeInstanceOf(StatusChangeEvent);
+      expect(fcEvents[2]).toBeInstanceOf(FormResetEvent);
+      expect(fcEvents[2].source).toBe(fc);
+    });
+
+    it('formControl should not emit an event when resetting it with emit:false', () => {
+      const fc = new FormControl<string | null>('foo', Validators.required);
+      const fcEvents: ControlEvent[] = [];
+      fc.events.subscribe((event) => fcEvents.push(event));
+      expect(fcEvents.length).toBe(0);
+
+      fc.reset('bar', {emitEvent: false});
+      expect(fcEvents.length).toBe(0);
+    });
+
+    it('formGroup should emit a reset event when resetting it', () => {
+      const fc1 = new FormControl<string | null>('foo', Validators.required);
+      const fc2 = new FormControl<string | null>('bar', Validators.required);
+      const fg = new FormGroup({fc1, fc2});
+
+      const fgEvents: ControlEvent[] = [];
+      fg.events.subscribe((event) => fgEvents.push(event));
+      expect(fgEvents.length).toBe(0);
+
+      fg.reset({fc1: 'newFoo', fc2: 'newBar'});
+      expect(fgEvents.length).toBe(4);
+      expect(fgEvents[0]).toBeInstanceOf(TouchedChangeEvent);
+      expect(fgEvents[1]).toBeInstanceOf(ValueChangeEvent);
+      expect(fgEvents[2]).toBeInstanceOf(StatusChangeEvent);
+      expect(fgEvents[3]).toBeInstanceOf(FormResetEvent);
+      expect(fgEvents[3].source).toBe(fg);
+    });
+
+    it('formGroup should not emit a reset event when resetting it with emit:false', () => {
+      const fc1 = new FormControl<string | null>('foo', Validators.required);
+      const fc2 = new FormControl<string | null>('bar', Validators.required);
+      const fg = new FormGroup({fc1, fc2});
+
+      const fgEvents: ControlEvent[] = [];
+      fg.events.subscribe((event) => fgEvents.push(event));
+      expect(fgEvents.length).toBe(0);
+
+      fg.reset({fc1: 'newFoo', fc2: 'newBar'}, {emitEvent: false});
+      expect(fgEvents.length).toBe(1);
+      expect(fgEvents[0]).toBeInstanceOf(TouchedChangeEvent);
+    });
+
+    it('formArray should emit a reset event when resetting it', () => {
+      const fc1 = new FormControl<string | null>('foo', Validators.required);
+      const fc2 = new FormControl<string | null>('bar', Validators.required);
+      const fa = new FormArray([fc1, fc2]);
+
+      const faEvents: ControlEvent[] = [];
+      fa.events.subscribe((event) => faEvents.push(event));
+      expect(faEvents.length).toBe(0);
+
+      fa.reset(['newFoo', 'newBar']);
+      expect(faEvents.length).toBe(4);
+      expect(faEvents[0]).toBeInstanceOf(TouchedChangeEvent);
+      expect(faEvents[1]).toBeInstanceOf(ValueChangeEvent);
+      expect(faEvents[2]).toBeInstanceOf(StatusChangeEvent);
+      expect(faEvents[3]).toBeInstanceOf(FormResetEvent);
+      expect(faEvents[3].source).toBe(fa);
+    });
+
+    it('formArray should not emit a reset event when resetting it with emit:false', () => {
+      const fc1 = new FormControl<string | null>('foo', Validators.required);
+      const fc2 = new FormControl<string | null>('bar', Validators.required);
+      const fa = new FormArray([fc1, fc2]);
+
+      const faEvents: ControlEvent[] = [];
+      fa.events.subscribe((event) => faEvents.push(event));
+      expect(faEvents.length).toBe(0);
+
+      fa.reset(['newFoo', 'newBar'], {emitEvent: false});
+      expect(faEvents.length).toBe(1);
+      expect(faEvents[0]).toBeInstanceOf(TouchedChangeEvent);
+    });
   });
 
   describe('setting status classes', () => {
@@ -1440,6 +1631,7 @@ describe('reactive forms integration tests', () => {
         template: `
             <form></form>
           `,
+        standalone: false,
       })
       class FormComp {}
 
@@ -1460,6 +1652,7 @@ describe('reactive forms integration tests', () => {
               <input type="text" [formControl]="control">
             </form>
           `,
+        standalone: false,
       })
       class FormComp {
         control = new FormControl('abc');
@@ -1967,6 +2160,7 @@ describe('reactive forms integration tests', () => {
                 <input formControlName="surname">
               </form>
             `,
+          standalone: false,
         })
         class App implements OnDestroy {
           private _subscription: Subscription;
@@ -3346,6 +3540,7 @@ describe('reactive forms integration tests', () => {
                 <form [formGroup]="form">
                   <input [formControl]="control" name="control" [minlength]="minlen" [maxlength]="maxlen">
                 </form> `,
+          standalone: false,
         })
         class MinMaxLengthComponent {
           control: FormControl = new FormControl();
@@ -3435,6 +3630,7 @@ describe('reactive forms integration tests', () => {
                 <form [formGroup]="form">
                   <input type="number" [formControl]="control" name="minmaxinput" [min]="minlen" [max]="maxlen">
                 </form> `,
+          standalone: false,
         })
         class MinMaxComponent {
           control: FormControl = new FormControl();
@@ -3836,6 +4032,7 @@ describe('reactive forms integration tests', () => {
           providers: [
             {provide: NG_VALIDATORS, useExisting: forwardRef(() => NoOpValidator), multi: true},
           ],
+          standalone: false,
         })
         class NoOpValidator implements Validator {
           @Input() validatorInput = '';
@@ -3858,6 +4055,7 @@ describe('reactive forms integration tests', () => {
               multi: true,
             },
           ],
+          standalone: false,
         })
         class NoOpAsyncValidator implements AsyncValidator {
           @Input() validatorInput = '';
@@ -3878,6 +4076,7 @@ describe('reactive forms integration tests', () => {
                 <input type="text" formControlName="fooInput">
             </form>
            `,
+          standalone: false,
         })
         class NgModelNoOpValidation {
           validatorInput = 'bar';
@@ -3924,7 +4123,11 @@ describe('reactive forms integration tests', () => {
 
       const fixture = initTest(FormGroupComp);
       expect(() => fixture.detectChanges()).toThrowMatching((e: Error) => {
-        if (!e.message.includes(`formControlName must be used with a parent formGroup directive`)) {
+        if (
+          !e.message.includes(
+            `formControlName must be used with a parent formGroup or formArray directive`,
+          )
+        ) {
           return false;
         }
 
@@ -3947,7 +4150,11 @@ describe('reactive forms integration tests', () => {
 
       const fixture = initTest(FormGroupComp);
       expect(() => fixture.detectChanges()).toThrowMatching((e: Error) => {
-        if (!e.message.includes(`formControlName must be used with a parent formGroup directive`)) {
+        if (
+          !e.message.includes(
+            `formControlName must be used with a parent formGroup or formArray directive`,
+          )
+        ) {
           return false;
         }
 
@@ -3970,7 +4177,11 @@ describe('reactive forms integration tests', () => {
 
       const fixture = initTest(FormGroupComp);
       expect(() => fixture.detectChanges()).toThrowMatching((e: Error) => {
-        if (!e.message.includes(`formControlName must be used with a parent formGroup directive`)) {
+        if (
+          !e.message.includes(
+            `formControlName must be used with a parent formGroup or formArray directive`,
+          )
+        ) {
           return false;
         }
 
@@ -3995,7 +4206,7 @@ describe('reactive forms integration tests', () => {
       const fixture = initTest(FormGroupComp);
 
       expect(() => fixture.detectChanges()).toThrowError(
-        new RegExp(`formControlName must be used with a parent formGroup directive.`),
+        new RegExp(`formControlName must be used with a parent formGroup or formArray directive.`),
       );
     });
 
@@ -4612,6 +4823,7 @@ describe('reactive forms integration tests', () => {
         template: `
             <input *ngIf="visible" type="text" [formControl]="control" cva-a validators-a>
           `,
+        standalone: false,
       })
       class App {
         visible = true;
@@ -4689,6 +4901,7 @@ describe('reactive forms integration tests', () => {
             <input type="text" [formControl]="control" cva-a validators-a *ngIf="visible">
             <input type="text" [formControl]="control" cva-b>
           `,
+        standalone: false,
       })
       class App {
         visible = true;
@@ -4764,6 +4977,7 @@ describe('reactive forms integration tests', () => {
               <input type="text" formControlName="control" cva-b>
             </div>
           `,
+        standalone: false,
       })
       class App {
         visible = true;
@@ -4844,6 +5058,7 @@ describe('reactive forms integration tests', () => {
               </div>
             </ng-container>
           `,
+        standalone: false,
       })
       class App {
         visible = true;
@@ -4944,6 +5159,7 @@ describe('reactive forms integration tests', () => {
               <input *ngIf="visible" type="text" [formControl]="control" cva-a validators-a>
             </div>
           `,
+        standalone: false,
       })
       class App {
         visible = true;
@@ -5025,6 +5241,7 @@ describe('reactive forms integration tests', () => {
               </ng-container>
             </div>
           `,
+        standalone: false,
       })
       class App {
         visible = true;
@@ -5136,6 +5353,7 @@ describe('reactive forms integration tests', () => {
               </ng-container>
             </div>
           `,
+        standalone: false,
       })
       class App {
         visible = true;
@@ -5233,6 +5451,7 @@ describe('reactive forms integration tests', () => {
               </ng-container>
             </div>
           `,
+        standalone: false,
       })
       class App {
         visible = true;
@@ -5355,6 +5574,7 @@ describe('reactive forms integration tests', () => {
               </ng-container>
             </div>
           `,
+        standalone: false,
       })
       class App {
         visible = true;
@@ -5485,6 +5705,7 @@ describe('reactive forms integration tests', () => {
               </ng-container>
             </div>
           `,
+        standalone: false,
       })
       class App {
         visible = true;
@@ -5627,6 +5848,7 @@ describe('reactive forms integration tests', () => {
               </ng-container>
             </div>
           `,
+        standalone: false,
       })
       class App {
         visible = true;
@@ -5722,6 +5944,7 @@ describe('reactive forms integration tests', () => {
               </ng-container>
             </div>
           `,
+        standalone: false,
       })
       class App {
         visible = true;
@@ -5794,6 +6017,7 @@ describe('reactive forms integration tests', () => {
               <div formControlName="control"></div>
             </form>
           `,
+        standalone: false,
       })
       class NoCVAComponent {
         form = new FormGroup({control: new FormControl()});
@@ -5811,6 +6035,134 @@ describe('reactive forms integration tests', () => {
       expect(() => {
         fixture.destroy();
       }).not.toThrow();
+    });
+
+    describe('formArray support', () => {
+      @Component({
+        selector: 'form-array-comp',
+        template: `
+          <form #formElement [formArray]="form" (ngSubmit)="event=$event">
+            @for(_ of controls; track $index) {
+              <input type="text" [formControlName]="$index">
+            }
+          </form>`,
+        standalone: false,
+      })
+      class FormArrayComp {
+        controls = [new FormControl('fish'), new FormControl('cat'), new FormControl('dog')];
+        form = new FormArray(this.controls);
+        event!: Event;
+
+        @ViewChild('formElement') formElement!: ElementRef<HTMLFormElement>;
+      }
+
+      it('basic functionality ', () => {
+        const fixture = initTest(FormArrayComp);
+        fixture.detectChanges();
+        const controls = fixture.componentInstance.controls;
+
+        // model -> view
+        const inputs = fixture.debugElement.queryAll(By.css('input'));
+        expect(inputs[1].nativeElement.value).toBe('cat');
+
+        inputs[1].nativeElement.value = 'updated value';
+        dispatchEvent(inputs[1].nativeElement, 'input');
+
+        // view -> model
+        expect(controls[1].value).toEqual('updated value');
+      });
+
+      it('should add novalidate by default to form', () => {
+        const fixture = initTest(FormArrayComp);
+        fixture.detectChanges();
+
+        const form = fixture.debugElement.query(By.css('form'));
+        expect(form.nativeElement.getAttribute('novalidate')).toEqual('');
+      });
+
+      it('should mark formArray as submitted on submit event', () => {
+        const fixture = initTest(FormArrayComp);
+        const controls = [new FormControl('fish'), new FormControl('cat'), new FormControl('dog')];
+        fixture.detectChanges();
+
+        const formGroupDir = fixture.debugElement.children[0].injector.get(FormArrayDirective);
+        expect(formGroupDir.submitted).toBe(false);
+
+        const formEl = fixture.debugElement.query(By.css('form')).nativeElement;
+        dispatchEvent(formEl, 'submit');
+
+        fixture.detectChanges();
+        expect(formGroupDir.submitted).toEqual(true);
+      });
+
+      it('should reset properly', () => {
+        const fixture = initTest(FormArrayComp);
+        fixture.detectChanges();
+
+        const control = fixture.componentInstance.controls[0];
+        const input = fixture.debugElement.query(By.css('input')).nativeElement;
+
+        input.value = 'aa';
+        dispatchEvent(input, 'input');
+        fixture.detectChanges();
+
+        dispatchEvent(input, 'blur');
+        fixture.detectChanges();
+        expect(control.dirty).withContext('Expected control to be dirty on blur.').toBe(true);
+
+        control.reset();
+
+        dispatchEvent(input, 'blur');
+        fixture.detectChanges();
+
+        expect(input.value).withContext('Expected view value to reset').toEqual('');
+        expect(control.value).withContext('Expected pending value to reset.').toBe(null);
+        expect(control.dirty).withContext('Expected pending dirty value to reset.').toBe(false);
+      });
+
+      it('should support add/removing controls', () => {
+        const fixture = initTest(FormArrayComp);
+        const controls = fixture.componentInstance.controls;
+        fixture.detectChanges();
+
+        let inputs = fixture.debugElement.queryAll(By.css('input'));
+        expect(inputs.length).toBe(3);
+
+        controls.push(new FormControl('pineapple'));
+        fixture.detectChanges();
+        inputs = fixture.debugElement.queryAll(By.css('input'));
+        expect(inputs.length).toBe(4);
+
+        controls.pop();
+        controls.pop();
+        fixture.detectChanges();
+        inputs = fixture.debugElement.queryAll(By.css('input'));
+        expect(inputs.length).toBe(2);
+      });
+
+      it('should support formArrayName', () => {
+        @Component({
+          template: `
+            <form [formArray]="form">
+              <form formArrayName="1">
+                <input type="text" formControlName="animal" />
+              </form>
+            </form>
+          `,
+          standalone: false,
+        })
+        class FormWithFormArrayName {
+          public form = new FormArray([
+            new FormGroup({animal: new FormControl('')}),
+            new FormGroup({animal: new FormControl('Cat')}),
+          ]);
+        }
+
+        const fixture = initTest(FormWithFormArrayName);
+        fixture.detectChanges();
+        const input = fixture.debugElement.query(By.css('input'));
+        expect(input.nativeElement.value).toEqual('Cat');
+      });
     });
   });
 });
@@ -5861,6 +6213,7 @@ function loginIsEmptyGroupValidator(c: FormGroup) {
 @Directive({
   selector: '[login-is-empty-validator]',
   providers: [{provide: NG_VALIDATORS, useValue: loginIsEmptyGroupValidator, multi: true}],
+  standalone: false,
 })
 class LoginIsEmptyValidator {}
 
@@ -5869,6 +6222,7 @@ class LoginIsEmptyValidator {}
   providers: [
     {provide: NG_ASYNC_VALIDATORS, useExisting: forwardRef(() => UniqLoginValidator), multi: true},
   ],
+  standalone: false,
 })
 class UniqLoginValidator implements AsyncValidator {
   @Input('uniq-login-validator') expected: any;
@@ -5878,7 +6232,11 @@ class UniqLoginValidator implements AsyncValidator {
   }
 }
 
-@Component({selector: 'form-control-comp', template: `<input type="text" [formControl]="control">`})
+@Component({
+  selector: 'form-control-comp',
+  template: `<input type="text" [formControl]="control">`,
+  standalone: false,
+})
 class FormControlComp {
   control!: FormControl;
 }
@@ -5889,6 +6247,7 @@ class FormControlComp {
     <form [formGroup]="form" (ngSubmit)="event=$event">
       <input type="text" formControlName="login">
     </form>`,
+  standalone: false,
 })
 class FormGroupComp {
   control!: FormControl;
@@ -5906,6 +6265,7 @@ class FormGroupComp {
       </div>
       <input *ngIf="form.contains('email')" formControlName="email">
     </form>`,
+  standalone: false,
 })
 class NestedFormGroupNameComp {
   form!: FormGroup;
@@ -5921,6 +6281,7 @@ class NestedFormGroupNameComp {
         </div>
       </div>
      </form>`,
+  standalone: false,
 })
 class FormArrayComp {
   form!: FormGroup;
@@ -5936,6 +6297,7 @@ class FormArrayComp {
       </div>
     </form>
   `,
+  standalone: false,
 })
 class NestedFormArrayNameComp {
   form!: FormGroup;
@@ -5952,6 +6314,7 @@ class NestedFormArrayNameComp {
         </div>
       </div>
      </div>`,
+  standalone: false,
 })
 class FormArrayNestedGroup {
   form!: FormGroup;
@@ -5965,6 +6328,7 @@ class FormArrayNestedGroup {
     <input type="text" formControlName="login" [(ngModel)]="login">
     <input type="text" formControlName="password" [(ngModel)]="password">
    </form>`,
+  standalone: false,
 })
 class FormGroupNgModel {
   form!: FormGroup;
@@ -5978,6 +6342,7 @@ class FormGroupNgModel {
     <input type="text" [formControl]="control" [(ngModel)]="login">
     <input type="text" [formControl]="passwordControl" [(ngModel)]="password">
   `,
+  standalone: false,
 })
 class FormControlNgModel {
   control!: FormControl;
@@ -5995,6 +6360,7 @@ class FormControlNgModel {
       <input type="text" formControlName="max" maxlength="3">
       <input type="text" formControlName="pattern" pattern=".{3,}">
    </div>`,
+  standalone: false,
 })
 class LoginIsEmptyWrapper {
   form!: FormGroup;
@@ -6009,6 +6375,7 @@ class LoginIsEmptyWrapper {
       <input name="maxlength" type="text" formControlName="max" [maxlength]="maxLen">
       <input name="pattern" type="text" formControlName="pattern" [pattern]="pattern">
    </div>`,
+  standalone: false,
 })
 class ValidationBindingsForm {
   form!: FormGroup;
@@ -6021,6 +6388,7 @@ class ValidationBindingsForm {
 @Component({
   selector: 'form-control-checkbox-validator',
   template: `<input type="checkbox" [formControl]="control">`,
+  standalone: false,
 })
 class FormControlCheckboxRequiredValidator {
   control!: FormControl;
@@ -6032,6 +6400,7 @@ class FormControlCheckboxRequiredValidator {
   <div [formGroup]="form">
     <input type="text" formControlName="login" uniq-login-validator="expected">
   </div>`,
+  standalone: false,
 })
 class UniqLoginWrapper {
   form!: FormGroup;
@@ -6044,6 +6413,7 @@ class UniqLoginWrapper {
       <input type="text" formControlName="login">
     </div>
   `,
+  standalone: false,
 })
 class FormGroupWithValidators {
   form = new FormGroup({login: new FormControl('INITIAL')});
@@ -6056,6 +6426,7 @@ class FormGroupWithValidators {
       <input type="text" formControlName="login">
     </div>
   `,
+  standalone: false,
 })
 class FormControlWithAsyncValidatorFn {
   control = new FormControl('INITIAL');
@@ -6075,6 +6446,7 @@ class FormControlWithAsyncValidatorFn {
       <input type="text" formControlName="login" validators-a>
     </div>
   `,
+  standalone: false,
 })
 class FormControlWithValidators {
   form: FormGroup = new FormGroup({login: new FormControl('INITIAL')});
@@ -6090,6 +6462,7 @@ class FormControlWithValidators {
       <input type="text" formControlName="login" validators-a id="login">
     </div>
   `,
+  standalone: false,
 })
 class MultipleFormControls {
   control = new FormControl('a');
@@ -6106,6 +6479,7 @@ class MultipleFormControls {
       </ng-container>
     </div>
   `,
+  standalone: false,
 })
 class NgForFormControlWithValidators {
   form: FormGroup = new FormGroup({login: new FormControl('a')});
@@ -6118,6 +6492,7 @@ class NgForFormControlWithValidators {
     <div [formGroup]="form">
       <input type="number" formControlName="pin" [max]="max" [min]="min">
    </div>`,
+  standalone: false,
 })
 class MinMaxFormControlNameComp {
   control!: FormControl;
@@ -6132,6 +6507,7 @@ class MinMaxFormControlNameComp {
     <div [formGroup]="form">
       <input type="number" [formControl]="control" [max]="max" [min]="min">
    </div>`,
+  standalone: false,
 })
 class MinMaxFormControlComp {
   control!: FormControl;
@@ -6148,6 +6524,7 @@ class MinMaxFormControlComp {
       </form>
     </dialog>
   `,
+  standalone: false,
 })
 class NativeDialogForm {
   @ViewChild('form') form!: ElementRef<HTMLFormElement>;
@@ -6162,6 +6539,7 @@ class NativeDialogForm {
     <input type="radio" formControlName="choice" value="two"> Two
   </form>
   `,
+  standalone: false,
 })
 export class RadioForm {
   form = new FormGroup({

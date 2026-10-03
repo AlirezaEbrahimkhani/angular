@@ -3,19 +3,18 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 import {
   animate,
   AnimationEvent,
   AnimationMetadata,
   AnimationTriggerMetadata,
-  NoopAnimationPlayer,
   state,
   style,
   transition,
   trigger,
-} from '@angular/animations';
+} from '../../../src/animations';
 
 import {TriggerAst} from '../../src/dsl/animation_ast';
 import {buildAnimationAst} from '../../src/dsl/animation_ast_builder';
@@ -30,6 +29,7 @@ import {
   TransitionAnimationPlayer,
 } from '../../src/render/transition_animation_engine';
 import {MockAnimationDriver, MockAnimationPlayer} from '../../testing/src/mock_animation_driver';
+import {isNode} from '@angular/private/testing';
 
 const DEFAULT_NAMESPACE_ID = 'id';
 
@@ -49,7 +49,7 @@ const DEFAULT_NAMESPACE_ID = 'id';
     });
 
     afterEach(() => {
-      document.body.removeChild(element);
+      element.remove();
     });
 
     function makeEngine(normalizer?: AnimationStyleNormalizer) {

@@ -3,11 +3,10 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {ApplicationRef, Component, NgModule} from '@angular/core';
-import {BrowserModule} from '@angular/platform-browser';
+import {ApplicationRef, Component} from '@angular/core';
 
 export interface RowData {
   id: number;
@@ -39,7 +38,7 @@ export interface RowData {
 })
 export class JsWebFrameworksComponent {
   data: Array<RowData> = [];
-  selected: number | null;
+  selected: number | null = null;
 
   constructor(private _appRef: ApplicationRef) {}
 
@@ -59,10 +58,3 @@ export class JsWebFrameworksComponent {
     this._appRef.tick();
   }
 }
-
-@NgModule({
-  imports: [BrowserModule],
-  declarations: [JsWebFrameworksComponent],
-  bootstrap: [JsWebFrameworksComponent],
-})
-export class JsWebFrameworksModule {}

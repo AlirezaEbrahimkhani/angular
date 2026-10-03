@@ -3,10 +3,10 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {Events, MessageBus, Parameters} from 'protocol';
+import {Events, MessageBus, Parameters} from '../../../protocol';
 
 type AnyEventCallback<Ev> = <E extends keyof Ev>(topic: E, args: Parameters<Ev[E]>) => void;
 
@@ -74,6 +74,7 @@ export class SamePageMessageBus extends MessageBus<Events> {
         topic,
         args,
         __ignore_ng_zone__: true,
+        __NG_DEVTOOLS_EVENT__: true,
       },
       '*',
     );

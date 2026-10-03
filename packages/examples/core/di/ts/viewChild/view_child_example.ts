@@ -3,39 +3,46 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 // #docregion Component
-import {Component, Directive, Input, ViewChild} from '@angular/core';
+import {Component, Directive, input, signal, ViewChild} from '@angular/core';
 
-@Directive({selector: 'pane'})
+@Directive({
+  selector: 'pane',
+  standalone: false,
+})
 export class Pane {
-  @Input() id!: string;
+  id = input.required<string>();
 }
 
 @Component({
   selector: 'example-app',
   template: `
-    <pane id="1" *ngIf="shouldShow"></pane>
-    <pane id="2" *ngIf="!shouldShow"></pane>
+    @if(shouldShow()) {
+      <pane id="1"/>
+    } @else {
+      <pane id="2"/>
+    }
 
     <button (click)="toggle()">Toggle</button>
 
-    <div>Selected: {{ selectedPane }}</div>
+    <div>Selected: {{ selectedPane() }}</div>
   `,
+  standalone: false,
 })
 export class ViewChildComp {
   @ViewChild(Pane)
   set pane(v: Pane) {
     setTimeout(() => {
-      this.selectedPane = v.id;
+      this.selectedPane.set(v.id());
     }, 0);
   }
-  selectedPane: string = '';
-  shouldShow = true;
+  selectedPane = signal('');
+  shouldShow = signal(true);
   toggle() {
-    this.shouldShow = !this.shouldShow;
+    this.shouldShow.update((shouldShow) => !shouldShow);
   }
 }
 // #enddocregion

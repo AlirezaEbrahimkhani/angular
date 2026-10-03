@@ -1,10 +1,11 @@
-load("//tools:defaults.bzl", "jasmine_node_test", "ts_library")
+load("//tools:defaults.bzl", "jasmine_test", "ts_project")
 
-ts_library(
+ts_project(
     name = "test_lib",
     testonly = True,
     srcs = glob(["*.ts"]),
     deps = [
+        "//:node_modules/typescript",
         "//packages/compiler",
         "//packages/compiler-cli/src/ngtsc/core:api",
         "//packages/compiler-cli/src/ngtsc/diagnostics",
@@ -13,20 +14,18 @@ ts_library(
         "//packages/compiler-cli/src/ngtsc/testing",
         "//packages/compiler-cli/src/ngtsc/typecheck/api",
         "//packages/language-service/src",
+        "//packages/language-service/src/utils",
         "//packages/language-service/testing",
-        "@npm//typescript",
     ],
 )
 
-jasmine_node_test(
+jasmine_test(
     name = "test",
     data = [
+        ":test_lib",
+        "//:node_modules/rxjs",
         "//packages/compiler-cli/src/ngtsc/testing/fake_common:npm_package",
         "//packages/core:npm_package",
-        "@npm//rxjs",
     ],
-    shard_count = 4,
-    deps = [
-        ":test_lib",
-    ],
+    shard_count = 8,
 )

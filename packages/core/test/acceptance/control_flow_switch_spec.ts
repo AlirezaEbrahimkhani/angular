@@ -3,14 +3,21 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {ChangeDetectorRef, Component, inject, Pipe, PipeTransform} from '@angular/core';
-import {TestBed} from '@angular/core/testing';
+import {
+  ChangeDetectorRef,
+  Component,
+  inject,
+  Pipe,
+  PipeTransform,
+  provideZoneChangeDetection,
+} from '../../src/core';
+import {TestBed} from '../../testing';
 
 // Basic shared pipe used during testing.
-@Pipe({name: 'multiply', pure: true, standalone: true})
+@Pipe({name: 'multiply', pure: true})
 class MultiplyPipe implements PipeTransform {
   transform(value: number, amount: number) {
     return value * amount;
@@ -18,9 +25,13 @@ class MultiplyPipe implements PipeTransform {
 }
 
 describe('control flow - switch', () => {
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      providers: [provideZoneChangeDetection()],
+    });
+  });
   it('should show a template based on a matching case', () => {
     @Component({
-      standalone: true,
       template: `
           @switch (case) {
             @case (0) {case 0}
@@ -49,7 +60,6 @@ describe('control flow - switch', () => {
 
   it('should be able to use a pipe in the switch expression', () => {
     @Component({
-      standalone: true,
       imports: [MultiplyPipe],
       template: `
           @switch (case | multiply:2) {
@@ -79,7 +89,6 @@ describe('control flow - switch', () => {
 
   it('should be able to use a pipe in the case expression', () => {
     @Component({
-      standalone: true,
       imports: [MultiplyPipe],
       template: `
           @switch (case) {
@@ -108,7 +117,7 @@ describe('control flow - switch', () => {
   });
 
   it('should be able to use pipes injecting ChangeDetectorRef in switch blocks', () => {
-    @Pipe({name: 'test', standalone: true})
+    @Pipe({name: 'test'})
     class TestPipe implements PipeTransform {
       changeDetectorRef = inject(ChangeDetectorRef);
 
@@ -118,7 +127,6 @@ describe('control flow - switch', () => {
     }
 
     @Component({
-      standalone: true,
       template: `
         @switch (case | test) {
           @case (0 | test) {Zero}
@@ -138,7 +146,6 @@ describe('control flow - switch', () => {
 
   it('should project @switch cases into appropriate slots when selectors are used for all cases', () => {
     @Component({
-      standalone: true,
       selector: 'test',
       template:
         'case 1: (<ng-content select="[case_1]"/>), case 2: (<ng-content select="[case_2]"/>), case 3: (<ng-content select="[case_3]"/>)',
@@ -146,7 +153,6 @@ describe('control flow - switch', () => {
     class TestComponent {}
 
     @Component({
-      standalone: true,
       imports: [TestComponent],
       template: `
             <test>
@@ -183,7 +189,6 @@ describe('control flow - switch', () => {
 
   it('should project @switch cases into appropriate slots when selectors are used for some cases', () => {
     @Component({
-      standalone: true,
       selector: 'test',
       template:
         'case 1: (<ng-content select="[case_1]"/>), case 2: (<ng-content />), case 3: (<ng-content select="[case_3]"/>)',
@@ -191,7 +196,6 @@ describe('control flow - switch', () => {
     class TestComponent {}
 
     @Component({
-      standalone: true,
       imports: [TestComponent],
       template: `
           <test>

@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {SecurityContext} from '../../../../../core';
@@ -11,12 +11,15 @@ import * as i18n from '../../../../../i18n/i18n_ast';
 import * as o from '../../../../../output/output_ast';
 import {ParseSourceSpan} from '../../../../../parse_util';
 import {
+  AnimationKind,
   BindingKind,
+  DeferOpModifierKind,
   DeferTriggerKind,
   I18nContextKind,
   I18nParamValueFlags,
   Namespace,
   OpKind,
+  TDeferDetailsFlags,
   TemplateKind,
 } from '../enums';
 import {SlotHandle} from '../handle';
@@ -30,7 +33,7 @@ import {
 
 import {ListEndOp, NEW_OP, StatementOp, VariableOp} from './shared';
 
-import type {UpdateOp} from './update';
+import type {Interpolation, UpdateOp} from './update';
 
 /**
  * An operation usable on the creation side of the IR.
@@ -58,6 +61,8 @@ export type CreateOp =
   | ExtractedAttributeOp
   | DeferOp
   | DeferOnOp
+  | ConditionalCreateOp
+  | ConditionalBranchCreateOp
   | RepeaterCreateOp
   | I18nMessageOp
   | I18nOp
@@ -68,7 +73,11 @@ export type CreateOp =
   | IcuPlaceholderOp
   | I18nContextOp
   | I18nAttributesOp
-  | DeclareLetOp;
+  | DeclareLetOp
+  | AnimationListenerOp
+  | AnimationStringOp
+  | AnimationOp
+  | SourceLocationOp;
 
 /**
  * An operation representing the creation of an element or container.
@@ -79,7 +88,9 @@ export type ElementOrContainerOps =
   | ContainerOp
   | ContainerStartOp
   | TemplateOp
-  | RepeaterCreateOp;
+  | RepeaterCreateOp
+  | ConditionalCreateOp
+  | ConditionalBranchCreateOp;
 
 /**
  * The set of OpKinds that represent the creation of an element or container
@@ -91,6 +102,8 @@ const elementContainerOpKinds = new Set([
   OpKind.ContainerStart,
   OpKind.Template,
   OpKind.RepeaterCreate,
+  OpKind.ConditionalCreate,
+  OpKind.ConditionalBranchCreate,
 ]);
 
 /**
@@ -163,7 +176,13 @@ export interface ElementOrContainerOpBase extends Op<CreateOp>, ConsumesSlotOpTr
 }
 
 export interface ElementOpBase extends ElementOrContainerOpBase {
-  kind: OpKind.Element | OpKind.ElementStart | OpKind.Template | OpKind.RepeaterCreate;
+  kind:
+    | OpKind.Element
+    | OpKind.ElementStart
+    | OpKind.Template
+    | OpKind.RepeaterCreate
+    | OpKind.ConditionalCreate
+    | OpKind.ConditionalBranchCreate;
 
   /**
    * The HTML tag name for this element.
@@ -294,6 +313,130 @@ export function createTemplateOp(
 }
 
 /**
+ * An op that creates a conditional (e.g. a if or switch).
+ */
+export interface ConditionalCreateOp extends ElementOpBase {
+  kind: OpKind.ConditionalCreate;
+
+  templateKind: TemplateKind;
+
+  /**
+   * The number of declaration slots used by this template, or `null` if slots have not yet been
+   * assigned.
+   */
+  decls: number | null;
+
+  /**
+   * The number of binding variable slots used by this template, or `null` if binding variables have
+   * not yet been counted.
+   */
+  vars: number | null;
+
+  /**
+   * Suffix to add to the name of the generated template function.
+   */
+  functionNameSuffix: string;
+
+  /**
+   * The i18n placeholder data associated with this template.
+   */
+  i18nPlaceholder?: i18n.TagPlaceholder | i18n.BlockPlaceholder;
+}
+
+export function createConditionalCreateOp(
+  xref: XrefId,
+  templateKind: TemplateKind,
+  tag: string | null,
+  functionNameSuffix: string,
+  namespace: Namespace,
+  i18nPlaceholder: i18n.TagPlaceholder | i18n.BlockPlaceholder | undefined,
+  startSourceSpan: ParseSourceSpan,
+  wholeSourceSpan: ParseSourceSpan,
+): ConditionalCreateOp {
+  return {
+    kind: OpKind.ConditionalCreate,
+    xref,
+    templateKind,
+    attributes: null,
+    tag,
+    handle: new SlotHandle(),
+    functionNameSuffix,
+    decls: null,
+    vars: null,
+    localRefs: [],
+    nonBindable: false,
+    namespace,
+    i18nPlaceholder,
+    startSourceSpan,
+    wholeSourceSpan,
+    ...TRAIT_CONSUMES_SLOT,
+    ...NEW_OP,
+  };
+}
+
+/**
+ * An op that creates a conditional branch (e.g. an else or case).
+ */
+export interface ConditionalBranchCreateOp extends ElementOpBase {
+  kind: OpKind.ConditionalBranchCreate;
+
+  templateKind: TemplateKind;
+
+  /**
+   * The number of declaration slots used by this template, or `null` if slots have not yet been
+   * assigned.
+   */
+  decls: number | null;
+
+  /**
+   * The number of binding variable slots used by this template, or `null` if binding variables have
+   * not yet been counted.
+   */
+  vars: number | null;
+
+  /**
+   * Suffix to add to the name of the generated template function.
+   */
+  functionNameSuffix: string;
+
+  /**
+   * The i18n placeholder data associated with this template.
+   */
+  i18nPlaceholder?: i18n.TagPlaceholder | i18n.BlockPlaceholder;
+}
+
+export function createConditionalBranchCreateOp(
+  xref: XrefId,
+  templateKind: TemplateKind,
+  tag: string | null,
+  functionNameSuffix: string,
+  namespace: Namespace,
+  i18nPlaceholder: i18n.TagPlaceholder | i18n.BlockPlaceholder | undefined,
+  startSourceSpan: ParseSourceSpan,
+  wholeSourceSpan: ParseSourceSpan,
+): ConditionalBranchCreateOp {
+  return {
+    kind: OpKind.ConditionalBranchCreate,
+    xref,
+    templateKind,
+    attributes: null,
+    tag,
+    handle: new SlotHandle(),
+    functionNameSuffix,
+    decls: null,
+    vars: null,
+    localRefs: [],
+    nonBindable: false,
+    namespace,
+    i18nPlaceholder,
+    startSourceSpan,
+    wholeSourceSpan,
+    ...TRAIT_CONSUMES_SLOT,
+    ...NEW_OP,
+  };
+}
+
+/**
  * An op that creates a repeater (e.g. a for loop).
  */
 export interface RepeaterCreateOp extends ElementOpBase, ConsumesVarsTrait {
@@ -320,6 +463,12 @@ export interface RepeaterCreateOp extends ElementOpBase, ConsumesVarsTrait {
    * The track expression to use while iterating.
    */
   track: o.Expression;
+
+  /**
+   * Some kinds of expressions (e.g. safe reads or nullish coalescing) require additional ops
+   * in order to work. This OpList keeps track of those ops, if they're necessary.
+   */
+  trackByOps: OpList<UpdateOp> | null;
 
   /**
    * `null` initially, then an `o.Expression`. Might be a track expression, or might be a reference
@@ -390,6 +539,7 @@ export function createRepeaterCreateOp(
     emptyView,
     track,
     trackByFn: null,
+    trackByOps: null,
     tag,
     emptyTag,
     emptyAttributes: null,
@@ -558,6 +708,140 @@ export function createTextOp(
 }
 
 /**
+ * A logical operation representing binding to an animation in the create IR.
+ */
+export interface AnimationStringOp extends Op<CreateOp> {
+  kind: OpKind.AnimationString;
+
+  target: XrefId;
+
+  /**
+   * The name of the extracted attribute.
+   */
+  name: string;
+
+  /**
+   * Kind of animation (enter or leave).
+   */
+  animationKind: AnimationKind;
+
+  /**
+   * Expression which is bound to the property.
+   */
+  expression: o.Expression | Interpolation;
+
+  i18nMessage: XrefId | null;
+
+  /**
+   * The security context of the binding.
+   */
+  securityContext: SecurityContext | SecurityContext[];
+
+  /**
+   * The sanitizer for this property.
+   */
+  sanitizer: o.Expression | null;
+
+  sourceSpan: ParseSourceSpan;
+}
+
+/**
+ * Create an `AnimationOp`.
+ */
+export function createAnimationStringOp(
+  name: string,
+  target: XrefId,
+  animationKind: AnimationKind,
+  expression: o.Expression | Interpolation,
+  securityContext: SecurityContext | SecurityContext[],
+  sourceSpan: ParseSourceSpan,
+): AnimationStringOp {
+  return {
+    kind: OpKind.AnimationString,
+    name,
+    target,
+    animationKind,
+    expression,
+    i18nMessage: null,
+    securityContext,
+    sanitizer: null,
+    sourceSpan,
+    ...NEW_OP,
+  };
+}
+
+/**
+ * A logical operation representing binding to an animation in the create IR.
+ */
+export interface AnimationOp extends Op<CreateOp> {
+  kind: OpKind.Animation;
+
+  target: XrefId;
+
+  /**
+   * The name of the extracted attribute.
+   */
+  name: string;
+
+  /**
+   * Kind of animation (enter or leave).
+   */
+  animationKind: AnimationKind;
+
+  /**
+   * A list of `UpdateOp`s representing the body of the callback function.
+   */
+  handlerOps: OpList<UpdateOp>;
+
+  /**
+   * Name of the function
+   */
+  handlerFnName: string | null;
+
+  i18nMessage: XrefId | null;
+
+  /**
+   * The security context of the binding.
+   */
+  securityContext: SecurityContext | SecurityContext[];
+
+  /**
+   * The sanitizer for this property.
+   */
+  sanitizer: o.Expression | null;
+
+  sourceSpan: ParseSourceSpan;
+}
+
+/**
+ * Create an `AnimationOp`.
+ */
+export function createAnimationOp(
+  name: string,
+  target: XrefId,
+  animationKind: AnimationKind,
+  callbackOps: Array<UpdateOp>,
+  securityContext: SecurityContext | SecurityContext[],
+  sourceSpan: ParseSourceSpan,
+): AnimationOp {
+  const handlerOps = new OpList<UpdateOp>();
+  handlerOps.push(callbackOps);
+  return {
+    kind: OpKind.Animation,
+    name,
+    target,
+    animationKind,
+    handlerOps,
+    handlerFnName: null,
+    i18nMessage: null,
+    securityContext,
+    sanitizer: null,
+    sourceSpan,
+    ...NEW_OP,
+  };
+}
+
+/**
  * Logical operation representing an event listener on an element in the creation IR.
  */
 export interface ListenerOp extends Op<CreateOp> {
@@ -600,12 +884,12 @@ export interface ListenerOp extends Op<CreateOp> {
   /**
    * Whether the listener is listening for an animation event.
    */
-  isAnimationListener: boolean;
+  isLegacyAnimationListener: boolean;
 
   /**
    * The animation phase of the listener.
    */
-  animationPhase: string | null;
+  legacyAnimationPhase: string | null;
 
   /**
    * Some event listeners can have a target, e.g. in `document:dragover`.
@@ -624,7 +908,7 @@ export function createListenerOp(
   name: string,
   tag: string | null,
   handlerOps: Array<UpdateOp>,
-  animationPhase: string | null,
+  legacyAnimationPhase: string | null,
   eventTarget: string | null,
   hostListener: boolean,
   sourceSpan: ParseSourceSpan,
@@ -641,8 +925,91 @@ export function createListenerOp(
     handlerOps: handlerList,
     handlerFnName: null,
     consumesDollarEvent: false,
-    isAnimationListener: animationPhase !== null,
-    animationPhase,
+    isLegacyAnimationListener: legacyAnimationPhase !== null,
+    legacyAnimationPhase: legacyAnimationPhase,
+    eventTarget,
+    sourceSpan,
+    ...NEW_OP,
+  };
+}
+
+export interface AnimationListenerOp extends Op<CreateOp> {
+  kind: OpKind.AnimationListener;
+
+  target: XrefId;
+  targetSlot: SlotHandle;
+
+  /**
+   * Whether this listener is from a host binding.
+   */
+  hostListener: boolean;
+
+  /**
+   * Name of the event which is being listened to.
+   */
+  name: string;
+
+  /**
+   * Whether the event is on enter or leave
+   */
+  animationKind: AnimationKind;
+
+  /**
+   * Tag name of the element on which this listener is placed. Might be null, if this listener
+   * belongs to a host binding.
+   */
+  tag: string | null;
+
+  /**
+   * A list of `UpdateOp`s representing the body of the event listener.
+   */
+  handlerOps: OpList<UpdateOp>;
+
+  /**
+   * Name of the function
+   */
+  handlerFnName: string | null;
+
+  /**
+   * Whether this listener is known to consume `$event` in its body.
+   */
+  consumesDollarEvent: boolean;
+
+  /**
+   * Some event listeners can have a target, e.g. in `document:dragover`.
+   */
+  eventTarget: string | null;
+
+  sourceSpan: ParseSourceSpan;
+}
+
+/**
+ * Create a `ListenerOp`. Host bindings reuse all the listener logic.
+ */
+export function createAnimationListenerOp(
+  target: XrefId,
+  targetSlot: SlotHandle,
+  name: string,
+  tag: string | null,
+  handlerOps: Array<UpdateOp>,
+  animationKind: AnimationKind,
+  eventTarget: string | null,
+  hostListener: boolean,
+  sourceSpan: ParseSourceSpan,
+): AnimationListenerOp {
+  const handlerList = new OpList<UpdateOp>();
+  handlerList.push(handlerOps);
+  return {
+    kind: OpKind.AnimationListener,
+    target,
+    targetSlot,
+    tag,
+    hostListener,
+    name,
+    animationKind,
+    handlerOps: handlerList,
+    handlerFnName: null,
+    consumesDollarEvent: false,
     eventTarget,
     sourceSpan,
     ...NEW_OP,
@@ -780,6 +1147,8 @@ export interface ProjectionOp extends Op<CreateOp>, ConsumesSlotOpTrait {
   sourceSpan: ParseSourceSpan;
 
   fallbackView: XrefId | null;
+
+  fallbackViewI18nPlaceholder?: i18n.BlockPlaceholder;
 }
 
 export function createProjectionOp(
@@ -940,6 +1309,13 @@ export interface DeferOp extends Op<CreateOp>, ConsumesSlotOpTrait {
    */
   resolverFn: o.Expression | null;
 
+  /**
+   * Specifies defer block flags, which should be used for all
+   * instances of a given defer block (the flags that should be
+   * placed into the `TDeferDetails` at runtime).
+   */
+  flags: TDeferDetailsFlags | null;
+
   sourceSpan: ParseSourceSpan;
 }
 
@@ -970,6 +1346,7 @@ export function createDeferOp(
     errorSlot: null,
     ownResolverFn,
     resolverFn,
+    flags: null,
     sourceSpan,
     ...NEW_OP,
     ...TRAIT_CONSUMES_SLOT,
@@ -1010,6 +1387,10 @@ interface DeferImmediateTrigger extends DeferTriggerBase {
   kind: DeferTriggerKind.Immediate;
 }
 
+interface DeferNeverTrigger extends DeferTriggerBase {
+  kind: DeferTriggerKind.Never;
+}
+
 interface DeferHoverTrigger extends DeferTriggerWithTargetBase {
   kind: DeferTriggerKind.Hover;
 }
@@ -1037,7 +1418,8 @@ export type DeferTrigger =
   | DeferTimerTrigger
   | DeferHoverTrigger
   | DeferInteractionTrigger
-  | DeferViewportTrigger;
+  | DeferViewportTrigger
+  | DeferNeverTrigger;
 
 export interface DeferOnOp extends Op<CreateOp> {
   kind: OpKind.DeferOn;
@@ -1050,9 +1432,9 @@ export interface DeferOnOp extends Op<CreateOp> {
   trigger: DeferTrigger;
 
   /**
-   * Whether to emit the prefetch version of the instruction.
+   * Modifier set on the trigger by the user (e.g. `hydrate`, `prefetch` etc).
    */
-  prefetch: boolean;
+  modifier: DeferOpModifierKind;
 
   sourceSpan: ParseSourceSpan;
 }
@@ -1060,14 +1442,14 @@ export interface DeferOnOp extends Op<CreateOp> {
 export function createDeferOnOp(
   defer: XrefId,
   trigger: DeferTrigger,
-  prefetch: boolean,
+  modifier: DeferOpModifierKind,
   sourceSpan: ParseSourceSpan,
 ): DeferOnOp {
   return {
     kind: OpKind.DeferOn,
     defer,
     trigger,
-    prefetch,
+    modifier,
     sourceSpan,
     ...NEW_OP,
   };
@@ -1535,6 +1917,36 @@ export function createI18nAttributesOp(
     i18nAttributesConfig: null,
     ...NEW_OP,
     ...TRAIT_CONSUMES_SLOT,
+  };
+}
+
+/** Describes a location at which an element is defined within a template. */
+export interface ElementSourceLocation {
+  targetSlot: SlotHandle;
+  offset: number;
+  line: number;
+  column: number;
+}
+
+/**
+ * Op that attaches the location at which each element is defined within the source template.
+ */
+export interface SourceLocationOp extends Op<CreateOp> {
+  kind: OpKind.SourceLocation;
+  templatePath: string;
+  locations: ElementSourceLocation[];
+}
+
+/** Create a `SourceLocationOp`. */
+export function createSourceLocationOp(
+  templatePath: string,
+  locations: ElementSourceLocation[],
+): SourceLocationOp {
+  return {
+    kind: OpKind.SourceLocation,
+    templatePath,
+    locations,
+    ...NEW_OP,
   };
 }
 

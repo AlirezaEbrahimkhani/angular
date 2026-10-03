@@ -3,16 +3,17 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {AST, Lexer, Parser, RecursiveAstVisitor} from '@angular/compiler';
-import {Call, ImplicitReceiver, PropertyRead} from '@angular/compiler/src/compiler';
+import {AST, Lexer, Parser, RecursiveAstVisitor} from '../../index';
+import {Call, ImplicitReceiver, PropertyRead} from '../../src/compiler';
+import {getFakeSpan} from './utils/span';
 
 describe('RecursiveAstVisitor', () => {
   it('should visit every node', () => {
     const parser = new Parser(new Lexer());
-    const ast = parser.parseBinding('x.y()', '', 0 /* absoluteOffset */);
+    const ast = parser.parseBinding('x.y()', getFakeSpan(), 0 /* absoluteOffset */);
     const visitor = new Visitor();
     const path: AST[] = [];
     visitor.visit(ast.ast, path);
@@ -39,5 +40,7 @@ class Visitor extends RecursiveAstVisitor {
 
 type Newable = new (...args: any) => any;
 function expectType<T extends Newable>(val: any, t: T): asserts val is InstanceType<T> {
-  expect(val instanceof t).toBe(true, `expect ${val.constructor.name} to be ${t.name}`);
+  expect(val instanceof t)
+    .withContext(`expect ${val.constructor.name} to be ${t.name}`)
+    .toBe(true);
 }

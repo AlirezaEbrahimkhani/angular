@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {SecurityContext} from '../../../../core';
@@ -134,7 +134,9 @@ export function parseExtractedStyles(job: CompilationJob) {
 
         if (
           target !== undefined &&
-          target.kind === ir.OpKind.Template &&
+          (target.kind === ir.OpKind.Template ||
+            target.kind === ir.OpKind.ConditionalCreate ||
+            target.kind === ir.OpKind.ConditionalBranchCreate) &&
           target.templateKind === ir.TemplateKind.Structural
         ) {
           // TemplateDefinitionBuilder will not apply class and style bindings to structural

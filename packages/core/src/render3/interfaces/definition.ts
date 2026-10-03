@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {InputSignalNode} from '../../authoring/input/input_signal_node';
@@ -110,17 +110,10 @@ export interface DirectiveDef<T> {
    * A dictionary mapping the inputs' public name to their minified property names
    * (along with flags if there are any).
    */
-  readonly inputs: {[P in keyof T]?: string | [minifiedName: string, flags: InputFlags]};
-
-  /**
-   * A dictionary mapping the private names of inputs to their transformation functions.
-   * Note: the private names are used for the keys, rather than the public ones, because public
-   * names can be re-aliased in host directives which would invalidate the lookup.
-   *
-   * Note: Signal inputs will not have transforms captured here. This is because their
-   * transform function is already integrated into the `InputSignal`.
-   */
-  readonly inputTransforms: {[classPropertyName: string]: InputTransformFunction} | null;
+  readonly inputs: Record<
+    string,
+    [minifiedName: string, flags: InputFlags, transform: InputTransformFunction | null]
+  >;
 
   /**
    * Contains the raw input information produced by the compiler. Can be
@@ -141,7 +134,7 @@ export interface DirectiveDef<T> {
    * are their aliases if any, or their original unminified property names
    * (as in `@Output('alias') propertyName: any;`).
    */
-  readonly outputs: {[P in keyof T]?: string};
+  readonly outputs: Record<string, string>;
 
   /**
    * Function to create and refresh content queries associated with a given directive.
@@ -244,24 +237,23 @@ export interface DirectiveDef<T> {
   debugInfo: ClassDebugInfo | null;
 
   /**
-   * Function that will add the host directives to the list of matches during directive matching.
-   * Patched onto the definition by the `HostDirectivesFeature`.
-   * @param currentDef Definition that has been matched.
-   * @param matchedDefs List of all matches for a specified node. Will be mutated to include the
-   * host directives.
-   * @param hostDirectiveDefs Mapping of directive definitions to their host directive
-   * configuration. Host directives will be added to the map as they're being matched to the node.
+   * Function inteded to be called after template selector matching is done
+   * in order to resolve information about their host directives. Patched
+   * onto the definition by the `ɵɵHostDirectivesFeature`.
    */
-  findHostDirectiveDefs:
-    | ((
-        currentDef: DirectiveDef<unknown>,
-        matchedDefs: DirectiveDef<unknown>[],
-        hostDirectiveDefs: HostDirectiveDefs,
-      ) => void)
-    | null;
+  resolveHostDirectives: ((matches: DirectiveDef<unknown>[]) => HostDirectiveResolution) | null;
 
-  /** Additional directives to be applied whenever the directive has been matched. */
-  hostDirectives: HostDirectiveDef[] | null;
+  /**
+   * Additional directives to be applied whenever the directive has been matched.
+   *
+   * `HostDirectiveConfig` objects represent a host directive that can be resolved eagerly and were
+   * already pre-processed when the definition was created. A function needs to be resolved lazily
+   * during directive matching, because it's a forward reference.
+   *
+   * **Note:** we can't use `HostDirectiveConfig` in the array, because there's no way to
+   * distinguish if a function in the array is a `Type` or a `() => HostDirectiveConfig[]`.
+   */
+  hostDirectives: (HostDirectiveDef | (() => HostDirectiveConfig[]))[] | null;
 
   setInput:
     | (<U extends T>(
@@ -393,12 +385,16 @@ export interface ComponentDef<T> extends DirectiveDef<T> {
   tView: TView | null;
 
   /**
-   * A function added by the {@link ɵɵStandaloneFeature} and used by the framework to create
-   * standalone injectors.
+   * A function used by the framework to create standalone injectors.
    */
   getStandaloneInjector:
     | ((parentInjector: EnvironmentInjector) => EnvironmentInjector | null)
     | null;
+
+  /**
+   * A function used by the framework to create the list of external runtime style URLs.
+   */
+  getExternalStyles: ((encapsulationId?: string) => string[]) | null;
 
   /**
    * Used to store the result of `noSideEffects` function so that it is not removed by closure
@@ -466,6 +462,20 @@ export interface DirectiveDefFeature {
   ngInherit?: true;
 }
 
+/** Data produced after host directives are resolved for a node. */
+export type HostDirectiveResolution = [
+  matches: DirectiveDef<unknown>[],
+  hostDirectiveDefs: HostDirectiveDefs | null,
+  hostDirectiveRanges: HostDirectiveRanges | null,
+];
+
+/**
+ * Map that tracks a selector-matched directive to the range within which its host directives
+ * are declared. Host directives for a specific directive are always contiguous within the runtime.
+ * Note that both the start and end are inclusive and they're both **after** `tNode.directiveStart`.
+ */
+export type HostDirectiveRanges = Map<DirectiveDef<unknown>, [start: number, end: number]>;
+
 /** Runtime information used to configure a host directive. */
 export interface HostDirectiveDef<T = unknown> {
   /** Class representing the host directive. */
@@ -492,6 +502,15 @@ export type HostDirectiveBindingMap = {
  * and the configuration that was used to define it as such.
  */
 export type HostDirectiveDefs = Map<DirectiveDef<unknown>, HostDirectiveDef>;
+
+/** Value that can be used to configure a host directive. */
+export type HostDirectiveConfig =
+  | Type<unknown>
+  | {
+      directive: Type<unknown>;
+      inputs?: string[];
+      outputs?: string[];
+    };
 
 export interface ComponentDefFeature {
   <T>(componentDef: ComponentDef<T>): void;

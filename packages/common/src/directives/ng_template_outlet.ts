@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {
@@ -30,7 +30,7 @@ import {
  * by the local template `let` declarations.
  *
  * @usageNotes
- * ```
+ * ```html
  * <ng-container *ngTemplateOutlet="templateRefExp; context: contextExp"></ng-container>
  * ```
  *
@@ -44,7 +44,6 @@ import {
  */
 @Directive({
   selector: '[ngTemplateOutlet]',
-  standalone: true,
 })
 export class NgTemplateOutlet<C = unknown> implements OnChanges {
   private _viewRef: EmbeddedViewRef<C> | null = null;
@@ -55,15 +54,15 @@ export class NgTemplateOutlet<C = unknown> implements OnChanges {
    * declarations.
    * Using the key `$implicit` in the context object will set its value as default.
    */
-  @Input() public ngTemplateOutletContext: C | null = null;
+  @Input() public ngTemplateOutletContext: C | null | undefined = null;
 
   /**
    * A string defining the template reference and optionally the context object for the template.
    */
-  @Input() public ngTemplateOutlet: TemplateRef<C> | null = null;
+  @Input() public ngTemplateOutlet: TemplateRef<C> | null | undefined = null;
 
   /** Injector to be used within the embedded view. */
-  @Input() public ngTemplateOutletInjector: Injector | null = null;
+  @Input() public ngTemplateOutletInjector: Injector | null | undefined = null;
 
   constructor(private _viewContainerRef: ViewContainerRef) {}
 

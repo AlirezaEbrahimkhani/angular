@@ -3,12 +3,12 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {DATE_PIPE_DEFAULT_OPTIONS, DatePipe} from '@angular/common';
-import localeEn from '@angular/common/locales/en';
-import localeEnExtra from '@angular/common/locales/extra/en';
+import {DATE_PIPE_DEFAULT_OPTIONS, DatePipe} from '../../index';
+import localeEn from '../../locales/en';
+import localeEnExtra from '../../locales/extra/en';
 import {Component, ɵregisterLocaleData, ɵunregisterLocaleData} from '@angular/core';
 import {TestBed} from '@angular/core/testing';
 
@@ -82,7 +82,6 @@ describe('DatePipe', () => {
         selector: 'test-component',
         imports: [DatePipe],
         template: '{{ value | date }}',
-        standalone: true,
         providers: [{provide: DATE_PIPE_DEFAULT_OPTIONS, useValue: {dateFormat: 'shortDate'}}],
       })
       class TestComponent {
@@ -101,7 +100,6 @@ describe('DatePipe', () => {
         selector: 'test-component',
         imports: [DatePipe],
         template: '{{ value | date }}',
-        standalone: true,
       })
       class TestComponent {
         value = '2017-01-11T10:14:39+0000';
@@ -176,7 +174,6 @@ describe('DatePipe', () => {
         selector: 'test-component',
         imports: [DatePipe],
         template: '{{ value | date }}',
-        standalone: true,
         providers: [{provide: DATE_PIPE_DEFAULT_OPTIONS, useValue: {timezone: '-1200'}}],
       })
       class TestComponent {
@@ -195,7 +192,6 @@ describe('DatePipe', () => {
         selector: 'test-component',
         imports: [DatePipe],
         template: '{{ value | date }}',
-        standalone: true,
       })
       class TestComponent {
         value = '2017-01-11T00:00:00';
@@ -218,7 +214,6 @@ describe('DatePipe', () => {
       selector: 'test-component',
       imports: [DatePipe],
       template: '{{ value | date }}',
-      standalone: true,
     })
     class TestComponent {
       value = '2017-01-11T10:14:39+0000';

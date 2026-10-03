@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 import babel, {PluginObj} from '@babel/core';
 
@@ -43,7 +43,7 @@ function linkPartials(fileSystem: FileSystem, test: ComplianceTest): CompileResu
     throw new Error(
       'Golden partial does not exist for this test\n' +
         'Try generating it by running:\n' +
-        `bazel run //packages/compiler-cli/test/compliance/test_cases:${test.relativePath}.golden.update`,
+        `bazel run //packages/compiler-cli/test/compliance/test_cases:${test.relativePath}.golden`,
     );
   }
   const partialFile = fileSystem.readFile(goldenPartialPath);

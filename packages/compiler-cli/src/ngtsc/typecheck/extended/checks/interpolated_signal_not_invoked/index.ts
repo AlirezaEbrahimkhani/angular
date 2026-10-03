@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {
@@ -11,9 +11,12 @@ import {
   ASTWithSource,
   BindingType,
   Interpolation,
+  PrefixNot,
   PropertyRead,
   TmplAstBoundAttribute,
+  TmplAstIfBlock,
   TmplAstNode,
+  TmplAstSwitchBlock,
 } from '@angular/compiler';
 import ts from 'typescript';
 
@@ -45,17 +48,24 @@ class InterpolatedSignalCheck extends TemplateCheckWithVisitor<ErrorCode.INTERPO
     // interpolations like `{{ mySignal }}`
     if (node instanceof Interpolation) {
       return node.expressions
+        .map((item) => (item instanceof PrefixNot ? item.expression : item))
         .filter((item): item is PropertyRead => item instanceof PropertyRead)
         .flatMap((item) => buildDiagnosticForSignal(ctx, item, component));
     }
     // bound properties like `[prop]="mySignal"`
     else if (node instanceof TmplAstBoundAttribute) {
       const symbol = ctx.templateTypeChecker.getSymbolOfNode(node, component);
-      // we skip the check if the node is an input binding
-      if (symbol !== null && symbol.kind === SymbolKind.Input) {
+
+      if (
+        symbol?.kind === SymbolKind.Input &&
+        symbol.bindings.length > 0 &&
+        symbol.bindings.some((binding) => binding.target.kind === SymbolKind.Directive)
+      ) {
         return [];
       }
+
       // otherwise, we check if the node is
+      const nodeAst = isPropertyReadNodeAst(node);
       if (
         // a bound property like `[prop]="mySignal"`
         (node.type === BindingType.Property ||
@@ -65,16 +75,53 @@ class InterpolatedSignalCheck extends TemplateCheckWithVisitor<ErrorCode.INTERPO
           node.type === BindingType.Style ||
           // or an attribute binding like `[attr.role]="mySignal"`
           node.type === BindingType.Attribute ||
+          // or an animation binding like `[animate.enter]="mySignal"`
+          node.type === BindingType.Animation ||
           // or an animation binding like `[@myAnimation]="mySignal"`
-          node.type === BindingType.Animation) &&
-        node.value instanceof ASTWithSource &&
-        node.value.ast instanceof PropertyRead
+          node.type === BindingType.LegacyAnimation) &&
+        nodeAst
       ) {
-        return buildDiagnosticForSignal(ctx, node.value.ast, component);
+        return buildDiagnosticForSignal(ctx, nodeAst, component);
       }
     }
+    // if blocks like `@if(mySignal) { ... }`
+    else if (node instanceof TmplAstIfBlock) {
+      return node.branches
+        .map((branch) => branch.expression)
+        .filter((expr): expr is ASTWithSource => expr instanceof ASTWithSource)
+        .map((expr) => {
+          const ast = expr.ast;
+          return ast instanceof PrefixNot ? ast.expression : ast;
+        })
+        .filter((ast): ast is PropertyRead => ast instanceof PropertyRead)
+        .flatMap((item) => buildDiagnosticForSignal(ctx, item, component));
+    }
+    // switch blocks like `@switch(mySignal) { ... }`
+    else if (node instanceof TmplAstSwitchBlock && node.expression instanceof ASTWithSource) {
+      const expression =
+        node.expression.ast instanceof PrefixNot
+          ? node.expression.ast.expression
+          : node.expression.ast;
+      if (expression instanceof PropertyRead) {
+        return buildDiagnosticForSignal(ctx, expression, component);
+      }
+    }
+
     return [];
   }
+}
+
+function isPropertyReadNodeAst(node: TmplAstBoundAttribute): PropertyRead | undefined {
+  if (node.value instanceof ASTWithSource === false) {
+    return undefined;
+  }
+  if (node.value.ast instanceof PrefixNot && node.value.ast.expression instanceof PropertyRead) {
+    return node.value.ast.expression;
+  }
+  if (node.value.ast instanceof PropertyRead) {
+    return node.value.ast;
+  }
+  return undefined;
 }
 
 function isFunctionInstanceProperty(name: string): boolean {
@@ -93,7 +140,7 @@ function buildDiagnosticForSignal(
   // check for `{{ mySignal }}`
   const symbol = ctx.templateTypeChecker.getSymbolOfNode(node, component);
   if (symbol !== null && symbol.kind === SymbolKind.Expression && isSignalReference(symbol)) {
-    const templateMapping = ctx.templateTypeChecker.getTemplateMappingAtTcbLocation(
+    const templateMapping = ctx.templateTypeChecker.getSourceMappingAtTcbLocation(
       symbol.tcbLocation,
     )!;
     const errorString = `${node.name} is a function and should be invoked: ${node.name}()`;
@@ -113,13 +160,13 @@ function buildDiagnosticForSignal(
     symbolOfReceiver.kind === SymbolKind.Expression &&
     isSignalReference(symbolOfReceiver)
   ) {
-    const templateMapping = ctx.templateTypeChecker.getTemplateMappingAtTcbLocation(
+    const templateMapping = ctx.templateTypeChecker.getSourceMappingAtTcbLocation(
       symbolOfReceiver.tcbLocation,
     )!;
 
-    const errorString = `${(node.receiver as PropertyRead).name} is a function and should be invoked: ${
+    const errorString = `${
       (node.receiver as PropertyRead).name
-    }()`;
+    } is a function and should be invoked: ${(node.receiver as PropertyRead).name}()`;
     const diagnostic = ctx.makeTemplateDiagnostic(templateMapping.span, errorString);
     return [diagnostic];
   }

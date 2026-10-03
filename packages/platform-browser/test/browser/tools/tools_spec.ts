@@ -3,12 +3,13 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {ApplicationRef, Injector, ɵglobal as global} from '@angular/core';
 import {ComponentRef} from '@angular/core/src/render3';
-import {disableDebugTools, enableDebugTools} from '@angular/platform-browser';
+import {isNode} from '@angular/private/testing';
+import {disableDebugTools, enableDebugTools} from '../../../index';
 
 import {AngularProfiler} from '../../../src/browser/tools/common_tools';
 
@@ -34,7 +35,7 @@ describe('profiler', () => {
             deps: [],
           },
         ],
-      }),
+      }) as Injector,
     } as ComponentRef<any>);
   });
 

@@ -1,6 +1,6 @@
-load("//tools:defaults.bzl", "jasmine_node_test", "ts_library")
+load("//tools:defaults.bzl", "jasmine_test", "ts_project")
 
-ts_library(
+ts_project(
     name = "test_lib",
     testonly = True,
     srcs = glob(
@@ -16,16 +16,13 @@ ts_library(
     ],
 )
 
-jasmine_node_test(
+jasmine_test(
     name = "integration",
-    bootstrap = ["//tools/testing:node_no_angular"],
     data = [
+        ":test_lib",
+        "//:node_modules/tinyglobby",
+        "//:node_modules/yargs",
         "//packages/localize/tools/test/translate/integration/locales",
         "//packages/localize/tools/test/translate/integration/test_files",
-    ],
-    deps = [
-        ":test_lib",
-        "@npm//fast-glob",
-        "@npm//yargs",
     ],
 )

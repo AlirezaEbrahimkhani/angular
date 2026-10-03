@@ -3,18 +3,18 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {NgCompiler} from '@angular/compiler-cli/src/ngtsc/core';
 import tss from 'typescript';
 
-import {TemplateInfo} from '../utils';
+import {TypeCheckInfo} from '../utils';
 
 import {CodeActionMeta, FixIdForCodeFixesAll, isFixAllAvailable} from './utils';
 
 export class CodeFixes {
-  private errorCodeToFixes: Map<number, CodeActionMeta[]> = new Map();
+  private errorCodeToFixes = new Map<number, CodeActionMeta[]>();
   private fixIdToRegistration = new Map<FixIdForCodeFixesAll, CodeActionMeta>();
 
   constructor(
@@ -40,13 +40,17 @@ export class CodeFixes {
     }
   }
 
+  hasFixForCode(code: number): boolean {
+    return this.errorCodeToFixes.has(code);
+  }
+
   /**
    * When the user moves the cursor or hovers on a diagnostics, this function will be invoked by LS,
    * and collect all the responses from the `codeActionMetas` which could handle the `errorCodes`.
    */
   getCodeFixesAtPosition(
     fileName: string,
-    templateInfo: TemplateInfo,
+    typeCheckInfo: TypeCheckInfo | null,
     compiler: NgCompiler,
     start: number,
     end: number,
@@ -64,7 +68,7 @@ export class CodeFixes {
       for (const meta of metas) {
         const codeActionsForMeta = meta.getCodeActions({
           fileName,
-          templateInfo,
+          typeCheckInfo: typeCheckInfo,
           compiler,
           start,
           end,

@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import type {ParseSourceSpan} from '../../../../parse_util';
@@ -15,22 +15,22 @@ import {SlotHandle} from './handle';
 /**
  * Marker symbol for `ConsumesSlotOpTrait`.
  */
-export const ConsumesSlot = Symbol('ConsumesSlot');
+export const ConsumesSlot: unique symbol = Symbol('ConsumesSlot');
 
 /**
  * Marker symbol for `DependsOnSlotContextOpTrait`.
  */
-export const DependsOnSlotContext = Symbol('DependsOnSlotContext');
+export const DependsOnSlotContext: unique symbol = Symbol('DependsOnSlotContext');
 
 /**
  * Marker symbol for `ConsumesVars` trait.
  */
-export const ConsumesVarsTrait = Symbol('ConsumesVars');
+export const ConsumesVarsTrait: unique symbol = Symbol('ConsumesVars');
 
 /**
  * Marker symbol for `UsesVarOffset` trait.
  */
-export const UsesVarOffset = Symbol('UsesVarOffset');
+export const UsesVarOffset: unique symbol = Symbol('UsesVarOffset');
 
 /**
  * Marks an operation as requiring allocation of one or more data slots for storage.

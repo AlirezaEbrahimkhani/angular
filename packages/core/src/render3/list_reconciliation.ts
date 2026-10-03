@@ -3,12 +3,11 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {TrackByFunction} from '../change_detection';
 import {formatRuntimeError, RuntimeErrorCode} from '../errors';
-import {assertNotSame} from '../util/assert';
 
 import {stringifyForError} from './util/stringify_utils';
 
@@ -21,7 +20,7 @@ export abstract class LiveCollection<T, V> {
   abstract get length(): number;
   abstract at(index: number): V;
   abstract attach(index: number, item: T): void;
-  abstract detach(index: number): T;
+  abstract detach(index: number, skipLeaveAnimations?: boolean): T;
   abstract create(index: number, value: V): T;
   destroy(item: T): void {
     // noop by default
@@ -46,7 +45,11 @@ export abstract class LiveCollection<T, V> {
     }
   }
   move(prevIndex: number, newIdx: number): void {
-    this.attach(newIdx, this.detach(prevIndex));
+    // For move operations, the detach code path is the same one used for removing
+    // DOM nodes, which would trigger `animate.leave` bindings. We need to skip
+    // those animations in the case of a move operation so the moving elements don't
+    // unexpectedly disappear.
+    this.attach(newIdx, this.detach(prevIndex, true /* skipLeaveAnimations */));
   }
 }
 
@@ -335,7 +338,6 @@ export function reconcile<T, V>(
           '.',
       );
 
-      // tslint:disable-next-line:no-console
       console.warn(message);
     }
   }
@@ -428,8 +430,12 @@ export class UniqueValueMultiKeyMap<K, V> {
   set(key: K, value: V): void {
     if (this.kvMap.has(key)) {
       let prevValue = this.kvMap.get(key)!;
-      ngDevMode &&
-        assertNotSame(prevValue, value, `Detected a duplicated value ${value} for the key ${key}`);
+
+      // Note: we don't use `assertNotSame`, because the value needs to be stringified even if
+      // there is no error which can freeze the browser for large values (see #58509).
+      if (ngDevMode && prevValue === value) {
+        throw new Error(`Detected a duplicated value ${value} for the key ${key}`);
+      }
 
       if (this._vMap === undefined) {
         this._vMap = new Map();

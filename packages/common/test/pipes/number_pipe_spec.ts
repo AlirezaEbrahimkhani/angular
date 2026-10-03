@@ -3,16 +3,16 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {CurrencyPipe, DecimalPipe, PercentPipe} from '@angular/common';
-import localeAr from '@angular/common/locales/ar';
-import localeDa from '@angular/common/locales/da';
-import localeDeAt from '@angular/common/locales/de-AT';
-import localeEn from '@angular/common/locales/en';
-import localeEsUS from '@angular/common/locales/es-US';
-import localeFr from '@angular/common/locales/fr';
+import {CurrencyPipe, DecimalPipe, PercentPipe} from '../../index';
+import localeAr from '../../locales/ar';
+import localeDa from '../../locales/da';
+import localeDeAt from '../../locales/de-AT';
+import localeEn from '../../locales/en';
+import localeEsUS from '../../locales/es-US';
+import localeFr from '../../locales/fr';
 import {Component, ɵregisterLocaleData, ɵunregisterLocaleData} from '@angular/core';
 import {TestBed} from '@angular/core/testing';
 
@@ -63,10 +63,10 @@ describe('Number pipes', () => {
 
       it('should not support other objects', () => {
         expect(() => pipe.transform({} as any)).toThrowError(
-          `NG02100: InvalidPipeArgument: '[object Object] is not a number' for pipe 'DecimalPipe'`,
+          `NG02100: InvalidPipeArgument: 'NG02309: [object Object] is not a number' for pipe 'DecimalPipe'`,
         );
         expect(() => pipe.transform('123abc')).toThrowError(
-          `NG02100: InvalidPipeArgument: '123abc is not a number' for pipe 'DecimalPipe'`,
+          `NG02100: InvalidPipeArgument: 'NG02309: 123abc is not a number' for pipe 'DecimalPipe'`,
         );
       });
     });
@@ -83,7 +83,6 @@ describe('Number pipes', () => {
         selector: 'test-component',
         imports: [DecimalPipe],
         template: '{{ value | number }}',
-        standalone: true,
       })
       class TestComponent {
         value = 12345;
@@ -126,7 +125,7 @@ describe('Number pipes', () => {
 
       it('should not support other objects', () => {
         expect(() => pipe.transform({} as any)).toThrowError(
-          `NG02100: InvalidPipeArgument: '[object Object] is not a number' for pipe 'PercentPipe'`,
+          `NG02100: InvalidPipeArgument: 'NG02309: [object Object] is not a number' for pipe 'PercentPipe'`,
         );
       });
     });
@@ -136,7 +135,6 @@ describe('Number pipes', () => {
         selector: 'test-component',
         imports: [PercentPipe],
         template: '{{ value | percent }}',
-        standalone: true,
       })
       class TestComponent {
         value = 15;
@@ -216,7 +214,7 @@ describe('Number pipes', () => {
 
       it('should not support other objects', () => {
         expect(() => pipe.transform({} as any)).toThrowError(
-          `NG02100: InvalidPipeArgument: '[object Object] is not a number' for pipe 'CurrencyPipe'`,
+          `NG02100: InvalidPipeArgument: 'NG02309: [object Object] is not a number' for pipe 'CurrencyPipe'`,
         );
       });
 
@@ -234,7 +232,6 @@ describe('Number pipes', () => {
         selector: 'test-component',
         imports: [CurrencyPipe],
         template: '{{ value | currency }}',
-        standalone: true,
       })
       class TestComponent {
         value = 15;

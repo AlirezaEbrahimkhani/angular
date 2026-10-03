@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {Component} from '../../src/core';
@@ -197,6 +197,23 @@ Did you run and wait for 'resolveComponentResources()'?`.trim(),
       await resolveComponentResources(fetch);
       expect(MyComponent.ɵcmp).toBeDefined();
       expect(metadata.template).toBe('response for test://content');
+    });
+
+    it('should fail when fetch is resolving to a 404', async () => {
+      const MyComponent: ComponentType<any> = class MyComponent {} as any;
+      const metadata: Component = {templateUrl: 'test://content'};
+      compileComponent(MyComponent, metadata);
+
+      await expectAsync(
+        resolveComponentResources(async () => {
+          return {
+            async text() {
+              return 'File not found';
+            },
+            status: 404,
+          };
+        }),
+      ).toBeRejectedWithError(/Could not load resource.*404/);
     });
   });
 });

@@ -3,10 +3,10 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {ifEnvSupports} from '../test-util';
+import {ifEnvSupports, ifEnvSupportsWithDone} from '../test-util';
 declare const global: any;
 
 describe(
@@ -62,10 +62,10 @@ describe(
   }),
 );
 
-describe(
-  'WebKitMutationObserver',
-  ifEnvSupports('WebKitMutationObserver', function () {
-    it('should run observers within the zone', function (done) {
+describe('WebKitMutationObserver', () => {
+  it(
+    'should run observers within the zone',
+    ifEnvSupportsWithDone('WebKitMutationObserver', function (done: DoneFn) {
       const testZone = Zone.current.fork({name: 'test'});
       let elt: HTMLDivElement;
 
@@ -81,6 +81,6 @@ describe(
       });
 
       elt!.innerHTML = '<p>hey</p>';
-    });
-  }),
-);
+    }),
+  );
+});

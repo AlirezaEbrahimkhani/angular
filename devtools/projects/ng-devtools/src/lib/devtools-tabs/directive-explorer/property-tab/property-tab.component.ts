@@ -3,25 +3,41 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {Component, EventEmitter, Input, Output} from '@angular/core';
-import {DirectivePosition} from 'protocol';
+import {ChangeDetectionStrategy, Component, computed, input, output} from '@angular/core';
+import {DebugSignalGraphNode, DirectivePosition} from '../../../../../../protocol';
 
 import {IndexedNode} from '../directive-forest/index-forest';
 import {FlatNode} from '../property-resolver/element-property-resolver';
-import {PropertyTabBodyComponent} from './property-view/property-tab-body.component';
-import {PropertyTabHeaderComponent} from './property-tab-header.component';
+import {PropertyTabHeaderComponent} from './property-tab-header/property-tab-header.component';
+import {DeferViewComponent} from './defer-view/defer-view.component';
+import {PropertyViewComponent} from './property-view/property-view.component';
 
 @Component({
-  templateUrl: './property-tab.component.html',
   selector: 'ng-property-tab',
-  standalone: true,
-  imports: [PropertyTabHeaderComponent, PropertyTabBodyComponent],
+  templateUrl: './property-tab.component.html',
+  styleUrls: ['./property-tab.component.scss'],
+  imports: [PropertyTabHeaderComponent, PropertyViewComponent, DeferViewComponent],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class PropertyTabComponent {
-  @Input({required: true}) currentSelectedElement!: IndexedNode;
-  @Output() viewSource = new EventEmitter<string>();
-  @Output() inspect = new EventEmitter<{node: FlatNode; directivePosition: DirectivePosition}>();
+  readonly currentSelectedElement = input.required<IndexedNode | null>();
+
+  readonly viewSource = output<string>();
+  readonly inspect = output<{node: FlatNode; directivePosition: DirectivePosition}>();
+  readonly showSignalGraph = output<DebugSignalGraphNode | null>();
+
+  readonly currentDirectives = computed(() => {
+    const selected = this.currentSelectedElement();
+    if (!selected) {
+      return;
+    }
+    const directives = [...selected.directives];
+    if (selected.component) {
+      directives.push(selected.component);
+    }
+    return directives;
+  });
 }

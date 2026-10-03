@@ -1,7 +1,7 @@
 ## PR Checklist
 Please check if your PR fulfills the following requirements:
 
-- [ ] The commit message follows our guidelines: https://github.com/angular/angular/blob/main/CONTRIBUTING.md#commit
+- [ ] The commit message follows our guidelines: https://github.com/angular/angular/blob/main/contributing-docs/commit-message-guidelines.md
 - [ ] Tests for the changes have been added (for bug fixes / features)
 - [ ] Docs have been added / updated (for bug fixes / features)
 
@@ -18,7 +18,7 @@ What kind of change does this PR introduce?
 - [ ] Build related changes
 - [ ] CI related changes
 - [ ] Documentation content changes
-- [ ] angular.io application / infrastructure changes
+- [ ] angular.dev application / infrastructure changes
 - [ ] Other... Please describe:
 
 

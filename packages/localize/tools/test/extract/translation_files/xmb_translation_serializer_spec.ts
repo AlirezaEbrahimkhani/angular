@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 import {
   absoluteFrom,
@@ -11,7 +11,7 @@ import {
   PathManipulation,
 } from '@angular/compiler-cli/src/ngtsc/file_system';
 import {runInEachFileSystem} from '@angular/compiler-cli/src/ngtsc/file_system/testing';
-import {ɵParsedMessage, ɵSourceLocation} from '@angular/localize';
+import {ɵParsedMessage, ɵSourceLocation} from '../../../../index';
 
 import {XmbTranslationSerializer} from '../../../src/extract/translation_files/xmb_translation_serializer';
 

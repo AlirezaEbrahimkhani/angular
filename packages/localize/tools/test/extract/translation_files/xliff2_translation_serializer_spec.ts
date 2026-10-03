@@ -3,11 +3,11 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 import {absoluteFrom} from '@angular/compiler-cli/src/ngtsc/file_system';
 import {runInEachFileSystem} from '@angular/compiler-cli/src/ngtsc/file_system/testing';
-import {ɵParsedMessage, ɵSourceLocation} from '@angular/localize';
+import {ɵParsedMessage, ɵSourceLocation} from '../../../../index';
 
 import {FormatOptions} from '../../../src/extract/translation_files/format_options';
 import {Xliff2TranslationSerializer} from '../../../src/extract/translation_files/xliff2_translation_serializer';

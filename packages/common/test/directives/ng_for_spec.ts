@@ -3,14 +3,14 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {CommonModule, NgFor, NgForOf} from '@angular/common';
+import {CommonModule, NgFor, NgForOf} from '../../index';
 import {Component} from '@angular/core';
 import {ComponentFixture, TestBed, waitForAsync} from '@angular/core/testing';
-import {By} from '@angular/platform-browser/src/dom/debug/by';
-import {expect} from '@angular/platform-browser/testing/src/matchers';
+import {By} from '@angular/platform-browser';
+import {expect} from '@angular/private/testing/matchers';
 
 let thisArg: any;
 
@@ -22,6 +22,7 @@ describe('ngFor', () => {
   }
 
   function detectChangesAndExpectText(text: string): void {
+    fixture.changeDetectorRef.markForCheck();
     fixture.detectChanges();
     expect(fixture.nativeElement).toHaveText(text);
   }
@@ -300,6 +301,7 @@ describe('ngFor', () => {
       '<ng-template let-item let-i="index" #tpl>{{i}}: {{item}};</ng-template>';
     fixture = createTestComponent(template);
     getComponent().items = ['a', 'b', 'c'];
+    fixture.changeDetectorRef.markForCheck();
     fixture.detectChanges();
     detectChangesAndExpectText('0: a;1: b;2: c;');
   }));
@@ -310,6 +312,7 @@ describe('ngFor', () => {
       const template = `<p *ngFor="let item of items; trackBy: value"></p>`;
       fixture = createTestComponent(template);
       fixture.componentInstance.value = 0;
+      fixture.changeDetectorRef.markForCheck();
       fixture.detectChanges();
     }));
 
@@ -329,6 +332,7 @@ describe('ngFor', () => {
       fixture = createTestComponent(template);
 
       thisArg = null;
+      fixture.changeDetectorRef.markForCheck();
       fixture.detectChanges();
       expect(thisArg).toBe(getComponent());
     }));
@@ -339,6 +343,7 @@ describe('ngFor', () => {
 
       const buildItemList = () => {
         getComponent().items = [{'id': 'a'}];
+        fixture.changeDetectorRef.markForCheck();
         fixture.detectChanges();
         return fixture.debugElement.queryAll(By.css('p'))[0];
       };
@@ -381,8 +386,10 @@ describe('ngFor', () => {
       fixture = createTestComponent(template);
 
       getComponent().items = ['a', 'b', 'c', 'd'];
+      fixture.changeDetectorRef.markForCheck();
       fixture.detectChanges();
       getComponent().items = ['e', 'f', 'g', 'h'];
+      fixture.changeDetectorRef.markForCheck();
       fixture.detectChanges();
       getComponent().items = ['e', 'f', 'h'];
       detectChangesAndExpectText('efh');
@@ -394,7 +401,6 @@ describe('ngFor', () => {
       selector: 'test-component',
       imports: [NgForOf],
       template: ` <ng-container *ngFor="let item of items">{{ item }}|</ng-container> `,
-      standalone: true,
     })
     class TestComponent {
       items = [1, 2, 3];
@@ -411,7 +417,6 @@ describe('ngFor', () => {
       selector: 'test-component',
       imports: [NgFor],
       template: ` <ng-container *ngFor="let item of items">{{ item }}|</ng-container> `,
-      standalone: true,
     })
     class TestComponent {
       items = [1, 2, 3];
@@ -430,7 +435,11 @@ class Foo {
   }
 }
 
-@Component({selector: 'test-cmp', template: ''})
+@Component({
+  selector: 'test-cmp',
+  template: '',
+  standalone: false,
+})
 class TestComponent {
   value: any;
   items: any[] = [1, 2];

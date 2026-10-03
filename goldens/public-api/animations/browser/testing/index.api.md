@@ -4,12 +4,7 @@
 
 ```ts
 
-import { AnimationDriver } from '@angular/animations/browser';
-import { AnimationPlayer } from '@angular/animations';
-import { NoopAnimationPlayer } from '@angular/animations';
-import { ɵStyleDataMap } from '@angular/animations';
-
-// @public (undocumented)
+// @public @deprecated (undocumented)
 export class MockAnimationDriver implements AnimationDriver {
     // (undocumented)
     animate(element: any, keyframes: Array<ɵStyleDataMap>, duration: number, delay: number, easing: string, previousPlayers?: any[]): MockAnimationPlayer;
@@ -29,7 +24,7 @@ export class MockAnimationDriver implements AnimationDriver {
     validateStyleProperty(prop: string): boolean;
 }
 
-// @public (undocumented)
+// @public @deprecated (undocumented)
 export class MockAnimationPlayer extends NoopAnimationPlayer {
     constructor(element: any, keyframes: Array<ɵStyleDataMap>, duration: number, delay: number, easing: string, previousPlayers: any[]);
     // (undocumented)

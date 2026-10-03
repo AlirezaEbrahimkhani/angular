@@ -3,29 +3,34 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {
   Component,
+  effect,
   Injectable,
   Injector,
-  Input,
+  input,
   NgModule,
-  OnInit,
   TemplateRef,
-  ViewChild,
+  viewChild,
   ViewContainerRef,
 } from '@angular/core';
 import {BrowserModule} from '@angular/platform-browser';
 
 // #docregion SimpleExample
-@Component({selector: 'hello-world', template: 'Hello World!'})
+@Component({
+  selector: 'hello-world',
+  template: 'Hello World!',
+  standalone: false,
+})
 export class HelloWorld {}
 
 @Component({
   selector: 'ng-component-outlet-simple-example',
   template: `<ng-container *ngComponentOutlet="HelloWorld"></ng-container>`,
+  standalone: false,
 })
 export class NgComponentOutletSimpleExample {
   // This field is necessary to expose HelloWorld to the template.
@@ -41,10 +46,11 @@ export class Greeter {
 
 @Component({
   selector: 'complete-component',
-  template: `{{ label }}: <ng-content></ng-content> <ng-content></ng-content>{{ greeter.suffix }}`,
+  template: `{{ label() }}: <ng-content></ng-content> <ng-content></ng-content>{{ greeter.suffix }}`,
+  standalone: false,
 })
 export class CompleteComponent {
-  @Input() label!: string;
+  label = input.required<string>();
 
   constructor(public greeter: Greeter) {}
 }
@@ -61,16 +67,17 @@ export class CompleteComponent {
         content: myContent
       "
     ></ng-container>`,
+  standalone: false,
 })
-export class NgComponentOutletCompleteExample implements OnInit {
+export class NgComponentOutletCompleteExample {
   // This field is necessary to expose CompleteComponent to the template.
   CompleteComponent = CompleteComponent;
 
   myInputs = {'label': 'Complete'};
 
   myInjector: Injector;
-  @ViewChild('ahoj', {static: true}) ahojTemplateRef!: TemplateRef<any>;
-  @ViewChild('svet', {static: true}) svetTemplateRef!: TemplateRef<any>;
+  ahojTemplateRef = viewChild.required<TemplateRef<any>>('ahoj');
+  svetTemplateRef = viewChild.required<TemplateRef<any>>('svet');
   myContent?: any[][];
 
   constructor(
@@ -81,14 +88,13 @@ export class NgComponentOutletCompleteExample implements OnInit {
       providers: [{provide: Greeter, deps: []}],
       parent: injector,
     });
-  }
 
-  ngOnInit() {
-    // Create the projectable content from the templates
-    this.myContent = [
-      this.vcr.createEmbeddedView(this.ahojTemplateRef).rootNodes,
-      this.vcr.createEmbeddedView(this.svetTemplateRef).rootNodes,
-    ];
+    effect(() => {
+      this.myContent = [
+        this.vcr.createEmbeddedView(this.ahojTemplateRef()).rootNodes,
+        this.vcr.createEmbeddedView(this.svetTemplateRef()).rootNodes,
+      ];
+    });
   }
 }
 // #enddocregion
@@ -98,6 +104,7 @@ export class NgComponentOutletCompleteExample implements OnInit {
   template: `<ng-component-outlet-simple-example></ng-component-outlet-simple-example>
     <hr />
     <ng-component-outlet-complete-example></ng-component-outlet-complete-example>`,
+  standalone: false,
 })
 export class AppComponent {}
 

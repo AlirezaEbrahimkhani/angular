@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {
@@ -13,16 +13,19 @@ import {
   consumerPollProducersForChange,
   getActiveConsumer,
   ReactiveNode,
-} from '@angular/core/primitives/signals';
+  setActiveConsumer,
+} from '../../../primitives/signals';
 
 import {RuntimeError, RuntimeErrorCode} from '../../errors';
 import {assertDefined, assertEqual} from '../../util/assert';
+import {addAfterRenderSequencesForView} from '../after_render/view';
 import {executeCheckHooks, executeInitAndCheckHooks, incrementInitPhaseFlags} from '../hooks';
 import {CONTAINER_HEADER_OFFSET, LContainerFlags, MOVED_VIEWS} from '../interfaces/container';
-import {ComponentTemplate, RenderFlags} from '../interfaces/definition';
+import {ComponentTemplate, HostBindingsFunction, RenderFlags} from '../interfaces/definition';
 import {
   CONTEXT,
   EFFECTS_TO_SCHEDULE,
+  ANIMATIONS,
   ENVIRONMENT,
   FLAGS,
   InitPhaseState,
@@ -33,8 +36,8 @@ import {
   TView,
 } from '../interfaces/view';
 import {
-  getOrCreateTemporaryConsumer,
   getOrBorrowReactiveLViewConsumer,
+  getOrCreateTemporaryConsumer,
   maybeReturnReactiveLViewConsumer,
   ReactiveLViewConsumer,
   viewShouldHaveReactiveConsumer,
@@ -47,8 +50,10 @@ import {
   isRefreshingViews,
   leaveView,
   setBindingIndex,
+  setBindingRootForHostBindings,
   setIsInCheckNoChangesMode,
   setIsRefreshingViews,
+  setSelectedIndex,
 } from '../state';
 import {getFirstLContainer, getNextLContainer} from '../util/view_traversal_utils';
 import {
@@ -61,24 +66,19 @@ import {
   viewAttachedToChangeDetector,
 } from '../util/view_utils';
 
-import {
-  executeTemplate,
-  executeViewQueryFn,
-  handleError,
-  processHostBindingOpCodes,
-  refreshContentQueries,
-} from './shared';
+import {isDestroyed} from '../interfaces/type_checks';
+import {profiler} from '../profiler';
+import {ProfilerEvent} from '../profiler_types';
+import {executeViewQueryFn, refreshContentQueries} from '../queries/query_execution';
+import {runEffectsInView} from '../reactivity/view_effect_runner';
+import {executeTemplate} from './shared';
 
 /**
  * The maximum number of times the change detection traversal will rerun before throwing an error.
  */
 export const MAXIMUM_REFRESH_RERUNS = 100;
 
-export function detectChangesInternal(
-  lView: LView,
-  notifyErrorHandler = true,
-  mode = ChangeDetectionMode.Global,
-) {
+export function detectChangesInternal(lView: LView, mode = ChangeDetectionMode.Global) {
   const environment = lView[ENVIRONMENT];
   const rendererFactory = environment.rendererFactory;
 
@@ -93,18 +93,9 @@ export function detectChangesInternal(
 
   try {
     detectChangesInViewWhileDirty(lView, mode);
-  } catch (error) {
-    if (notifyErrorHandler) {
-      handleError(lView, error);
-    }
-    throw error;
   } finally {
     if (!checkNoChangesMode) {
       rendererFactory.end?.();
-
-      // One final flush of the effects queue to catch any effects created in `ngAfterViewInit` or
-      // other post-order hooks.
-      environment.inlineEffectRunner?.flush();
     }
   }
 }
@@ -148,14 +139,12 @@ function detectChangesInViewWhileDirty(lView: LView, mode: ChangeDetectionMode) 
   }
 }
 
-export function checkNoChangesInternal(
-  lView: LView,
-  mode: CheckNoChangesMode,
-  notifyErrorHandler = true,
-) {
-  setIsInCheckNoChangesMode(mode);
+export function checkNoChangesInternal(lView: LView, exhaustive: boolean) {
+  setIsInCheckNoChangesMode(
+    exhaustive ? CheckNoChangesMode.Exhaustive : CheckNoChangesMode.OnlyDirtyViews,
+  );
   try {
-    detectChangesInternal(lView, notifyErrorHandler);
+    detectChangesInternal(lView);
   } finally {
     setIsInCheckNoChangesMode(CheckNoChangesMode.Off);
   }
@@ -196,15 +185,15 @@ export function refreshView<T>(
   context: T,
 ) {
   ngDevMode && assertEqual(isCreationMode(lView), false, 'Should be run in update mode');
+
+  if (isDestroyed(lView)) return;
+
   const flags = lView[FLAGS];
-  if ((flags & LViewFlags.Destroyed) === LViewFlags.Destroyed) return;
 
   // Check no changes mode is a dev only mode used to verify that bindings have not changed
   // since they were assigned. We do not want to execute lifecycle hooks in that mode.
   const isInCheckNoChangesPass = ngDevMode && isInCheckNoChangesMode();
   const isInExhaustiveCheckNoChangesPass = ngDevMode && isExhaustiveCheckNoChanges();
-
-  !isInCheckNoChangesPass && lView[ENVIRONMENT].inlineEffectRunner?.flush();
 
   // Start component reactive context
   // - We might already be in a reactive context if this is an embedded view of the host.
@@ -220,7 +209,10 @@ export function refreshView<T>(
     } else if (getActiveConsumer() === null) {
       // If the current view should not have a reactive consumer but we don't have an active consumer,
       // we still need to create a temporary consumer to track any signal reads in this template.
-      // This is a rare case that can happen with `viewContainerRef.createEmbeddedView(...).detectChanges()`.
+      // This is a rare case that can happen with
+      // - `viewContainerRef.createEmbeddedView(...).detectChanges()`.
+      // - `viewContainerRef.createEmbeddedView(...)` without any other dirty marking on the parent,
+      //   flagging the parent component for traversal but not triggering a full `refreshView`.
       // This temporary consumer marks the first parent that _should_ have a consumer for refresh.
       // Once that refresh happens, the signals will be tracked in the parent consumer and we can destroy
       // the temporary one.
@@ -240,6 +232,7 @@ export function refreshView<T>(
     if (templateFn !== null) {
       executeTemplate(tView, lView, templateFn, RenderFlags.Update, context);
     }
+    runEnterAnimations(lView);
 
     const hooksInitPhaseCompleted =
       (flags & LViewFlags.InitPhaseStateMask) === InitPhaseState.InitPhaseCompleted;
@@ -269,6 +262,7 @@ export function refreshView<T>(
       // `LView` but its declaration appears after the insertion component.
       markTransplantedViewsForRefresh(lView);
     }
+    runEffectsInView(lView);
     detectChangesInEmbeddedViews(lView, ChangeDetectionMode.Global);
 
     // Content query results must be refreshed before content hooks are called.
@@ -356,6 +350,8 @@ export function refreshView<T>(
     // no changes cycle, the component would be not be dirty for the next update pass. This would
     // be different in production mode where the component dirty state is not reset.
     if (!isInCheckNoChangesPass) {
+      addAfterRenderSequencesForView(lView);
+
       lView[FLAGS] &= ~(LViewFlags.Dirty | LViewFlags.FirstLViewPass);
     }
   } catch (e) {
@@ -375,6 +371,16 @@ export function refreshView<T>(
       }
     }
     leaveView();
+  }
+}
+
+function runEnterAnimations(lView: LView) {
+  const animationData = lView[ANIMATIONS];
+  if (animationData?.enter) {
+    for (const animateFn of animationData.enter) {
+      animateFn();
+    }
+    animationData.enter = undefined;
   }
 }
 
@@ -429,8 +435,12 @@ function detectChangesInComponent(
   mode: ChangeDetectionMode,
 ): void {
   ngDevMode && assertEqual(isCreationMode(hostLView), false, 'Should be run in update mode');
+  profiler(ProfilerEvent.ComponentStart);
+
   const componentView = getComponentLViewByIndex(componentHostIdx, hostLView);
   detectChangesInViewIfAttached(componentView, mode);
+
+  profiler(ProfilerEvent.ComponentEnd, componentView[CONTEXT] as any as {});
 }
 
 /**
@@ -496,10 +506,22 @@ function detectChangesInView(lView: LView, mode: ChangeDetectionMode) {
   if (shouldRefreshView) {
     refreshView(tView, lView, tView.template, lView[CONTEXT]);
   } else if (flags & LViewFlags.HasChildViewsToRefresh) {
-    detectChangesInEmbeddedViews(lView, ChangeDetectionMode.Targeted);
-    const components = tView.components;
-    if (components !== null) {
-      detectChangesInChildComponents(lView, components, ChangeDetectionMode.Targeted);
+    // Set active consumer to null to avoid inheriting an improper reactive context
+    const prevConsumer = setActiveConsumer(null);
+    try {
+      if (!isInCheckNoChangesPass) {
+        runEffectsInView(lView);
+      }
+      detectChangesInEmbeddedViews(lView, ChangeDetectionMode.Targeted);
+      const components = tView.components;
+      if (components !== null) {
+        detectChangesInChildComponents(lView, components, ChangeDetectionMode.Targeted);
+      }
+      if (!isInCheckNoChangesPass) {
+        addAfterRenderSequencesForView(lView);
+      }
+    } finally {
+      setActiveConsumer(prevConsumer);
     }
   }
 }
@@ -512,5 +534,40 @@ function detectChangesInChildComponents(
 ): void {
   for (let i = 0; i < components.length; i++) {
     detectChangesInComponent(hostLView, components[i], mode);
+  }
+}
+
+/**
+ * Invoke `HostBindingsFunction`s for view.
+ *
+ * This methods executes `TView.hostBindingOpCodes`. It is used to execute the
+ * `HostBindingsFunction`s associated with the current `LView`.
+ *
+ * @param tView Current `TView`.
+ * @param lView Current `LView`.
+ */
+function processHostBindingOpCodes(tView: TView, lView: LView): void {
+  const hostBindingOpCodes = tView.hostBindingOpCodes;
+  if (hostBindingOpCodes === null) return;
+  try {
+    for (let i = 0; i < hostBindingOpCodes.length; i++) {
+      const opCode = hostBindingOpCodes[i] as number;
+      if (opCode < 0) {
+        // Negative numbers are element indexes.
+        setSelectedIndex(~opCode);
+      } else {
+        // Positive numbers are NumberTuple which store bindingRootIndex and directiveIndex.
+        const directiveIdx = opCode;
+        const bindingRootIndx = hostBindingOpCodes[++i] as number;
+        const hostBindingFn = hostBindingOpCodes[++i] as HostBindingsFunction<any>;
+        setBindingRootForHostBindings(bindingRootIndx, directiveIdx);
+        const context = lView[directiveIdx];
+        profiler(ProfilerEvent.HostBindingsUpdateStart, context);
+        hostBindingFn(RenderFlags.Update, context);
+        profiler(ProfilerEvent.HostBindingsUpdateEnd, context);
+      }
+    }
+  } finally {
+    setSelectedIndex(-1);
   }
 }

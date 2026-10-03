@@ -3,14 +3,20 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {destroyPlatform, NgModule, Testability, NgZone} from '@angular/core';
+import {
+  destroyPlatform,
+  NgModule,
+  Testability,
+  NgZone,
+  provideZoneChangeDetection,
+} from '@angular/core';
 import {fakeAsync, flush, tick} from '@angular/core/testing';
 import {BrowserModule} from '@angular/platform-browser';
 import {platformBrowserDynamic} from '@angular/platform-browser-dynamic';
-import {UpgradeModule} from '@angular/upgrade/static';
+import {UpgradeModule} from '../../../static';
 
 import * as angular from '../../../src/common/src/angular1';
 import {html, withEachNg1Version} from '../../../src/common/test/helpers/common_test_helpers';
@@ -22,7 +28,7 @@ withEachNg1Version(() => {
     beforeEach(() => destroyPlatform());
     afterEach(() => destroyPlatform());
 
-    @NgModule({imports: [BrowserModule, UpgradeModule]})
+    @NgModule({imports: [BrowserModule, UpgradeModule], providers: [provideZoneChangeDetection()]})
     class Ng2Module {
       ngDoBootstrap() {}
     }

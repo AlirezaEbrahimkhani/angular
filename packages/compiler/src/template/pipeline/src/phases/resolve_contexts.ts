@@ -3,17 +3,12 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import * as o from '../../../../output/output_ast';
 import * as ir from '../../ir';
-import {
-  CompilationJob,
-  CompilationUnit,
-  ComponentCompilationJob,
-  ViewCompilationUnit,
-} from '../compilation';
+import {CompilationJob, CompilationUnit} from '../compilation';
 
 /**
  * Resolves `ir.ContextExpr` expressions (which represent embedded view or component contexts) to
@@ -47,9 +42,16 @@ function processLexicalScope(
             break;
         }
         break;
+      case ir.OpKind.Animation:
+      case ir.OpKind.AnimationListener:
       case ir.OpKind.Listener:
       case ir.OpKind.TwoWayListener:
         processLexicalScope(view, op.handlerOps);
+        break;
+      case ir.OpKind.RepeaterCreate:
+        if (op.trackByOps !== null) {
+          processLexicalScope(view, op.trackByOps);
+        }
         break;
     }
   }

@@ -5,11 +5,10 @@
 ```ts
 
 import { ApplicationRef } from '@angular/core';
+import { BootstrapContext } from '@angular/platform-browser';
 import { EnvironmentProviders } from '@angular/core';
 import * as i0 from '@angular/core';
-import * as i1 from '@angular/common/http';
-import * as i2 from '@angular/platform-browser/animations';
-import * as i3 from '@angular/platform-browser';
+import * as i1 from '@angular/platform-browser';
 import { InjectionToken } from '@angular/core';
 import { PlatformRef } from '@angular/core';
 import { Provider } from '@angular/core';
@@ -29,8 +28,8 @@ export interface PlatformConfig {
     url?: string;
 }
 
-// @public (undocumented)
-export const platformServer: (extraProviders?: StaticProvider[] | undefined) => PlatformRef;
+// @public
+export function platformServer(extraProviders?: StaticProvider[] | undefined): PlatformRef;
 
 // @public
 export class PlatformState {
@@ -47,7 +46,7 @@ export class PlatformState {
 export function provideServerRendering(): EnvironmentProviders;
 
 // @public
-export function renderApplication<T>(bootstrap: () => Promise<ApplicationRef>, options: {
+export function renderApplication(bootstrap: (context: BootstrapContext) => Promise<ApplicationRef>, options: {
     document?: string | Document;
     url?: string;
     platformProviders?: Provider[];
@@ -67,7 +66,7 @@ export class ServerModule {
     // (undocumented)
     static ɵinj: i0.ɵɵInjectorDeclaration<ServerModule>;
     // (undocumented)
-    static ɵmod: i0.ɵɵNgModuleDeclaration<ServerModule, never, [typeof i1.HttpClientModule, typeof i2.NoopAnimationsModule], [typeof i3.BrowserModule]>;
+    static ɵmod: i0.ɵɵNgModuleDeclaration<ServerModule, never, never, [typeof i1.BrowserModule]>;
 }
 
 // @public (undocumented)

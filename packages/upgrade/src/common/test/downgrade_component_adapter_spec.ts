@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 import {
   Compiler,
@@ -157,6 +157,7 @@ withEachNg1Version(() => {
         @Component({
           selector: 'comp',
           template: '',
+          standalone: false,
         })
         class NewComponent {}
 
@@ -167,9 +168,10 @@ withEachNg1Version(() => {
         class NewModule {}
 
         const modFactory = compiler.compileModuleSync(NewModule);
-        const module = modFactory.create(TestBed);
+        const testBedInjector = TestBed.inject(Injector);
+        const module = modFactory.create(testBedInjector);
         componentFactory = module.componentFactoryResolver.resolveComponentFactory(NewComponent)!;
-        parentInjector = TestBed;
+        parentInjector = testBedInjector;
 
         return new DowngradeComponentAdapter(
           element,
@@ -181,6 +183,7 @@ withEachNg1Version(() => {
           $parse,
           componentFactory,
           wrapCallback,
+          /* unsafelyOverwriteSignalInputs */ false,
         );
       }
 

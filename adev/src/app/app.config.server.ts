@@ -7,18 +7,11 @@
  */
 
 import {mergeApplicationConfig, ApplicationConfig} from '@angular/core';
-import {provideServerRendering} from '@angular/platform-server';
+import {provideServerRendering, withRoutes, RenderMode} from '@angular/ssr';
 import {appConfig} from './app.config';
-import {
-  ReferenceScrollHandler,
-  ReferenceScrollHandlerNoop,
-} from './features/references/services/reference-scroll-handler.service';
 
 const serverConfig: ApplicationConfig = {
-  providers: [
-    provideServerRendering(),
-    {provide: ReferenceScrollHandler, useClass: ReferenceScrollHandlerNoop},
-  ],
+  providers: [provideServerRendering(withRoutes([{path: '**', renderMode: RenderMode.Prerender}]))],
 };
 
-export const config = mergeApplicationConfig(appConfig, serverConfig);
+export const config: ApplicationConfig = mergeApplicationConfig(appConfig, serverConfig);

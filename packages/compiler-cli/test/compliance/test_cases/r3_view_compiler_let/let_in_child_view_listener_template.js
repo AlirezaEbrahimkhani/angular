@@ -2,8 +2,8 @@ function MyApp_ng_template_1_Conditional_1_Case_1_Template(rf, ctx) {
   if (rf & 1) {
     const $_r1$ = $r3$.ɵɵgetCurrentView();
     $r3$.ɵɵdeclareLet(0);
-    $r3$.ɵɵelementStart(1, "button", 0);
-    $r3$.ɵɵlistener(
+    $r3$.ɵɵdomElementStart(1, "button", 0);
+    $r3$.ɵɵdomListener(
       "click",
       function MyApp_ng_template_1_Conditional_1_Case_1_Template_button_click_1_listener() {
         $r3$.ɵɵrestoreView($_r1$);
@@ -17,7 +17,7 @@ function MyApp_ng_template_1_Conditional_1_Case_1_Template(rf, ctx) {
         return $r3$.ɵɵresetView($ctx_r4$.callback($one_5$, $two_3$, $three_2$, $four_1$));
       }
     );
-    $r3$.ɵɵelementEnd();
+    $r3$.ɵɵdomElementEnd();
   }
   if (rf & 2) {
     $r3$.ɵɵnextContext();
@@ -31,7 +31,7 @@ function MyApp_ng_template_1_Conditional_1_Case_1_Template(rf, ctx) {
 function MyApp_ng_template_1_Conditional_1_Template(rf, ctx) {
   if (rf & 1) {
     $r3$.ɵɵdeclareLet(0);
-    $r3$.ɵɵtemplate(1, MyApp_ng_template_1_Conditional_1_Case_1_Template, 2, 1, "button");
+    $r3$.ɵɵconditionalCreate(1, MyApp_ng_template_1_Conditional_1_Case_1_Template, 2, 1, "button");
   }
   if (rf & 2) {
     let $tmp_5_0$;
@@ -48,7 +48,7 @@ function MyApp_ng_template_1_Conditional_1_Template(rf, ctx) {
 function MyApp_ng_template_1_Template(rf, ctx) {
   if (rf & 1) {
     $r3$.ɵɵdeclareLet(0);
-    $r3$.ɵɵtemplate(1, MyApp_ng_template_1_Conditional_1_Template, 2, 2);
+    $r3$.ɵɵconditionalCreate(1, MyApp_ng_template_1_Conditional_1_Template, 2, 2);
   }
   if (rf & 2) {
     $r3$.ɵɵnextContext();
@@ -69,7 +69,7 @@ $r3$.ɵɵdefineComponent({
   template: function MyApp_Template(rf, ctx) {
     if (rf & 1) {
       $r3$.ɵɵdeclareLet(0);
-      $r3$.ɵɵtemplate(1, MyApp_ng_template_1_Template, 2, 2, "ng-template");
+      $r3$.ɵɵdomTemplate(1, MyApp_ng_template_1_Template, 2, 2, "ng-template");
     }
     if (rf & 2) {
       $r3$.ɵɵstoreLet(ctx.value + 1);

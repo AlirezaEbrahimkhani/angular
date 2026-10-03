@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {
@@ -16,14 +16,13 @@ import {
   signal,
 } from '@angular/core';
 import {outputFromObservable} from '@angular/core/rxjs-interop';
-import {TestBed} from '@angular/core/testing';
+import {TestBed} from '../../../testing';
 import {BehaviorSubject, Observable, share, Subject} from 'rxjs';
 
 describe('output() function', () => {
   it('should support emitting values', () => {
     @Directive({
       selector: '[dir]',
-      standalone: true,
     })
     class Dir {
       onBla = output<number>();
@@ -31,7 +30,6 @@ describe('output() function', () => {
 
     @Component({
       template: '<div dir (onBla)="values.push($event)"></div>',
-      standalone: true,
       imports: [Dir],
     })
     class App {
@@ -53,7 +51,6 @@ describe('output() function', () => {
   it('should support emitting void values', () => {
     @Directive({
       selector: '[dir]',
-      standalone: true,
     })
     class Dir {
       onBla = output();
@@ -61,7 +58,6 @@ describe('output() function', () => {
 
     @Component({
       template: '<div dir (onBla)="count = count + 1"></div>',
-      standalone: true,
       imports: [Dir],
     })
     class App {
@@ -83,7 +79,6 @@ describe('output() function', () => {
   it('should error when emitting to a destroyed output', () => {
     @Directive({
       selector: '[dir]',
-      standalone: true,
     })
     class Dir {
       onBla = output<number>();
@@ -95,7 +90,6 @@ describe('output() function', () => {
           <div dir (onBla)="values.push($event)"></div>
         }
       `,
-      standalone: true,
       imports: [Dir],
     })
     class App {
@@ -115,13 +109,15 @@ describe('output() function', () => {
     fixture.componentInstance.show = false;
     fixture.detectChanges();
 
-    expect(() => dir.onBla.emit(3)).toThrowError(/Unexpected emit for destroyed `OutputRef`/);
+    fixture.destroy();
+    const warnSpy = spyOn(console, 'warn');
+    dir.onBla.emit(3);
+    expect(warnSpy.calls.mostRecent().args[0]).toMatch(/Unexpected emit for destroyed `OutputRef`/);
   });
 
   it('should error when subscribing to a destroyed output', () => {
     @Directive({
       selector: '[dir]',
-      standalone: true,
     })
     class Dir {
       onBla = output<number>();
@@ -133,7 +129,6 @@ describe('output() function', () => {
           <div dir (onBla)="values.push($event)"></div>
         }
       `,
-      standalone: true,
       imports: [Dir],
     })
     class App {
@@ -161,7 +156,6 @@ describe('output() function', () => {
   it('should run listeners outside of `emit` reactive context', () => {
     @Directive({
       selector: '[dir]',
-      standalone: true,
     })
     class Dir {
       onBla = output();
@@ -177,7 +171,6 @@ describe('output() function', () => {
 
     @Component({
       template: '<div dir (onBla)="fnUsingSomeSignal()"></div>',
-      standalone: true,
       imports: [Dir],
     })
     class App {
@@ -205,7 +198,6 @@ describe('output() function', () => {
     it('should support using a `Subject` as source', () => {
       @Directive({
         selector: '[dir]',
-        standalone: true,
       })
       class Dir {
         onBla$ = new Subject<number>();
@@ -214,7 +206,6 @@ describe('output() function', () => {
 
       @Component({
         template: '<div dir (onBla)="values.push($event)"></div>',
-        standalone: true,
         imports: [Dir],
       })
       class App {
@@ -236,7 +227,6 @@ describe('output() function', () => {
     it('should support using a `BehaviorSubject` as source', () => {
       @Directive({
         selector: '[dir]',
-        standalone: true,
       })
       class Dir {
         onBla$ = new BehaviorSubject<number>(1);
@@ -245,7 +235,6 @@ describe('output() function', () => {
 
       @Component({
         template: '<div dir (onBla)="values.push($event)"></div>',
-        standalone: true,
         imports: [Dir],
       })
       class App {
@@ -267,7 +256,6 @@ describe('output() function', () => {
     it('should support using an `EventEmitter` as source', () => {
       @Directive({
         selector: '[dir]',
-        standalone: true,
       })
       class Dir {
         onBla$ = new EventEmitter<number>();
@@ -276,7 +264,6 @@ describe('output() function', () => {
 
       @Component({
         template: '<div dir (onBla)="values.push($event)"></div>',
-        standalone: true,
         imports: [Dir],
       })
       class App {
@@ -298,7 +285,6 @@ describe('output() function', () => {
     it('should support lazily creating an observer upon subscription', () => {
       @Directive({
         selector: '[dir]',
-        standalone: true,
       })
       class Dir {
         streamStarted = false;
@@ -315,7 +301,6 @@ describe('output() function', () => {
           <div dir></div>
           <div dir (onBla)="true"></div>
         `,
-        standalone: true,
         imports: [Dir],
       })
       class App {}
@@ -333,7 +318,6 @@ describe('output() function', () => {
     it('should report subscription listener errors to `ErrorHandler` and continue', () => {
       @Directive({
         selector: '[dir]',
-        standalone: true,
       })
       class Dir {
         onBla = output();
@@ -343,7 +327,6 @@ describe('output() function', () => {
         template: `
           <div dir (onBla)="true"></div>
         `,
-        standalone: true,
         imports: [Dir],
       })
       class App {}

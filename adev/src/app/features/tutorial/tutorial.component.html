@@ -1,25 +1,24 @@
 <div class="adev-page-content" [class.adev-nav-open]="showNavigationDropdown()">
   <ng-container *ngTemplateOutlet="tutorialNav" />
-    @if (shouldRenderContent()) {
-      <div
-        #content
-        class="docs-tutorial-content"
-        [class.adev-nav-open]="showNavigationDropdown()"
-      >
+  @if (shouldRenderContent()) {
+    <div #content class="docs-tutorial-content" [class.adev-nav-open]="showNavigationDropdown()">
       <!-- Tutorial Nav: Current Tutorial Title and Nav Buttons -->
       <ng-container *ngTemplateOutlet="tutorialNav" />
 
       <!-- Tutorial Content -->
       @if (documentContent(); as documentContent) {
-          <docs-viewer
-            [docContent]="documentContent"
-            class="docs-viewer docs-viewer-scroll-margin-large"
-          />
+        <main
+          docsViewer
+          [docContent]="documentContent"
+          class="docs-viewer docs-viewer-scroll-margin-large"
+        ></main>
       }
-  </div>}
+    </div>
+  }
 
   <!-- Split View Resizer -->
   <button
+    type="button"
     role="separator"
     #resizer
     class="adev-tutorial-resizer"
@@ -28,13 +27,11 @@
 
   <!-- Embedded Editor -->
   @if (shouldRenderEmbeddedEditor()) {
-    <div
-      #editor
-      class="docs-tutorial-editor"
-      [class.adev-split-tutorial]="shouldRenderContent()"
-    >
+    <div #editor class="docs-tutorial-editor" [class.adev-split-tutorial]="shouldRenderContent()">
       @if (embeddedEditorComponent) {
-        <ng-container *ngComponentOutlet="embeddedEditorComponent" />
+        <ng-container
+          *ngComponentOutlet="embeddedEditorComponent; inputs:{restrictedMode:restrictedMode()}"
+        />
       }
     </div>
   }
@@ -45,7 +42,7 @@
   <div class="adev-tutorial-nav-container">
     <div class="adev-tutorial-nav" [class.adev-nav-open]="showNavigationDropdown()">
       <!-- Toggle Nav Button -->
-      <button class="adev-unfold-button" (click)="toggleNavigationDropdown($event)">
+      <button type="button" class="adev-unfold-button" (click)="toggleNavigationDropdown($event)">
         <docs-icon>unfold_more</docs-icon>
         <div class="adev-current-tutorial">
           <span>{{ tutorialName() }}</span>
@@ -56,6 +53,7 @@
       <!-- Reveal Answer Button -->
       @if (shouldRenderRevealAnswer()) {
         <button
+          type="button"
           #revealAnswerButton
           (click)="answerRevealed() ? handleResetAnswer() : handleRevealAnswer()"
           [disabled]="!canRevealAnswer()"
@@ -70,11 +68,8 @@
 
       <!-- Download code -->
       @if (localTutorialZipUrl()) {
-        <a
-          [download]="stepName() + '.zip'"
-          [href]="localTutorialZipUrl()"
-        >
-          <button class="adev-download-button docs-primary-btn">
+        <a [download]="stepName() + '.zip'" [href]="localTutorialZipUrl()">
+          <button type="button" class="adev-download-button docs-primary-btn">
             <docs-icon>download</docs-icon>
           </button>
         </a>
@@ -83,26 +78,26 @@
       <div class="adev-nav-arrows">
         @if (previousStepPath) {
           <a [routerLink]="previousStepPath">
-            <button class="docs-primary-btn">
+            <button type="button" class="docs-primary-btn">
               <docs-icon>chevron_left</docs-icon>
             </button>
           </a>
         }
         @if (!previousStepPath) {
-          <button class="docs-primary-btn" disabled>
+          <button type="button" class="docs-primary-btn" disabled>
             <docs-icon>chevron_left</docs-icon>
           </button>
         }
 
         @if (nextStepPath) {
           <a [routerLink]="nextStepPath">
-            <button class="docs-primary-btn">
+            <button type="button" class="docs-primary-btn">
               <docs-icon>chevron_right</docs-icon>
             </button>
           </a>
         }
         @if (!nextStepPath) {
-          <button class="docs-primary-btn" disabled>
+          <button type="button" class="docs-primary-btn" disabled>
             <docs-icon>chevron_right</docs-icon>
           </button>
         }
@@ -112,6 +107,7 @@
       <div class="adev-reveal-mobile-button-container">
         @if (shouldRenderRevealAnswer()) {
           <button
+            type="button"
             #revealAnswerButton
             (click)="answerRevealed() ? handleResetAnswer() : handleRevealAnswer()"
             [disabled]="!canRevealAnswer()"
@@ -127,12 +123,8 @@
 
       <!-- Tutorial Nav: List -->
       @if (showNavigationDropdown()) {
-        <div
-          class="adev-tutorial-nav-list-dropdown"
-          (docsClickOutside)="hideNavigationDropdown()"
-        >
-          <docs-navigation-list
-            [isDropdownView]="true"
+        <div class="adev-tutorial-nav-list-dropdown" (docsClickOutside)="hideNavigationDropdown()">
+          <adev-tutorial-navigation-list
             [navigationItems]="tutorialNavigationItems()"
             class="adev-nav-list"
           />

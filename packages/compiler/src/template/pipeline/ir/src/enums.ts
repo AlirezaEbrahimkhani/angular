@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 /**
@@ -68,6 +68,16 @@ export enum OpKind {
    * node.
    */
   DisableBindings,
+
+  /**
+   * Create a conditional creation instruction op.
+   */
+  ConditionalCreate,
+
+  /**
+   * Create a conditional branch creation instruction op.
+   */
+  ConditionalBranchCreate,
 
   /**
    * An op to conditionally render a template.
@@ -166,9 +176,9 @@ export enum OpKind {
   I18nMessage,
 
   /**
-   * A host binding property.
+   * A binding to a native DOM property.
    */
-  HostProperty,
+  DomProperty,
 
   /**
    * A namespace change, which causes the subsequent elements to be processed as either HTML or SVG.
@@ -264,6 +274,31 @@ export enum OpKind {
    * A creation op that corresponds to i18n attributes on an element.
    */
   I18nAttributes,
+
+  /**
+   * Creation op that attaches the location at which an element was defined in a template to it.
+   */
+  SourceLocation,
+
+  /**
+   * An operation to bind animation css classes to an element.
+   */
+  Animation,
+
+  /**
+   * An operation to bind animation css classes to an element.
+   */
+  AnimationString,
+
+  /**
+   * An operation to bind animation css classes to an element.
+   */
+  AnimationBinding,
+
+  /**
+   * An operation to bind animation events to an element.
+   */
+  AnimationListener,
 }
 
 /**
@@ -481,14 +516,19 @@ export enum BindingKind {
   I18n,
 
   /**
-   * Animation property bindings.
+   * Legacy animation property bindings.
    */
-  Animation,
+  LegacyAnimation,
 
   /**
    * Property side of a two-way binding.
    */
   TwoWayProperty,
+
+  /**
+   * Property side of an animation binding.
+   */
+  Animation,
 }
 
 /**
@@ -575,6 +615,7 @@ export enum DeferTriggerKind {
   Hover,
   Interaction,
   Viewport,
+  Never,
 }
 
 /**
@@ -590,4 +631,43 @@ export enum TemplateKind {
   NgTemplate,
   Structural,
   Block,
+}
+
+/**
+ * Kinds of animations
+ */
+export const enum AnimationKind {
+  ENTER = 'enter',
+  LEAVE = 'leave',
+}
+
+/**
+ * Kinds of animations
+ */
+export const enum AnimationBindingKind {
+  STRING,
+  VALUE,
+}
+
+/**
+ * Kinds of modifiers for a defer block.
+ */
+export const enum DeferOpModifierKind {
+  NONE = 'none',
+  PREFETCH = 'prefetch',
+  HYDRATE = 'hydrate',
+}
+
+/**
+ * Specifies defer block flags, which should be used for all
+ * instances of a given defer block (the flags that should be
+ * placed into the `TDeferDetails` at runtime).
+ */
+export const enum TDeferDetailsFlags {
+  Default = 0,
+
+  /**
+   * Whether or not the defer block has hydrate triggers.
+   */
+  HasHydrateTriggers = 1 << 0,
 }

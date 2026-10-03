@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 /* tslint:disable:no-console  */
@@ -16,9 +16,9 @@ import {FormArray, FormControl, FormGroup} from '@angular/forms';
   template: `
     <form [formGroup]="form" (ngSubmit)="onSubmit()">
       <div formArrayName="cities">
-        <div *ngFor="let city of cities.controls; index as i">
-          <input [formControlName]="i" placeholder="City" />
-        </div>
+        @for(city of cities.controls; track city;) {
+          <input [formControlName]="$index" placeholder="City" />
+        }
       </div>
       <button>Submit</button>
     </form>
@@ -26,6 +26,7 @@ import {FormArray, FormControl, FormGroup} from '@angular/forms';
     <button (click)="addCity()">Add City</button>
     <button (click)="setPreset()">Set preset</button>
   `,
+  standalone: false,
 })
 export class NestedFormArray {
   form = new FormGroup({

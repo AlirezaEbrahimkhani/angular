@@ -7,6 +7,8 @@ export const commitMessage: CommitMessageConfig = {
   maxLineLength: Infinity,
   minBodyLength: 20,
   minBodyLengthTypeExcludes: ['docs'],
+  // If you update this, also update the docs.
+  // https://github.com/angular/angular/blob/main/contributing-docs/commit-message-guidelines.md#scope
   scopes: [
     'animations',
     'bazel',
@@ -23,6 +25,7 @@ export const commitMessage: CommitMessageConfig = {
     'forms',
     'http',
     'language-service',
+    'language-server',
     'localize',
     'migrations',
     'packaging',
@@ -32,7 +35,7 @@ export const commitMessage: CommitMessageConfig = {
     'router',
     'service-worker',
     'upgrade',
-    've',
+    'vscode-extension',
     'zone.js',
   ],
 };

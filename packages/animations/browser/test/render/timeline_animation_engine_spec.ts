@@ -3,9 +3,12 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
-import {animate, AnimationMetadata, style} from '@angular/animations';
+
+import {isNode} from '@angular/private/testing';
+
+import {animate, AnimationMetadata, style} from '../../../src/animations';
 
 import {
   AnimationStyleNormalizer,
@@ -39,7 +42,7 @@ import {MockAnimationDriver, MockAnimationPlayer} from '../../testing/src/mock_a
       document.body.appendChild(element);
     });
 
-    afterEach(() => document.body.removeChild(element));
+    afterEach(() => element.remove());
 
     it('should animate a timeline', () => {
       const engine = makeEngine(getBodyNode());

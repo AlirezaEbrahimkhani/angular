@@ -1,21 +1,8 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "baseBranches": ["main"],
-  "enabledManagers": ["npm", "bazel", "github-actions"],
-  "rangeStrategy": "replace",
-  "pinDigests": true,
-  "semanticCommits": "enabled",
-  "semanticCommitScope": "",
-  "semanticCommitType": "build",
-  "dependencyDashboard": true,
-  "commitBody": "See associated pull request for more information.",
-  "separateMajorMinor": false,
-  "prHourlyLimit": 3,
-  "timezone": "America/Tijuana",
-  "lockFileMaintenance": {"enabled": true},
-  "labels": ["target: patch", "area: build & ci", "action: merge"],
+  "extends": ["github>angular/dev-infra//renovate-presets/default.json5"],
+  "baseBranchPatterns": ["main", "20.3.x"],
   "ignoreDeps": [
-    "@types/node",
     "@types/selenium-webdriver",
     "angular-1.5",
     "angular-1.6",
@@ -25,84 +12,48 @@
     "angular-mocks-1.6",
     "angular-mocks-1.7",
     "angular-mocks-1.8",
-    "remark",
-    "remark-html",
-    "selenium-webdriver",
-    "watchr",
-    "rxjs",
-    "glob",
-    "chalk",
     "convert-source-map",
-    "@rollup/plugin-node-resolve",
-    "hast-util-is-element",
-    "hast-util-has-property",
-    "hast-util-to-string",
-    "rehype-slug",
-    "rollup",
+    "selenium-webdriver",
     "systemjs",
-    "unist-util-filter",
-    "unist-util-source",
-    "unist-util-visit",
-    "unist-util-visit-parents",
-    "rules_pkg",
-    "aspect_bazel_lib"
+    "vscode-jsonrpc",
+    "vscode-languageclient",
+    "vscode-languageserver",
+    "vscode-languageserver-protocol",
+    "vscode-languageserver-types"
   ],
   "packageRules": [
     {
-      "matchDepPatterns": ["*"],
-      "matchUpdateTypes": ["minor", "patch"],
-      "groupName": "all non-major dependencies",
-      "schedule": ["after 10:00pm on monday", "before 04:00am on tuesday"]
-    },
-
-    {
-      "matchDepPatterns": ["^@bazel/.*", "^build_bazel.*"],
-      "groupName": "bazel setup",
-      "schedule": ["at any time"]
-    },
-
-    {
-      "matchPackagePrefixes": ["@angular/", "angular/", "@angular-devkit", "@schematics/"],
-      "followTag": "next",
-      "groupName": "cross-repo Angular dependencies",
-      "schedule": ["at any time"]
-    },
-
-    {
-      "matchPackagePrefixes": ["@angular/", "angular/", "@angular-devkit", "@schematics/"],
-      "matchPaths": [
-        "packages/**",
-        "adev/src/content/tutorials/**"
+      "matchFileNames": [
+        "modules/ssr-benchmarks/package.json",
+        "vscode-ng-language-service/integration/pre_apf_project/package.json",
+        "vscode-ng-language-service/integration/pre_standalone_project/package.json"
       ],
-      "followTag": null
-    },
-
-    {
-      "matchPackagePrefixes": ["@babel/", "@types/babel__"],
-      "groupName": "babel dependencies"
-    },
-
-    {
-      "matchPackagePrefixes": ["@angular-eslint/", "@typescript-eslint/"],
-      "groupName": "eslint dependencies"
-    },
-
-    {
-      "matchPackageNames": ["typescript", "tslib"],
-      "groupName": "typescript dependencies"
-    },
-
-    {
-      "matchPaths": [".github/workflows/scorecard.yml"],
-      "groupName": "scorecard action dependencies",
-      "groupSlug": "scorecard-action"
-    },
-
-    {"matchCurrentVersion": "0.0.0-PLACEHOLDER", "enabled": false},
-
-    {
-      "matchPaths": ["integration/**", "packages/zone.js/test/typings/package.json"],
       "enabled": false
+    },
+    {
+      "matchManagers": ["bazel", "bazel-module", "bazelisk", "npm"],
+      "postUpgradeTasks": {
+        "commands": [
+          "git restore .npmrc",
+          "pnpm install --frozen-lockfile",
+          "pnpm bazel mod deps --lockfile_mode=update",
+          "pnpm bazel run //.github/actions/deploy-docs-site:main",
+          "pnpm bazel run //packages/common:base_currencies_file",
+          "pnpm bazel run //packages/common/locales:closure_locale_file",
+          "pnpm bazel run //packages/core:base_locale_file"
+        ],
+        "fileFilters": [
+          ".github/actions/deploy-docs-site/**/*",
+          "packages/**/*",
+          "MODULE.bazel.lock"
+        ],
+        "executionMode": "branch"
+      }
+    },
+    {
+      "enabled": false,
+      "matchDepNames": ["tailwindcss"],
+      "matchUpdateTypes": ["major"]
     }
   ]
 }

@@ -6,67 +6,64 @@
  * found in the LICENSE file at https://angular.dev/license
  */
 
-import {ComponentFixture, TestBed, fakeAsync, tick} from '@angular/core/testing';
-import {By} from '@angular/platform-browser';
+import {ComponentFixture, TestBed} from '@angular/core/testing';
 
+import {DOCUMENT, inject} from '@angular/core';
 import {Terminal} from './terminal.component';
-import {TerminalHandler, TerminalType} from './terminal-handler.service';
+import {TerminalType, TerminalHandler} from './terminal-handler.service';
 import {WINDOW} from '@angular/docs';
-import {FakeEventTarget} from '@angular/docs/testing';
 
 describe('Terminal', () => {
-  let component: Terminal;
   let fixture: ComponentFixture<Terminal>;
 
-  let terminalHandlerSpy: jasmine.SpyObj<TerminalHandler>;
-
-  const fakeWindow = new FakeEventTarget();
-
   beforeEach(async () => {
-    terminalHandlerSpy = jasmine.createSpyObj('TerminalHandler', [
-      'registerTerminal',
-      'resizeToFitParent',
-    ]);
-
-    await TestBed.configureTestingModule({
+    TestBed.configureTestingModule({
       imports: [Terminal],
       providers: [
-        {provide: TerminalHandler, useValue: terminalHandlerSpy},
         {
           provide: WINDOW,
-          useValue: fakeWindow,
+          useFactory: () => inject(DOCUMENT).defaultView,
         },
       ],
-    }).compileComponents();
+    });
 
     fixture = TestBed.createComponent(Terminal);
-    component = fixture.componentInstance;
-    component.type = TerminalType.READONLY;
-    fixture.detectChanges();
+    fixture.componentRef.setInput('type', TerminalType.READONLY);
+    await fixture.whenStable();
   });
 
-  it('should create', () => {
-    expect(component).toBeTruthy();
+  it('should write to terminal', async () => {
+    await expectWriteStringToTerminal('test string');
   });
 
-  it('should register the terminal element on afterViewInit', () => {
-    const terminalDebugElement = fixture.debugElement.query(By.css('.adev-terminal-output'));
+  it('should write to terminal when using new instance', async () => {
+    await expectWriteStringToTerminal('first value');
+    fixture.destroy();
 
-    component['terminalElementRef'] = terminalDebugElement;
-    component.ngAfterViewInit();
+    fixture = TestBed.createComponent(Terminal);
+    fixture.componentRef.setInput('type', TerminalType.READONLY);
+    await fixture.whenStable();
 
-    expect(terminalHandlerSpy.registerTerminal).toHaveBeenCalledWith(
-      TerminalType.READONLY,
-      terminalDebugElement.nativeElement,
-    );
+    await expectWriteStringToTerminal('second value');
   });
 
-  it('should call resizeToFitParent on window resize', fakeAsync(() => {
-    fakeWindow.dispatchEvent(new Event('resize'));
-
-    // debounce time
-    tick(50);
-
-    expect(terminalHandlerSpy.resizeToFitParent).toHaveBeenCalled();
-  }));
+  async function expectWriteStringToTerminal(v: string) {
+    TestBed.inject(TerminalHandler).readonlyTerminalInstance().write(v);
+    await expectAsync(until(() => fixture.nativeElement.innerHTML.indexOf(v) > -1)).toBeResolved();
+  }
 });
+
+async function until<T>(fn: () => T): Promise<T> {
+  const timeout = 1000;
+  const start = performance.now();
+  while (true) {
+    const result = fn();
+    if (result) {
+      return result;
+    }
+    if (performance.now() - start > timeout) {
+      throw new Error(`condition not satisfied within ${timeout}ms.`);
+    }
+    await new Promise((r) => setTimeout(r, 1));
+  }
+}

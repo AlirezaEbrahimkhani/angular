@@ -3,10 +3,10 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {HttpParams} from '@angular/common/http/src/params';
+import {HttpParams} from '../src/params';
 
 describe('HttpUrlEncodedParams', () => {
   describe('initialization', () => {

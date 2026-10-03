@@ -1,4 +1,4 @@
-import {Component, Input} from '@angular/core';
+import {Component, input} from '@angular/core';
 import {
   trigger,
   transition,
@@ -10,7 +10,6 @@ import {
 } from '@angular/animations';
 
 @Component({
-  standalone: true,
   selector: 'app-open-close',
   animations: [
     // #docregion trigger
@@ -56,7 +55,7 @@ export class OpenCloseKeyframeComponent {
     this.isOpen = !this.isOpen;
   }
 
-  @Input() logging = false;
+  logging = input(false);
   onAnimationEvent(event: AnimationEvent) {
     if (!this.logging) {
       return;

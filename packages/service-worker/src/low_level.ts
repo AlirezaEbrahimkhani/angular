@@ -3,11 +3,14 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {concat, ConnectableObservable, defer, fromEvent, Observable, of, throwError} from 'rxjs';
-import {filter, map, publish, switchMap, take, tap} from 'rxjs/operators';
+import {ApplicationRef, type Injector, ɵRuntimeError as RuntimeError} from '@angular/core';
+import {Observable, Subject} from 'rxjs';
+import {filter, map, switchMap, take} from 'rxjs/operators';
+
+import {RuntimeErrorCode} from './errors';
 
 export const ERR_SW_NOT_SUPPORTED = 'Service workers are disabled or not supported by this browser';
 
@@ -15,7 +18,8 @@ export const ERR_SW_NOT_SUPPORTED = 'Service workers are disabled or not support
  * An event emitted when the service worker has checked the version of the app on the server and it
  * didn't find a new version that it doesn't have already downloaded.
  *
- * @see {@link ecosystem/service-workers/communications Service worker communication guide}
+ * @see {@link /ecosystem/service-workers/communications Service Worker Communication Guide}
+
  *
  * @publicApi
  */
@@ -28,7 +32,8 @@ export interface NoNewVersionDetectedEvent {
  * An event emitted when the service worker has detected a new version of the app on the server and
  * is about to start downloading it.
  *
- * @see {@link ecosystem/service-workers/communications Service worker communication guide}
+ * @see {@link /ecosystem/service-workers/communications Service Worker Communication Guide}
+
  *
  * @publicApi
  */
@@ -41,8 +46,8 @@ export interface VersionDetectedEvent {
  * An event emitted when the installation of a new version failed.
  * It may be used for logging/monitoring purposes.
  *
- * @see {@link ecosystem/service-workers/communications Service worker communication guide}
- *
+ * @see {@link /ecosystem/service-workers/communications Service Worker Communication Guide}
+ *a
  * @publicApi
  */
 export interface VersionInstallationFailedEvent {
@@ -54,7 +59,8 @@ export interface VersionInstallationFailedEvent {
 /**
  * An event emitted when a new version of the app is available.
  *
- * @see {@link ecosystem/service-workers/communications Service worker communication guide}
+ * @see {@link /ecosystem/service-workers/communications Service Worker Communication Guide}
+
  *
  * @publicApi
  */
@@ -65,8 +71,25 @@ export interface VersionReadyEvent {
 }
 
 /**
+ * An event emitted when a specific version of the app has encountered a critical failure
+ * that prevents it from functioning correctly.
+ *
+ * When a version fails, the service worker will notify all clients currently using that version
+ * and may degrade to serving only existing clients if the failed version was the latest one.
+ *
+ * @see {@link /ecosystem/service-workers/communications Service Worker Communication Guide}
+ *
+ * @publicApi
+ */
+export interface VersionFailedEvent {
+  type: 'VERSION_FAILED';
+  version: {hash: string; appData?: object};
+  error: string;
+}
+
+/**
  * A union of all event types that can be emitted by
- * {@link api/service-worker/SwUpdate#versionUpdates SwUpdate#versionUpdates}.
+ * {@link SwUpdate#versionUpdates}.
  *
  * @publicApi
  */
@@ -74,6 +97,7 @@ export type VersionEvent =
   | VersionDetectedEvent
   | VersionInstallationFailedEvent
   | VersionReadyEvent
+  | VersionFailedEvent
   | NoNewVersionDetectedEvent;
 
 /**
@@ -85,7 +109,8 @@ export type VersionEvent =
  * service worker cache has been partially cleaned by the browser, removing some files of a previous
  * app version but not all.
  *
- * @see {@link ecosystem/service-workers/communications Service worker communication guide}
+ * @see {@link /ecosystem/service-workers/communications Service Worker Communication Guide}
+
  *
  * @publicApi
  */
@@ -121,10 +146,6 @@ type OperationCompletedEvent =
       error: string;
     };
 
-function errorObservable(message: string): Observable<any> {
-  return defer(() => throwError(new Error(message)));
-}
-
 /**
  * @publicApi
  */
@@ -135,44 +156,91 @@ export class NgswCommChannel {
 
   readonly events: Observable<TypedEvent>;
 
-  constructor(private serviceWorker: ServiceWorkerContainer | undefined) {
+  constructor(
+    private serviceWorker: ServiceWorkerContainer | undefined,
+    injector?: Injector,
+  ) {
     if (!serviceWorker) {
-      this.worker = this.events = this.registration = errorObservable(ERR_SW_NOT_SUPPORTED);
+      this.worker =
+        this.events =
+        this.registration =
+          new Observable<never>((subscriber) =>
+            subscriber.error(
+              new RuntimeError(
+                RuntimeErrorCode.SERVICE_WORKER_DISABLED_OR_NOT_SUPPORTED_BY_THIS_BROWSER,
+                (typeof ngDevMode === 'undefined' || ngDevMode) && ERR_SW_NOT_SUPPORTED,
+              ),
+            ),
+          );
     } else {
-      const controllerChangeEvents = fromEvent(serviceWorker, 'controllerchange');
-      const controllerChanges = controllerChangeEvents.pipe(map(() => serviceWorker.controller));
-      const currentController = defer(() => of(serviceWorker.controller));
-      const controllerWithChanges = concat(currentController, controllerChanges);
+      let currentWorker: ServiceWorker | null = null;
+      const workerSubject = new Subject<ServiceWorker>();
+      this.worker = new Observable((subscriber) => {
+        if (currentWorker !== null) {
+          subscriber.next(currentWorker);
+        }
+        return workerSubject.subscribe((v) => subscriber.next(v));
+      });
+      const updateController = () => {
+        const {controller} = serviceWorker;
+        if (controller === null) {
+          return;
+        }
+        currentWorker = controller;
+        workerSubject.next(currentWorker);
+      };
+      serviceWorker.addEventListener('controllerchange', updateController);
+      updateController();
 
-      this.worker = controllerWithChanges.pipe(filter((c): c is ServiceWorker => !!c));
+      this.registration = this.worker.pipe(
+        switchMap(() =>
+          serviceWorker.getRegistration().then((registration) => {
+            // The `getRegistration()` method may return undefined in
+            // non-secure contexts or incognito mode, where service worker
+            // registration might not be allowed.
+            if (!registration) {
+              throw new RuntimeError(
+                RuntimeErrorCode.SERVICE_WORKER_DISABLED_OR_NOT_SUPPORTED_BY_THIS_BROWSER,
+                (typeof ngDevMode === 'undefined' || ngDevMode) && ERR_SW_NOT_SUPPORTED,
+              );
+            }
 
-      this.registration = <Observable<ServiceWorkerRegistration>>(
-        this.worker.pipe(switchMap(() => serviceWorker.getRegistration()))
+            return registration;
+          }),
+        ),
       );
 
-      const rawEvents = fromEvent<MessageEvent>(serviceWorker, 'message');
-      const rawEventPayload = rawEvents.pipe(map((event) => event.data));
-      const eventsUnconnected = rawEventPayload.pipe(filter((event) => event && event.type));
-      const events = eventsUnconnected.pipe(publish()) as ConnectableObservable<IncomingEvent>;
-      events.connect();
+      const _events = new Subject<TypedEvent>();
+      this.events = _events.asObservable();
 
-      this.events = events;
+      const messageListener = (event: MessageEvent) => {
+        const {data} = event;
+        if (data?.type) {
+          _events.next(data);
+        }
+      };
+      serviceWorker.addEventListener('message', messageListener);
+
+      // The injector is optional to avoid breaking changes.
+      const appRef = injector?.get(ApplicationRef, null, {optional: true});
+      appRef?.onDestroy(() => {
+        serviceWorker.removeEventListener('controllerchange', updateController);
+        serviceWorker.removeEventListener('message', messageListener);
+      });
     }
   }
 
   postMessage(action: string, payload: Object): Promise<void> {
-    return this.worker
-      .pipe(
-        take(1),
-        tap((sw: ServiceWorker) => {
-          sw.postMessage({
-            action,
-            ...payload,
-          });
-        }),
-      )
-      .toPromise()
-      .then(() => undefined);
+    return new Promise<void>((resolve) => {
+      this.worker.pipe(take(1)).subscribe((sw) => {
+        sw.postMessage({
+          action,
+          ...payload,
+        });
+
+        resolve();
+      });
+    });
   }
 
   postMessageWithOperation(
@@ -204,18 +272,23 @@ export class NgswCommChannel {
   }
 
   waitForOperationCompleted(nonce: number): Promise<boolean> {
-    return this.eventsOfType<OperationCompletedEvent>('OPERATION_COMPLETED')
-      .pipe(
-        filter((event) => event.nonce === nonce),
-        take(1),
-        map((event) => {
-          if (event.result !== undefined) {
-            return event.result;
-          }
-          throw new Error(event.error!);
-        }),
-      )
-      .toPromise() as Promise<boolean>;
+    return new Promise<boolean>((resolve, reject) => {
+      this.eventsOfType<OperationCompletedEvent>('OPERATION_COMPLETED')
+        .pipe(
+          filter((event) => event.nonce === nonce),
+          take(1),
+          map((event) => {
+            if (event.result !== undefined) {
+              return event.result;
+            }
+            throw new Error(event.error!);
+          }),
+        )
+        .subscribe({
+          next: resolve,
+          error: reject,
+        });
+    });
   }
 
   get isEnabled(): boolean {

@@ -3,28 +3,39 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {
+  ApplicationRef,
   Component,
+  EnvironmentInjector,
   ErrorHandler,
   Injectable,
   Input,
-  provideExperimentalZonelessChangeDetection,
+  NgZone,
+  createComponent,
+  provideZoneChangeDetection,
+  provideZonelessChangeDetection,
   signal,
-} from '@angular/core';
+} from '../src/core';
 import {
   ComponentFixtureAutoDetect,
   ComponentFixtureNoNgZone,
+  fakeAsync,
   TestBed,
+  tick,
   waitForAsync,
   withModule,
-} from '@angular/core/testing';
-import {dispatchEvent} from '@angular/platform-browser/testing/src/browser_util';
-import {expect} from '@angular/platform-browser/testing/src/matchers';
+} from '../testing';
+import {dispatchEvent, isNode} from '@angular/private/testing';
+import {expect} from '@angular/private/testing/matchers';
 
-@Component({selector: 'simple-comp', template: `<span>Original {{simpleBinding}}</span>`})
+@Component({
+  selector: 'simple-comp',
+  template: `<span>Original {{simpleBinding}}</span>`,
+  standalone: false,
+})
 @Injectable()
 class SimpleComp {
   simpleBinding: string;
@@ -35,14 +46,12 @@ class SimpleComp {
 
 @Component({
   selector: 'deferred-comp',
-  standalone: true,
   template: `<div>Deferred Component</div>`,
 })
 class DeferredComp {}
 
 @Component({
   selector: 'second-deferred-comp',
-  standalone: true,
   template: `<div>More Deferred Component</div>`,
 })
 class SecondDeferredComp {}
@@ -50,13 +59,18 @@ class SecondDeferredComp {}
 @Component({
   selector: 'my-if-comp',
   template: `MyIf(<span *ngIf="showMore">More</span>)`,
+  standalone: false,
 })
 @Injectable()
 class MyIfComp {
   showMore: boolean = false;
 }
 
-@Component({selector: 'autodetect-comp', template: `<span (click)='click()'>{{text}}</span>`})
+@Component({
+  selector: 'autodetect-comp',
+  template: `<span (click)='click()'>{{text}}</span>`,
+  standalone: false,
+})
 class AutoDetectComp {
   text: string = '1';
 
@@ -65,7 +79,11 @@ class AutoDetectComp {
   }
 }
 
-@Component({selector: 'async-comp', template: `<span (click)='click()'>{{text}}</span>`})
+@Component({
+  selector: 'async-comp',
+  template: `<span (click)='click()'>{{text}}</span>`,
+  standalone: false,
+})
 class AsyncComp {
   text: string = '1';
 
@@ -76,7 +94,11 @@ class AsyncComp {
   }
 }
 
-@Component({selector: 'async-child-comp', template: '<span>{{localText}}</span>'})
+@Component({
+  selector: 'async-child-comp',
+  template: '<span>{{localText}}</span>',
+  standalone: false,
+})
 class AsyncChildComp {
   localText: string = '';
 
@@ -91,6 +113,7 @@ class AsyncChildComp {
 @Component({
   selector: 'async-change-comp',
   template: `<async-child-comp (click)='click()' [text]="text"></async-child-comp>`,
+  standalone: false,
 })
 class AsyncChangeComp {
   text: string = '1';
@@ -100,7 +123,11 @@ class AsyncChangeComp {
   }
 }
 
-@Component({selector: 'async-timeout-comp', template: `<span (click)='click()'>{{text}}</span>`})
+@Component({
+  selector: 'async-timeout-comp',
+  template: `<span (click)='click()'>{{text}}</span>`,
+  standalone: false,
+})
 class AsyncTimeoutComp {
   text: string = '1';
 
@@ -114,6 +141,7 @@ class AsyncTimeoutComp {
 @Component({
   selector: 'nested-async-timeout-comp',
   template: `<span (click)='click()'>{{text}}</span>`,
+  standalone: false,
 })
 class NestedAsyncTimeoutComp {
   text: string = '1';
@@ -128,8 +156,17 @@ class NestedAsyncTimeoutComp {
 }
 
 describe('ComponentFixture', () => {
+  beforeEach(() => {
+    globalThis['ngServerMode'] = isNode;
+  });
+
+  afterEach(() => {
+    globalThis['ngServerMode'] = undefined;
+  });
+
   beforeEach(waitForAsync(() => {
     TestBed.configureTestingModule({
+      providers: [provideZoneChangeDetection()],
       declarations: [
         AutoDetectComp,
         AsyncComp,
@@ -333,11 +370,92 @@ describe('ComponentFixture', () => {
     });
   }));
 
+  it('throws errors that happen during detectChanges', () => {
+    @Component({
+      template: '',
+    })
+    class App {
+      ngOnInit() {
+        throw new Error();
+      }
+    }
+
+    const fixture = TestBed.createComponent(App);
+    expect(() => fixture.detectChanges()).toThrow();
+  });
+
+  it('should not duplicate errors when used with fake async', fakeAsync(() => {
+    @Component({
+      template: '<button (click)="doThrow()">a</button>',
+    })
+    class Throwing {
+      doThrow() {
+        throw new Error('thrown');
+      }
+    }
+    TestBed.configureTestingModule({
+      providers: [
+        {
+          provide: ErrorHandler,
+          useClass: class {
+            handleError(e: unknown) {
+              throw e;
+            }
+          },
+        },
+      ],
+    });
+    const fix = TestBed.createComponent(Throwing);
+    try {
+      fix.nativeElement.querySelector('button').click();
+      tick();
+      fail('should have thrown');
+    } catch (e) {
+      expect((e as Error).message).toMatch('thrown');
+    }
+  }));
+
+  describe('errors during ApplicationRef.tick', () => {
+    @Component({
+      template: '',
+    })
+    class ThrowingThing {
+      ngOnInit() {
+        throw new Error();
+      }
+    }
+    @Component({
+      template: '',
+    })
+    class Blank {}
+
+    it('rejects whenStable promise when errors happen during appRef.tick', async () => {
+      TestBed.configureTestingModule({providers: [provideZoneChangeDetection()]});
+      const fixture = TestBed.createComponent(Blank);
+      const throwingThing = createComponent(ThrowingThing, {
+        environmentInjector: TestBed.inject(EnvironmentInjector),
+      });
+
+      TestBed.inject(ApplicationRef).attachView(throwingThing.hostView);
+      await expectAsync(fixture.whenStable()).toBeRejected();
+    });
+
+    it('can opt-out of rethrowing application errors and rejecting whenStable promises', async () => {
+      TestBed.configureTestingModule({rethrowApplicationErrors: false});
+      const fixture = TestBed.createComponent(Blank);
+      const throwingThing = createComponent(ThrowingThing, {
+        environmentInjector: TestBed.inject(EnvironmentInjector),
+      });
+
+      TestBed.inject(ApplicationRef).attachView(throwingThing.hostView);
+      await expectAsync(fixture.whenStable()).toBeResolved();
+    });
+  });
+
   describe('defer', () => {
     it('should return all defer blocks in the component', async () => {
       @Component({
         selector: 'defer-comp',
-        standalone: true,
         imports: [DeferredComp, SecondDeferredComp],
         template: `<div>
             @defer (on immediate) {
@@ -388,18 +506,82 @@ describe('ComponentFixture', () => {
       componentFixture.detectChanges();
       expect(componentFixture.nativeElement).toHaveText('MyIf(More)');
     }));
+
+    it('throws errors that happen during detectChanges', () => {
+      @Component({
+        template: '',
+      })
+      class App {
+        ngOnInit() {
+          throw new Error();
+        }
+      }
+
+      const fixture = TestBed.createComponent(App);
+      expect(() => fixture.detectChanges()).toThrow();
+    });
+  });
+
+  it('reports errors from autoDetect change detection to error handler', () => {
+    let throwError = false;
+    @Component({
+      template: '',
+      standalone: false,
+    })
+    class TestComponent {
+      ngDoCheck() {
+        if (throwError) {
+          throw new Error();
+        }
+      }
+    }
+    const fixture = TestBed.createComponent(TestComponent);
+    fixture.autoDetectChanges();
+    const errorHandler = TestBed.inject(ErrorHandler);
+    const spy = spyOn(errorHandler, 'handleError').and.callThrough();
+
+    throwError = true;
+    TestBed.inject(NgZone).run(() => {});
+    expect(spy).toHaveBeenCalled();
+  });
+
+  it('reports errors from checkNoChanges in autoDetect to error handler', () => {
+    let throwError = false;
+    @Component({
+      template: '{{thing}}',
+      standalone: false,
+    })
+    class TestComponent {
+      thing = 'initial';
+      ngAfterViewChecked() {
+        if (throwError) {
+          this.thing = 'new';
+        }
+      }
+    }
+    const fixture = TestBed.createComponent(TestComponent);
+    fixture.autoDetectChanges();
+    const errorHandler = TestBed.inject(ErrorHandler);
+    const spy = spyOn(errorHandler, 'handleError').and.callThrough();
+
+    throwError = true;
+    TestBed.inject(NgZone).run(() => {});
+    expect(spy).toHaveBeenCalled();
   });
 });
 
 describe('ComponentFixture with zoneless', () => {
-  it('will not refresh CheckAlways views when detectChanges is called if not marked dirty', () => {
+  beforeEach(() => {
     TestBed.configureTestingModule({
       providers: [
-        provideExperimentalZonelessChangeDetection(),
+        provideZonelessChangeDetection(),
         {provide: ErrorHandler, useValue: {handleError: () => {}}},
       ],
     });
-    @Component({standalone: true, template: '{{signalThing()}}|{{regularThing}}'})
+  });
+
+  it('will not refresh CheckAlways views when detectChanges is called if not marked dirty', () => {
+    @Component({template: '{{signalThing()}}|{{regularThing}}'})
     class CheckAlwaysCmp {
       regularThing = 'initial';
       signalThing = signal('initial');
@@ -410,10 +592,68 @@ describe('ComponentFixture with zoneless', () => {
     fixture.detectChanges();
     expect(fixture.nativeElement.innerText).toEqual('initial|initial');
     fixture.componentInstance.regularThing = 'new';
-    fixture.detectChanges();
+    // Expression changed after checked
+    expect(() => fixture.detectChanges()).toThrow();
     expect(fixture.nativeElement.innerText).toEqual('initial|initial');
     fixture.componentInstance.signalThing.set('new');
     fixture.detectChanges();
     expect(fixture.nativeElement.innerText).toEqual('new|new');
+  });
+
+  it('throws errors that happen during detectChanges', () => {
+    @Component({
+      template: '',
+    })
+    class App {
+      ngOnInit() {
+        throw new Error();
+      }
+    }
+
+    const fixture = TestBed.createComponent(App);
+    expect(() => fixture.detectChanges()).toThrow();
+  });
+
+  it('rejects whenStable promise when errors happen during detectChanges', async () => {
+    @Component({
+      template: '',
+    })
+    class App {
+      ngOnInit() {
+        throw new Error();
+      }
+    }
+
+    const fixture = TestBed.createComponent(App);
+    await expectAsync(fixture.whenStable()).toBeRejected();
+  });
+
+  it('can disable checkNoChanges', () => {
+    @Component({
+      template: '{{thing}}',
+    })
+    class App {
+      thing = 1;
+      ngAfterViewChecked() {
+        ++this.thing;
+      }
+    }
+
+    const fixture = TestBed.createComponent(App);
+    expect(() => fixture.detectChanges(false /*checkNoChanges*/)).not.toThrow();
+    // still throws if checkNoChanges is not disabled
+    expect(() => fixture.detectChanges()).toThrowError(/ExpressionChanged/);
+  });
+
+  it('disallows autoDetect: false', () => {
+    @Component({
+      template: '{{thing()}}',
+    })
+    class App {
+      thing = signal(1);
+    }
+
+    const fixture = TestBed.createComponent(App);
+    expect(() => fixture.autoDetectChanges(false)).toThrow();
   });
 });

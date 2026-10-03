@@ -3,14 +3,14 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {InputFlags} from '../../core';
 import {BindingType} from '../../expression_parser/ast';
 import {splitNsName} from '../../ml_parser/tags';
 import * as o from '../../output/output_ast';
-import {CssSelector} from '../../selector';
+import {CssSelector} from '../../directive_matching';
 import * as t from '../r3_ast';
 
 import {isI18nAttribute} from './i18n/util';

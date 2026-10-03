@@ -3,10 +3,10 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {I18nPluralPipe, NgLocalization} from '@angular/common';
+import {I18nPluralPipe, NgLocalization} from '../../index';
 import {Component} from '@angular/core';
 import {TestBed} from '@angular/core/testing';
 
@@ -67,7 +67,6 @@ describe('I18nPluralPipe', () => {
       selector: 'test-component',
       imports: [I18nPluralPipe],
       template: '{{ value | i18nPlural:mapping }}',
-      standalone: true,
     })
     class TestComponent {
       value = 1;

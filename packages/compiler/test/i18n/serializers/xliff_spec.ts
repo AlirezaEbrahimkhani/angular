@@ -3,15 +3,14 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {escapeRegExp} from '@angular/compiler/src/util';
+import {escapeRegExp} from '../../../src/util';
 
 import {serializeNodes} from '../../../src/i18n/digest';
 import {MessageBundle} from '../../../src/i18n/message_bundle';
 import {Xliff} from '../../../src/i18n/serializers/xliff';
-import {DEFAULT_INTERPOLATION_CONFIG} from '../../../src/ml_parser/defaults';
 import {HtmlParser} from '../../../src/ml_parser/html_parser';
 
 const HTML = `
@@ -261,7 +260,7 @@ describe('XLIFF serializer', () => {
 
   function toXliff(html: string, locale: string | null = null): string {
     const catalog = new MessageBundle(new HtmlParser(), [], {}, locale);
-    catalog.updateFromTemplate(html, 'file.ts', DEFAULT_INTERPOLATION_CONFIG);
+    catalog.updateFromTemplate(html, 'file.ts');
     return catalog.write(serializer);
   }
 

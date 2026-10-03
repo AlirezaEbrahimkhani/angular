@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {Type} from '../interface/type';
@@ -39,26 +39,28 @@ const __forward_ref__ = getClosureSafeProperty({__forward_ref__: getClosureSafeP
  * {@example core/di/ts/forward_ref/forward_ref_spec.ts region='forward_ref'}
  *
  * ### Circular standalone reference import example
- * ```ts
+ * ```angular-ts
  * @Component({
- *   standalone: true,
  *   imports: [ChildComponent],
  *   selector: 'app-parent',
- *   template: `<app-child [hideParent]="hideParent"></app-child>`,
+ *   template: `<app-child [hideParent]="hideParent()"></app-child>`,
  * })
  * export class ParentComponent {
- *   @Input() hideParent: boolean;
+ *    hideParent = input.required<boolean>();
  * }
  *
  *
  * @Component({
- *   standalone: true,
- *   imports: [CommonModule, forwardRef(() => ParentComponent)],
+ *   imports: [forwardRef(() => ParentComponent)],
  *   selector: 'app-child',
- *   template: `<app-parent *ngIf="!hideParent"></app-parent>`,
+ *   template: `
+ *    @if(!hideParent() {
+ *       <app-parent/>
+ *    }
+ *  `,
  * })
  * export class ChildComponent {
- *   @Input() hideParent: boolean;
+ *    hideParent = input.required<boolean>();
  * }
  * ```
  *

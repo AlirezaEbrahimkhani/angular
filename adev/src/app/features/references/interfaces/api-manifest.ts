@@ -8,12 +8,21 @@
 
 import {ApiItemType} from './api-item-type';
 
-export interface ApiManifestItem {
+export interface ApiManifestEntry {
   name: string;
   type: ApiItemType;
-  isDeprecated?: boolean;
+  category: string | undefined;
+  deprecated: {version: string | undefined} | undefined;
+  developerPreview: {version: string | undefined} | undefined;
+  experimental: {version: string | undefined} | undefined;
+  stable: {version: string | undefined} | undefined;
 }
 
-export interface ApiManifest {
-  [packageName: string]: ApiManifestItem[];
+export interface ApiManifestPackage {
+  moduleName: string;
+  normalizedModuleName: string;
+  moduleLabel: string;
+  entries: ApiManifestEntry[];
 }
+
+export type ApiManifest = ApiManifestPackage[];

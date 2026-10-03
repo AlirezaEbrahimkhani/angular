@@ -3,26 +3,20 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {ViewportScroller} from '@angular/common';
-import {
-  EnvironmentInjector,
-  Injectable,
-  InjectionToken,
-  NgZone,
-  OnDestroy,
-  afterNextRender,
-  inject,
-} from '@angular/core';
+import {Injectable, InjectionToken, NgZone, OnDestroy} from '@angular/core';
 import {Unsubscribable} from 'rxjs';
 
 import {
+  IMPERATIVE_NAVIGATION,
   NavigationEnd,
   NavigationSkipped,
   NavigationSkippedCode,
   NavigationStart,
+  NavigationTrigger,
   Scroll,
 } from './events';
 import {NavigationTransitions} from './navigation_transition';
@@ -36,12 +30,11 @@ export class RouterScroller implements OnDestroy {
   private scrollEventsSubscription?: Unsubscribable;
 
   private lastId = 0;
-  private lastSource: 'imperative' | 'popstate' | 'hashchange' | undefined = 'imperative';
+  private lastSource: NavigationTrigger | undefined = IMPERATIVE_NAVIGATION;
   private restoredId = 0;
   private store: {[key: string]: [number, number]} = {};
-  private readonly environmentInjector = inject(EnvironmentInjector);
 
-  /** @nodoc */
+  /** @docs-private */
   constructor(
     readonly urlSerializer: UrlSerializer,
     private transitions: NavigationTransitions,
@@ -115,22 +108,20 @@ export class RouterScroller implements OnDestroy {
     anchor: string | null,
   ): void {
     this.zone.runOutsideAngular(async () => {
-      // The scroll event needs to be delayed until after change detection. Otherwise we may
+      // The scroll event needs to be delayed until after change detection. Otherwise, we may
       // attempt to restore the scroll position before the router outlet has fully rendered the
       // component by executing its update block of the template function.
-      await new Promise<void>((resolve) => {
-        // TODO(atscott): Attempt to remove the setTimeout in a future PR.
-        setTimeout(() => {
-          resolve();
-        });
-        afterNextRender(
-          () => {
-            resolve();
-          },
-          {injector: this.environmentInjector},
-        );
+      //
+      // #57109 (we need to wait at least a macrotask before scrolling. AfterNextRender resolves in microtask event loop with Zones)
+      // We could consider _also_ waiting for a render promise though one should have already happened or been scheduled by this point
+      // and should definitely happen before rAF/setTimeout.
+      // #53985 (cannot rely solely on setTimeout because a frame may paint before the timeout)
+      await new Promise((resolve) => {
+        setTimeout(resolve);
+        if (typeof requestAnimationFrame !== 'undefined') {
+          requestAnimationFrame(resolve);
+        }
       });
-
       this.zone.run(() => {
         this.transitions.events.next(
           new Scroll(
@@ -143,8 +134,8 @@ export class RouterScroller implements OnDestroy {
     });
   }
 
-  /** @nodoc */
-  ngOnDestroy() {
+  /** @docs-private */
+  ngOnDestroy(): void {
     this.routerEventsSubscription?.unsubscribe();
     this.scrollEventsSubscription?.unsubscribe();
   }

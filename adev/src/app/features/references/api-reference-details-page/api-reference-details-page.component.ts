@@ -6,155 +6,80 @@
  * found in the LICENSE file at https://angular.dev/license
  */
 
-import {
-  AfterViewInit,
-  ChangeDetectionStrategy,
-  Component,
-  DestroyRef,
-  EnvironmentInjector,
-  OnInit,
-  ViewChild,
-  afterNextRender,
-  inject,
-  signal,
-} from '@angular/core';
-import {DOCUMENT, NgFor, NgIf} from '@angular/common';
-import {MatTabGroup, MatTabsModule} from '@angular/material/tabs';
-import {takeUntilDestroyed} from '@angular/core/rxjs-interop';
-import {distinctUntilChanged, map} from 'rxjs/operators';
+import {ChangeDetectionStrategy, Component, effect, inject, input, Renderer2} from '@angular/core';
+import {toSignal} from '@angular/core/rxjs-interop';
 import {DocContent, DocViewer} from '@angular/docs';
-import {ActivatedRoute, Router, RouterLink} from '@angular/router';
-import {ApiItemType} from './../interfaces/api-item-type';
+import {ActivatedRoute} from '@angular/router';
+import {DOCUMENT} from '@angular/common';
 import {ReferenceScrollHandler} from '../services/reference-scroll-handler.service';
-import {
-  API_REFERENCE_DETAILS_PAGE_HEADER_CLASS_NAME,
-  API_REFERENCE_DETAILS_PAGE_MEMBERS_CLASS_NAME,
-  API_REFERENCE_TAB_ATTRIBUTE,
-  API_REFERENCE_TAB_QUERY_PARAM,
-  API_REFERENCE_TAB_API_LABEL,
-  API_TAB_CLASS_NAME,
-  API_REFERENCE_TAB_BODY_CLASS_NAME,
-  API_REFERENCE_TAB_URL_ATTRIBUTE,
-} from '../constants/api-reference-prerender.constants';
-import {AppScroller} from '../../../app-scroller';
+import {API_SECTION_CLASS_NAME} from '../constants/api-reference-prerender.constants';
+
+const HIGHLIGHTED_CARD_CLASS = 'docs-highlighted-card';
 
 @Component({
   selector: 'adev-reference-page',
-  standalone: true,
-  imports: [DocViewer, NgIf, NgFor, MatTabsModule, RouterLink],
+  imports: [DocViewer],
   templateUrl: './api-reference-details-page.component.html',
   styleUrls: ['./api-reference-details-page.component.scss'],
+  providers: [ReferenceScrollHandler],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export default class ApiReferenceDetailsPage implements OnInit, AfterViewInit {
-  @ViewChild(MatTabGroup, {static: true}) matTabGroup!: MatTabGroup;
-
-  private readonly activatedRoute = inject(ActivatedRoute);
-  private readonly destroyRef = inject(DestroyRef);
+export default class ApiReferenceDetailsPage {
+  private readonly referenceScrollHandler = inject(ReferenceScrollHandler);
+  private readonly route = inject(ActivatedRoute);
   private readonly document = inject(DOCUMENT);
-  private readonly router = inject(Router);
-  private readonly scrollHandler = inject(ReferenceScrollHandler);
-  private readonly appScroller = inject(AppScroller);
+  private readonly renderer = inject(Renderer2);
 
-  ApiItemType = ApiItemType;
+  private highlightedElement: HTMLElement | null = null;
 
-  canDisplayCards = signal<boolean>(false);
-  tabs = signal<{url: string; title: string; content: string}[]>([]);
-  headerInnerHtml = signal<string | undefined>(undefined);
-  membersInnerHtml = signal<string | undefined>(undefined);
-  membersMarginTopInPx = this.scrollHandler.membersMarginTopInPx;
-  selectedTabIndex = signal(0);
+  readonly docContent = input<DocContent | undefined>();
+  readonly urlFragment = toSignal(this.route.fragment);
 
   constructor() {
-    this.appScroller.disableScrolling = true;
+    effect(() => this.highlightCard());
   }
 
-  ngOnInit(): void {
-    this.setPageContent();
+  onContentLoaded() {
+    this.referenceScrollHandler.setupListeners(API_SECTION_CLASS_NAME);
+    this.scrollToSectionLegacy();
+    this.highlightCard();
   }
 
-  ngOnDestroy() {
-    this.appScroller.disableScrolling = false;
+  /** Handle legacy URLs with a `tab` query param from the old tab layout  */
+  private scrollToSectionLegacy() {
+    const params = this.route.snapshot.queryParams;
+    const tab = params['tab'] as string | undefined;
+
+    if (tab) {
+      const section = this.document.getElementById(tab);
+
+      if (section) {
+        // `scrollIntoView` is ignored even, if the element exists.
+        // It seems that it's related to: https://issues.chromium.org/issues/40715316
+        // Hence, the usage of `setTimeout`.
+        setTimeout(() => {
+          section.scrollIntoView({behavior: 'smooth'});
+        }, 100);
+      }
+    }
   }
 
-  ngAfterViewInit(): void {
-    this.setActiveTab();
-    this.listenToTabChange();
-  }
-
-  membersCardsLoaded(): void {
-    this.scrollHandler.setupListeners(API_TAB_CLASS_NAME);
-  }
-
-  // Fetch the content for API Reference page based on the active route.
-  private setPageContent(): void {
-    this.activatedRoute.data
-      .pipe(
-        map((data) => data['docContent']),
-        takeUntilDestroyed(this.destroyRef),
-      )
-      .subscribe((doc: DocContent | undefined) => {
-        this.setContentForPageSections(doc);
-        this.setActiveTab();
-      });
-  }
-
-  private listenToTabChange(): void {
-    this.matTabGroup.selectedIndexChange
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((index) => {
-        this.router.navigate([], {
-          relativeTo: this.activatedRoute,
-          queryParams: {tab: this.tabs()[index].url},
-          queryParamsHandling: 'merge',
-        });
-      });
-  }
-
-  private setContentForPageSections(doc: DocContent | undefined): void {
-    const element = this.document.createElement('div');
-    element.innerHTML = doc?.contents!;
-
-    // Get the innerHTML of the header element from received document.
-    const header = element.querySelector(API_REFERENCE_DETAILS_PAGE_HEADER_CLASS_NAME);
-    if (header) {
-      this.headerInnerHtml.set(header.innerHTML);
+  /** Highlight the member card that corresponds to the URL fragment.  */
+  private highlightCard() {
+    if (this.highlightedElement) {
+      this.renderer.removeClass(this.highlightedElement, HIGHLIGHTED_CARD_CLASS);
+      this.highlightedElement = null;
     }
 
-    // Get the innerHTML of the card elements from received document.
-    const members = element.querySelector(API_REFERENCE_DETAILS_PAGE_MEMBERS_CLASS_NAME);
-    if (members) {
-      this.membersInnerHtml.set(members.innerHTML);
+    const fragment = this.urlFragment();
+
+    if (fragment) {
+      const element = this.document.getElementById(fragment);
+
+      if (element) {
+        this.renderer.addClass(element, HIGHLIGHTED_CARD_CLASS);
+      }
+      this.highlightedElement = element;
     }
-
-    // Get the tab elements from received document.
-    // We're expecting that tab element will contain `tab` attribute.
-    const tabs = Array.from(element.querySelectorAll(`[${API_REFERENCE_TAB_ATTRIBUTE}]`));
-    this.tabs.set(
-      tabs.map((tab) => ({
-        url: tab.getAttribute(API_REFERENCE_TAB_URL_ATTRIBUTE)!,
-        title: tab.getAttribute(API_REFERENCE_TAB_ATTRIBUTE)!,
-        content: tab.innerHTML,
-      })),
-    );
-
-    element.remove();
-  }
-
-  private setActiveTab(): void {
-    this.activatedRoute.queryParamMap
-      .pipe(distinctUntilChanged(), takeUntilDestroyed(this.destroyRef))
-      .subscribe((paramsMap) => {
-        const selectedTabUrl = paramsMap.get(API_REFERENCE_TAB_QUERY_PARAM);
-        const tabIndexToSelect = this.tabs().findIndex((tab) => tab.url === selectedTabUrl);
-        this.selectedTabIndex.set(tabIndexToSelect < 0 ? 0 : tabIndexToSelect);
-
-        this.scrollHandler.updateMembersMarginTop(API_REFERENCE_TAB_BODY_CLASS_NAME);
-
-        const isApiTabActive =
-          this.tabs()[this.selectedTabIndex()]?.title === API_REFERENCE_TAB_API_LABEL ||
-          this.tabs()[this.selectedTabIndex()]?.title === 'CLI';
-        this.canDisplayCards.set(isApiTabActive);
-      });
   }
 }

@@ -3,10 +3,10 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {Component, Input, NgModule} from '@angular/core';
+import {Component, Input, NgModule, provideZoneChangeDetection} from '@angular/core';
 import {BrowserModule} from '@angular/platform-browser';
 
 import {emptyTree, TreeNode} from '../util';
@@ -19,6 +19,7 @@ import {emptyTree, TreeNode} from '../util';
     <tree *ngIf="data.right != null" [data]="data.right"></tree
     ><tree *ngIf="data.left != null" [data]="data.left"></tree
   ></ng-container>`,
+  standalone: false,
 })
 export class TreeComponent {
   @Input() data: TreeNode = emptyTree;
@@ -28,5 +29,6 @@ export class TreeComponent {
   imports: [BrowserModule],
   bootstrap: [TreeComponent],
   declarations: [TreeComponent],
+  providers: [provideZoneChangeDetection()],
 })
 export class AppModule {}

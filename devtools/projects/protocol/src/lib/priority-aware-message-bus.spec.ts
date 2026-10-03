@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {MessageBus} from './message-bus';
@@ -15,8 +15,11 @@ class MockMessageBus extends MessageBus<Events> {
   override emit(_: Topic, __: any): boolean {
     return true;
   }
-  override on(topic: Topic, cb: any): void {
+  override on(topic: Topic, cb: any): () => void {
     this.cbs[topic] = cb;
+    return () => {
+      delete this.cbs[topic];
+    };
   }
   override once(topic: Topic, cb: any): void {
     this.cbs[topic] = cb;

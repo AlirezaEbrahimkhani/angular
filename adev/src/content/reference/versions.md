@@ -7,14 +7,15 @@ Angular requires.
 
 This table covers [Angular versions under active support](reference/releases#actively-supported-versions).
 
-| Angular            | Node.js                              | TypeScript     | RxJS               |
-| ------------------ | ------------------------------------ | -------------- | ------------------ |
-| 18.0.x             | ^18.19.1 \|\| ^20.11.1 \|\| ^22.0.0  | >=5.4.0 <5.5.0 | ^6.5.3 \|\| ^7.4.0 |
-| 17.3.x             | ^18.13.0 \|\| ^20.9.0                | >=5.2.0 <5.5.0 | ^6.5.3 \|\| ^7.4.0 |
-| 17.1.x \|\| 17.2.x | ^18.13.0 \|\| ^20.9.0                | >=5.2.0 <5.4.0 | ^6.5.3 \|\| ^7.4.0 |
-| 17.0.x             | ^18.13.0 \|\| ^20.9.0                | >=5.2.0 <5.3.0 | ^6.5.3 \|\| ^7.4.0 |
-| 16.1.x \|\| 16.2.x | ^16.14.0 \|\| ^18.10.0               | >=4.9.3 <5.2.0 | ^6.5.3 \|\| ^7.4.0 |
-| 16.0.x             | ^16.14.0 \|\| ^18.10.0               | >=4.9.3 <5.1.0 | ^6.5.3 \|\| ^7.4.0 |
+| Angular            | Node.js                             | TypeScript     | RxJS               |
+| ------------------ | ----------------------------------- | -------------- | ------------------ |
+| 20.2.x \|\| 20.3.x | ^20.19.0 \|\| ^22.12.0 \|\| ^24.0.0 | >=5.9.0 <6.0.0 | ^6.5.3 \|\| ^7.4.0 |
+| 20.0.x \|\| 20.1.x | ^20.19.0 \|\| ^22.12.0 \|\| ^24.0.0 | >=5.8.0 <5.9.0 | ^6.5.3 \|\| ^7.4.0 |
+| 19.2.x             | ^18.19.1 \|\| ^20.11.1 \|\| ^22.0.0 | >=5.5.0 <5.9.0 | ^6.5.3 \|\| ^7.4.0 |
+| 19.1.x             | ^18.19.1 \|\| ^20.11.1 \|\| ^22.0.0 | >=5.5.0 <5.8.0 | ^6.5.3 \|\| ^7.4.0 |
+| 19.0.x             | ^18.19.1 \|\| ^20.11.1 \|\| ^22.0.0 | >=5.5.0 <5.7.0 | ^6.5.3 \|\| ^7.4.0 |
+| 18.1.x \|\| 18.2.x | ^18.19.1 \|\| ^20.11.1 \|\| ^22.0.0 | >=5.4.0 <5.6.0 | ^6.5.3 \|\| ^7.4.0 |
+| 18.0.x             | ^18.19.1 \|\| ^20.11.1 \|\| ^22.0.0 | >=5.4.0 <5.5.0 | ^6.5.3 \|\| ^7.4.0 |
 
 ## Unsupported Angular versions
 
@@ -24,11 +25,16 @@ guarantees. It is listed here for historical reference.
 
 | Angular            | Node.js                              | TypeScript     | RxJS               |
 | ------------------ | ------------------------------------ | -------------- | ------------------ |
+| 17.3.x             | ^18.13.0 \|\| ^20.9.0                | >=5.2.0 <5.5.0 | ^6.5.3 \|\| ^7.4.0 |
+| 17.1.x \|\| 17.2.x | ^18.13.0 \|\| ^20.9.0                | >=5.2.0 <5.4.0 | ^6.5.3 \|\| ^7.4.0 |
+| 17.0.x             | ^18.13.0 \|\| ^20.9.0                | >=5.2.0 <5.3.0 | ^6.5.3 \|\| ^7.4.0 |
+| 16.1.x \|\| 16.2.x | ^16.14.0 \|\| ^18.10.0               | >=4.9.3 <5.2.0 | ^6.5.3 \|\| ^7.4.0 |
+| 16.0.x             | ^16.14.0 \|\| ^18.10.0               | >=4.9.3 <5.1.0 | ^6.5.3 \|\| ^7.4.0 |
 | 15.1.x \|\| 15.2.x | ^14.20.0 \|\| ^16.13.0 \|\| ^18.10.0 | >=4.8.2 <5.0.0 | ^6.5.3 \|\| ^7.4.0 |
 | 15.0.x             | ^14.20.0 \|\| ^16.13.0 \|\| ^18.10.0 | ~4.8.2         | ^6.5.3 \|\| ^7.4.0 |
 | 14.2.x \|\| 14.3.x | ^14.15.0 \|\| ^16.10.0               | >=4.6.2 <4.9.0 | ^6.5.3 \|\| ^7.4.0 |
 | 14.0.x \|\| 14.1.x | ^14.15.0 \|\| ^16.10.0               | >=4.6.2 <4.8.0 | ^6.5.3 \|\| ^7.4.0 |
-| 13.3.x             | ^12.20.0 \|\| ^14.15.0 \|\| ^16.10.0 | >=4.4.3 <4.7.0 | ^6.5.3 \|\| ^7.4.0 |
+| 13.3.x \|\| 13.4.x | ^12.20.0 \|\| ^14.15.0 \|\| ^16.10.0 | >=4.4.3 <4.7.0 | ^6.5.3 \|\| ^7.4.0 |
 | 13.1.x \|\| 13.2.x | ^12.20.0 \|\| ^14.15.0 \|\| ^16.10.0 | >=4.4.3 <4.6.0 | ^6.5.3 \|\| ^7.4.0 |
 | 13.0.x             | ^12.20.0 \|\| ^14.15.0 \|\| ^16.10.0 | ~4.4.3         | ^6.5.3 \|\| ^7.4.0 |
 | 12.2.x             | ^12.14.0 \|\| ^14.15.0               | >=4.2.3 <4.4.0 | ^6.5.3 \|\| ^7.0.0 |
@@ -64,8 +70,21 @@ Until Angular v9, Angular and Angular CLI versions were not synced.
 
 ## Browser support
 
-Angular supports most recent browsers.
-This includes the following specific versions:
+Angular uses the ["widely available" Baseline](https://web.dev/baseline) to define browser
+support. For each major version, Angular supports browsers included in the Baseline of a
+chosen date near the release date for that major.
+
+The "widely available" Baseline includes browsers released less than 30 months (2.5 years)
+of the chosen date within Baseline's core browser set (Chrome, Edge, Firefox, Safari) and
+targets supporting approximately 95% of web users.
+
+| Angular | Baseline Date | Browser Set                 |
+| ------- | ------------- | --------------------------- |
+| v20     | 2025-04-30    | [Browser Set][browsers-v20] |
+
+[browsers-v20]: https://web-platform-dx.github.io/web-features/supported-browsers/?widelyAvailableOnDate=2025-04-30&includeDownstream=false
+
+Angular versions prior to v20 support the following specific browser versions:
 
 | Browser | Supported versions                          |
 | :------ | :------------------------------------------ |
@@ -75,8 +94,6 @@ This includes the following specific versions:
 | Safari  | 2 most recent major versions                |
 | iOS     | 2 most recent major versions                |
 | Android | 2 most recent major versions                |
-
-HELPFUL: Angular's continuous integration process runs unit tests of the framework on all of these browsers for every pull request, using [Sauce Labs](https://saucelabs.com).
 
 ## Polyfills
 
@@ -129,14 +146,14 @@ For example:
    * asynchronous activities to improve startup performance - use these options only
    * if you know what you are doing as it could result in hard to trace down bugs.
    */
-  // &lowbar;&lowbar;Zone_disable_requestAnimationFrame = true; // disable patch requestAnimationFrame
-  // &lowbar;&lowbar;Zone_disable_on_property = true; // disable patch onProperty such as onclick
-  // &lowbar;&lowbar;zone_symbol__UNPATCHED_EVENTS = ['scroll', 'mousemove']; // disable patch specified eventNames
+  // __Zone_disable_requestAnimationFrame = true; // disable patch requestAnimationFrame
+  // __Zone_disable_on_property = true; // disable patch onProperty such as onclick
+  // __zone_symbol__UNPATCHED_EVENTS = ['scroll', 'mousemove']; // disable patch specified eventNames
   /*
    * in Edge developer tools, the addEventListener will also be wrapped by zone.js
    * with the following flag, it will bypass `zone.js` patch for Edge.
    */
-  // &lowbar;&lowbar;Zone_enable_cross_context_check = true;
+  // __Zone_enable_cross_context_check = true;
 </script>
 <!-- zone.js required by Angular -->
 <script src="node_modules/zone.js/bundles/zone.umd.js"></script>

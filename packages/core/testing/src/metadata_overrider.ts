@@ -3,10 +3,10 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {ɵstringify as stringify} from '@angular/core';
+import {ɵstringify as stringify} from '../../src/core';
 
 import {MetadataOverride} from './metadata_override';
 

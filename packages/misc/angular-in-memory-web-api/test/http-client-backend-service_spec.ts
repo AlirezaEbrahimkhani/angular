@@ -3,11 +3,8 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
-
-import 'jasmine-ajax';
-
 import {
   FetchBackend,
   HTTP_INTERCEPTORS,
@@ -17,6 +14,7 @@ import {
   HttpEvent,
   HttpEventType,
   HttpHandler,
+  HttpHeaders,
   HttpInterceptor,
   HttpRequest,
   HttpResponse,
@@ -26,7 +24,7 @@ import {
 import {importProvidersFrom, Injectable} from '@angular/core';
 import {TestBed, waitForAsync} from '@angular/core/testing';
 import {HttpClientBackendService, HttpClientInMemoryWebApiModule} from 'angular-in-memory-web-api';
-import {Observable, zip} from 'rxjs';
+import {Observable, zip, of} from 'rxjs';
 import {concatMap, map, tap} from 'rxjs/operators';
 
 import {Hero} from './fixtures/hero';
@@ -49,7 +47,7 @@ describe('HttpClient Backend Service', () => {
         ],
       });
 
-      http = TestBed.get(HttpClient);
+      http = TestBed.inject(HttpClient);
     });
 
     it('can get heroes', waitForAsync(() => {
@@ -62,7 +60,7 @@ describe('HttpClient Backend Service', () => {
     }));
 
     it('GET should be a "cold" observable', waitForAsync(() => {
-      const httpBackend = TestBed.get(HttpBackend);
+      const httpBackend = TestBed.inject<any>(HttpBackend);
       const spy = spyOn(httpBackend, 'collectionHandler').and.callThrough();
       const get$ = http.get<Hero[]>('api/heroes');
 
@@ -88,7 +86,7 @@ describe('HttpClient Backend Service', () => {
     }));
 
     it('Should only initialize the db once', waitForAsync(() => {
-      const httpBackend = TestBed.get(HttpBackend);
+      const httpBackend = TestBed.inject<any>(HttpBackend);
       const spy = spyOn(httpBackend, 'resetDb').and.callThrough();
 
       // Simultaneous backend.handler calls
@@ -252,7 +250,7 @@ describe('HttpClient Backend Service', () => {
         ],
       });
 
-      http = TestBed.get(HttpClient);
+      http = TestBed.inject(HttpClient);
     });
 
     it('can get heroes', waitForAsync(() => {
@@ -377,7 +375,7 @@ describe('HttpClient Backend Service', () => {
       let heroService: HeroService;
 
       beforeEach(() => {
-        heroService = TestBed.get(HeroService);
+        heroService = TestBed.inject(HeroService);
       });
 
       it('can get heroes', waitForAsync(() => {
@@ -499,9 +497,9 @@ describe('HttpClient Backend Service', () => {
         ],
       });
 
-      http = TestBed.get(HttpClient);
-      httpBackend = TestBed.get(HttpBackend);
-      interceptors = TestBed.get(HTTP_INTERCEPTORS);
+      http = TestBed.inject(HttpClient);
+      httpBackend = TestBed.inject<any>(HttpBackend);
+      interceptors = TestBed.inject<any>(HTTP_INTERCEPTORS);
     });
 
     // sanity test
@@ -548,6 +546,11 @@ describe('HttpClient Backend Service', () => {
     let http: HttpClient;
     let httpBackend: HttpClientBackendService;
     let createPassThruBackend: jasmine.Spy;
+    const mockPassThroughResponse = of({
+      status: 200,
+      headers: new HttpHeaders({'Content-Type': 'application/json'}),
+      body: JSON.stringify([{id: 42, name: 'Dude'}]),
+    } as HttpEvent<any>);
 
     beforeEach(() => {
       TestBed.configureTestingModule({
@@ -560,17 +563,10 @@ describe('HttpClient Backend Service', () => {
         ],
       });
 
-      http = TestBed.get(HttpClient);
-      httpBackend = TestBed.get(HttpBackend);
+      http = TestBed.inject(HttpClient);
+      httpBackend = TestBed.inject<any>(HttpBackend);
       createPassThruBackend = spyOn(<any>httpBackend, 'createPassThruBackend').and.callThrough();
-    });
-
-    beforeEach(() => {
-      jasmine.Ajax.install();
-    });
-
-    afterEach(() => {
-      jasmine.Ajax.uninstall();
+      spyOn(httpBackend, 'handle').and.returnValue(mockPassThroughResponse);
     });
 
     it('can get heroes (no passthru)', waitForAsync(() => {
@@ -584,24 +580,12 @@ describe('HttpClient Backend Service', () => {
     // so requests for it should pass thru to the "real" server
 
     it('can GET passthru', waitForAsync(() => {
-      jasmine.Ajax.stubRequest('api/passthru').andReturn({
-        'status': 200,
-        'contentType': 'application/json',
-        'response': JSON.stringify([{id: 42, name: 'Dude'}]),
-      });
-
       http.get<any[]>('api/passthru').subscribe((passthru) => {
         expect(passthru.length).toBeGreaterThan(0, 'should have passthru data');
       }, failRequest);
     }));
 
     it('can ADD to passthru', waitForAsync(() => {
-      jasmine.Ajax.stubRequest('api/passthru').andReturn({
-        'status': 200,
-        'contentType': 'application/json',
-        'response': JSON.stringify({id: 42, name: 'Dude'}),
-      });
-
       http.post<any>('api/passthru', {name: 'Dude'}).subscribe((passthru) => {
         expect(passthru).toBeDefined('should have passthru data');
         expect(passthru.id).toBe(42, 'passthru object should have id 42');
@@ -623,7 +607,7 @@ describe('HttpClient Backend Service', () => {
         ],
       });
 
-      http = TestBed.get(HttpClient);
+      http = TestBed.inject(HttpClient);
     });
 
     it('can get heroes (encapsulated)', waitForAsync(() => {

@@ -1,4 +1,6 @@
-load("//tools:defaults.bzl", "esbuild_checked_in")
+load("//tools:defaults.bzl", "esbuild_checked_in", "ts_config", "ts_project")
+
+package(default_visibility = ["//.github/actions/deploy-docs-site:__subpackages__"])
 
 exports_files([
     "tsconfig.json",
@@ -6,13 +8,35 @@ exports_files([
 
 esbuild_checked_in(
     name = "main",
-    entry_point = "//.github/actions/deploy-docs-site/lib:main.ts",
+    config = "esbuild.conf.js",
+    entry_point = ":lib/main.mts",
     external = [
         "undici",
+        "pnpapi",
     ],
+    metafile = False,
     platform = "node",
-    target = "node14",
+    target = "node20",
     deps = [
-        "//.github/actions/deploy-docs-site/lib",
+        ":lib",
+    ],
+)
+
+ts_config(
+    name = "tsconfig",
+    src = "tsconfig.json",
+)
+
+ts_project(
+    name = "lib",
+    srcs = glob(["lib/*.mts"]),
+    tsconfig = ":tsconfig",
+    deps = [
+        "//:node_modules/@actions/core",
+        "//:node_modules/@actions/github",
+        "//:node_modules/@angular/ng-dev",
+        "//:node_modules/@types/node",
+        "//:node_modules/@types/tmp",
+        "//:node_modules/tmp",
     ],
 )

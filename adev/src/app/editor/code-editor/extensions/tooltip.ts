@@ -10,9 +10,10 @@ import {Signal} from '@angular/core';
 import {Tooltip, hoverTooltip} from '@codemirror/view';
 import {marked} from 'marked';
 import {Subject, filter, take} from 'rxjs';
-import type {JSDocTagInfo, SymbolDisplayPart} from 'typescript';
 
-import {EditorFile} from '../code-mirror-editor.service';
+import ts from 'typescript';
+
+import type {EditorFile} from '../code-mirror-editor.service';
 import {TsVfsWorkerActions} from '../workers/enums/actions';
 import {DisplayTooltipRequest} from '../workers/interfaces/display-tooltip-request';
 import {DisplayTooltipResponse} from '../workers/interfaces/display-tooltip-response';
@@ -70,9 +71,9 @@ export const getTooltipExtension = (
             // the tooltip might render with its initial scroll position on the bottom
             mount: (_) => forceTooltipScrollTop(),
             positioned: (_) => forceTooltipScrollTop(),
-            resize: false,
           };
         },
+        above: true, // always show the tooltip above the cursor
       };
     },
     {
@@ -97,7 +98,7 @@ function getMarkedHtmlFromString(content: string): HTMLDivElement {
   return wrapper;
 }
 
-function getHtmlFromDisplayParts(displayParts: SymbolDisplayPart[]): HTMLDivElement {
+function getHtmlFromDisplayParts(displayParts: ts.SymbolDisplayPart[]): HTMLDivElement {
   const wrapper = document.createElement('div');
 
   let displayPartWrapper = document.createElement('div');
@@ -122,7 +123,7 @@ function getHtmlFromDisplayParts(displayParts: SymbolDisplayPart[]): HTMLDivElem
   return wrapper;
 }
 
-function getTagsHtml(tags: JSDocTagInfo[]): HTMLDivElement {
+function getTagsHtml(tags: ts.JSDocTagInfo[]): HTMLDivElement {
   const tagsWrapper = document.createElement('div');
 
   let contentString = '';

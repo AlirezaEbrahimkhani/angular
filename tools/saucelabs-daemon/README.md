@@ -3,14 +3,14 @@
 ## Local testing
 
 1. Set up your `SAUCE_USERNAME`, `SAUCE_ACCESS_KEY` & `SAUCE_TUNNEL_IDENTIFIER` environment variables.
-These are required. You can find the values for `SAUCE_USERNAME` and `SAUCE_ACCESS_KEY` in `/.circleci/env.sh`. `SAUCE_TUNNEL_IDENTIFIER` can be set to any unique value.
+These are required. You can find the values for `SAUCE_USERNAME` and `SAUCE_ACCESS_KEY` on your Saucelabs account. `SAUCE_TUNNEL_IDENTIFIER` can be set to any unique value.
 
 If you are having trouble running Saucelabs tests locally you can contact [Joey Perrott](https://github.com/josephperrott) or [Paul Gschwendtner](https://github.com/devversion) for support.
 
 2. Once you have your environment variables set up, run the setup task in the root of the repo:
 
 ``` bash
-yarn bazel run //tools/saucelabs-daemon/background-service -- <number_of_browsers>
+pnpm bazel run //tools/saucelabs-daemon/background-service -- <number_of_browsers>
 ```
 
 This will start a daemon process that will connect to Saucelabs and provision browsers
@@ -21,7 +21,7 @@ once you start running your first test target.
 For example, `packages/core/test:test_web` becomes `packages/core/test:test_web_saucelabs`.
 
 ```
-yarn bazel test //packages/core/test:test_web_saucelabs
+pnpm bazel test //packages/core/test:test_web_saucelabs
 ```
 
 ## Additional test features

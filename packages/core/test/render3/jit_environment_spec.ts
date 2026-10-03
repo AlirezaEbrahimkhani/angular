@@ -3,11 +3,10 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {ExternalReference} from '@angular/compiler';
-import {Identifiers} from '@angular/compiler/src/render3/r3_identifiers';
+import {ExternalReference, R3Identifiers} from '@angular/compiler';
 
 import {angularCoreEnv} from '../../src/render3/jit/environment';
 
@@ -35,6 +34,7 @@ const AOT_ONLY = new Set<string>([
   'ɵINPUT_SIGNAL_BRAND_WRITE_TYPE',
   'ɵUnwrapDirectiveSignalInputs',
   'ɵunwrapWritableSignal',
+  'ɵassertType',
 ]);
 
 /**
@@ -63,7 +63,7 @@ describe('r3 jit environment', () => {
   it('should support all r3 symbols', () => {
     Object
       // Map over the static properties of Identifiers.
-      .values(Identifiers)
+      .values(R3Identifiers)
       // A few such properties are string constants. Ignore them, and focus on ExternalReferences.
       .filter(isExternalReference)
       // Some references are to interface types. Only take properties which have runtime values.

@@ -1,13 +1,15 @@
-load("//tools:defaults.bzl", "ts_library")
+load("//tools:defaults.bzl", "ts_project")
 
 package(default_visibility = ["//visibility:public"])
 
-ts_library(
+ts_project(
     name = "annotations",
     srcs = ["index.ts"] + glob([
         "src/**/*.ts",
     ]),
     deps = [
+        "//:node_modules/@types/node",
+        "//:node_modules/typescript",
         "//packages/compiler",
         "//packages/compiler-cli/src/ngtsc/annotations/common",
         "//packages/compiler-cli/src/ngtsc/annotations/component",
@@ -32,7 +34,5 @@ ts_library(
         "//packages/compiler-cli/src/ngtsc/typecheck/extended/api",
         "//packages/compiler-cli/src/ngtsc/util",
         "//packages/compiler-cli/src/ngtsc/xi18n",
-        "@npm//@types/node",
-        "@npm//typescript",
     ],
 )

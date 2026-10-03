@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {computed, Injectable, signal} from '@angular/core';
@@ -14,7 +14,7 @@ export class SampleService {
   exampleString = 'John';
   exampleSymbol = Symbol.iterator;
   exampleNumber = 40;
-  exampleBigint = 40n;
+  exampleBigint = BigInt(40);
   exampleUndefined = undefined;
   exampleNull = null;
 

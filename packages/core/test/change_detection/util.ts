@@ -3,17 +3,17 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {
   IterableChangeRecord,
   IterableChanges,
-} from '@angular/core/src/change_detection/differs/iterable_differs';
+} from '../../src/change_detection/differs/iterable_differs';
 import {
   KeyValueChangeRecord,
   KeyValueChanges,
-} from '@angular/core/src/change_detection/differs/keyvalue_differs';
+} from '../../src/change_detection/differs/keyvalue_differs';
 
 import {stringify} from '../../src/util/stringify';
 

@@ -3,16 +3,15 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {DEFAULT_CURRENCY_CODE, LOCALE_ID} from '@angular/core';
-import {inject} from '@angular/core/testing';
+import {DEFAULT_CURRENCY_CODE, LOCALE_ID} from '../src/core';
 
 import {DEFAULT_LOCALE_ID} from '../src/i18n/localization';
 import {getLocaleId, setLocaleId} from '../src/render3';
 import {global} from '../src/util/global';
-import {TestBed} from '../testing';
+import {inject, TestBed} from '../testing';
 
 describe('Application module', () => {
   beforeEach(() => {

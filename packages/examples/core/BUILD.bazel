@@ -1,8 +1,9 @@
-load("//tools:defaults.bzl", "esbuild", "http_server", "jasmine_node_test", "ng_module", "protractor_web_test_suite", "ts_library")
+load("@aspect_rules_esbuild//esbuild:defs.bzl", "esbuild")
+load("//tools:defaults.bzl", "angular_jasmine_test", "http_server", "ng_project", "protractor_web_test_suite", "ts_project")
 
 package(default_visibility = ["//visibility:public"])
 
-ng_module(
+ng_project(
     name = "core_examples",
     srcs = glob(
         ["**/*.ts"],
@@ -12,19 +13,18 @@ ng_module(
         ],
     ),
     deps = [
+        "//:node_modules/rxjs",
+        "//:node_modules/zone.js",
         "//packages/animations",
         "//packages/core",
         "//packages/forms",
         "//packages/platform-browser",
-        "//packages/platform-browser-dynamic",
         "//packages/platform-browser/animations",
         "//packages/router",
-        "//packages/zone.js/lib",
-        "@npm//rxjs",
     ],
 )
 
-ts_library(
+ts_project(
     name = "core_tests_lib",
     testonly = True,
     srcs = glob(
@@ -37,45 +37,49 @@ ts_library(
     ],
 )
 
-ts_library(
+ts_project(
     name = "core_e2e_tests_lib",
     testonly = True,
     srcs = glob(["**/e2e_test/*_spec.ts"]),
-    tsconfig = "//packages/examples:tsconfig-e2e.json",
+    tsconfig = "//packages/examples:tsconfig_e2e",
     deps = [
+        "//:node_modules/@types/jasminewd2",
+        "//:node_modules/protractor",
         "//packages/examples/test-utils",
-        "@npm//@types/jasminewd2",
-        "@npm//protractor",
     ],
 )
 
 esbuild(
     name = "app_bundle",
+    config = {
+        "resolveExtensions": [".js"],
+    },
     entry_point = ":main.ts",
-    deps = [":core_examples"],
+    tsconfig = "//packages/examples:tsconfig_build",
+    deps = [
+        ":core_examples",
+        "//packages/examples:tsconfig_build",
+    ],
 )
 
 http_server(
     name = "devserver",
     srcs = ["//packages/examples:index.html"],
-    additional_root_paths = ["angular/packages/examples"],
+    additional_root_paths = ["_main/packages/examples"],
     deps = [":app_bundle"],
 )
 
 protractor_web_test_suite(
     name = "protractor_tests",
-    on_prepare = ":start-server.js",
     server = ":devserver",
     deps = [
         ":core_e2e_tests_lib",
-        "@npm//selenium-webdriver",
     ],
 )
 
-jasmine_node_test(
+angular_jasmine_test(
     name = "test",
-    bootstrap = ["//tools/testing:node"],
-    deps = [
+    data = [
         ":core_tests_lib",
         "//packages/examples/core/di/ts/forward_ref:forward_ref_tests_lib",
     ],

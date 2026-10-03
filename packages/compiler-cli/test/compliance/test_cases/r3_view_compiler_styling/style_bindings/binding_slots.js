@@ -6,7 +6,7 @@
       $r3$.ɵɵelement(0, "div");
     }
     if (rf & 2) {
-      $r3$.ɵɵclassMapInterpolate1("foo foo-", $ctx$.fooId, "");
+      $r3$.ɵɵclassMap($r3$.ɵɵinterpolate1("foo foo-", $ctx$.fooId));
     }
   }
 // ...
@@ -17,7 +17,7 @@
       $r3$.ɵɵelement(0, "div");
     }
     if (rf & 2) {
-      $r3$.ɵɵclassMapInterpolate2("foo foo-", $ctx$.fooId, "-", $ctx$.fooUsername, "");
+      $r3$.ɵɵclassMap($r3$.ɵɵinterpolate2("foo foo-", $ctx$.fooId, "-", $ctx$.fooUsername));
     }
   }
 // ...

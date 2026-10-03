@@ -1,11 +1,10 @@
 // #docplaster
 // #docregion reusable
-import {Component, Input} from '@angular/core';
+import {Component, input} from '@angular/core';
 import {transition, trigger, useAnimation, AnimationEvent} from '@angular/animations';
 import {transitionAnimation} from './animations';
 
 @Component({
-  standalone: true,
   selector: 'app-open-close-reusable',
   animations: [
     trigger('openClose', [
@@ -32,7 +31,7 @@ export class OpenCloseBooleanComponent {
     this.isOpen = !this.isOpen;
   }
 
-  @Input() logging = false;
+  logging = input(false);
   onAnimationEvent(event: AnimationEvent) {
     if (!this.logging) {
       return;

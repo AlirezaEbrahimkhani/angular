@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {DOCUMENT} from '@angular/common';
@@ -13,9 +13,12 @@ import {
   DoCheck,
   NgModule,
   OnInit,
+  provideZoneChangeDetection,
   TestabilityRegistry,
-} from '@angular/core';
-import {getTestBed} from '@angular/core/testing';
+  NgZone,
+  ɵNoopNgZone as NoopNgZone,
+} from '../src/core';
+import {getTestBed} from '../testing';
 import {BrowserModule} from '@angular/platform-browser';
 import {withBody} from '@angular/private/testing';
 
@@ -25,6 +28,7 @@ describe('ApplicationRef bootstrap', () => {
   @Component({
     selector: 'hello-world',
     template: '<div>Hello {{ name }}</div>',
+    standalone: false,
   })
   class HelloWorldComponent implements OnInit, DoCheck {
     log: string[] = [];
@@ -42,7 +46,11 @@ describe('ApplicationRef bootstrap', () => {
     declarations: [HelloWorldComponent],
     bootstrap: [HelloWorldComponent],
     imports: [BrowserModule],
-    providers: [{provide: DOCUMENT, useFactory: () => document}],
+    providers: [
+      {provide: DOCUMENT, useFactory: () => document},
+      provideZoneChangeDetection(),
+      {provide: NgZone, useClass: NoopNgZone},
+    ],
   })
   class MyAppModule {}
 
@@ -68,7 +76,7 @@ describe('ApplicationRef bootstrap', () => {
       expect(helloWorldComponent.log).toEqual(['OnInit', 'DoCheck', 'DoCheck']);
 
       // Cleanup TestabilityRegistry
-      const registry: TestabilityRegistry = getTestBed().get(TestabilityRegistry);
+      const registry = getTestBed().inject(TestabilityRegistry);
       registry.unregisterAllApplications();
     }),
   );

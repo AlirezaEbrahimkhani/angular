@@ -1,9 +1,8 @@
-import {Component} from '@angular/core';
+import {Component, inject} from '@angular/core';
 import {FlowerService} from '../flower.service';
 import {HostComponent} from '../host/host.component';
 
 @Component({
-  standalone: true,
   selector: 'app-host-parent',
   templateUrl: './host-parent.component.html',
   styleUrls: ['./host-parent.component.css'],
@@ -11,5 +10,5 @@ import {HostComponent} from '../host/host.component';
   imports: [HostComponent],
 })
 export class HostParentComponent {
-  constructor(public flower: FlowerService) {}
+  public flower = inject(FlowerService);
 }

@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {
@@ -14,26 +14,28 @@ import {
 } from '@angular/common';
 import {
   APP_BOOTSTRAP_LISTENER,
-  APP_INITIALIZER,
   ApplicationRef,
   ComponentRef,
   ENVIRONMENT_INITIALIZER,
   EnvironmentProviders,
   inject,
-  InjectFlags,
   InjectionToken,
   Injector,
   makeEnvironmentProviders,
   NgZone,
+  provideAppInitializer,
   Provider,
   runInInjectionContext,
   Type,
+  ɵperformanceMarkFeature as performanceMarkFeature,
+  ɵIS_ENABLED_BLOCKING_INITIAL_NAVIGATION as IS_ENABLED_BLOCKING_INITIAL_NAVIGATION,
+  ɵpublishExternalGlobalUtil,
 } from '@angular/core';
 import {of, Subject} from 'rxjs';
 
 import {INPUT_BINDER, RoutedComponentInputBinder} from './directives/router_outlet';
 import {Event, NavigationError, stringifyEvent} from './events';
-import {RedirectCommand, Routes} from './models';
+import {RedirectCommand, Route, Routes} from './models';
 import {NAVIGATION_ERROR_HANDLER, NavigationTransitions} from './navigation_transition';
 import {Router} from './router';
 import {InMemoryScrollingOptions, ROUTER_CONFIGURATION, RouterConfigOptions} from './router_config';
@@ -49,6 +51,7 @@ import {
   VIEW_TRANSITION_OPTIONS,
   ViewTransitionsFeatureOptions,
 } from './utils/view_transition';
+import {getLoadedRoutes, getRouterInstance, navigateByUrl} from './router_devtools';
 
 /**
  * Sets up providers necessary to enable `Router` functionality for the application.
@@ -57,7 +60,7 @@ import {
  * @usageNotes
  *
  * Basic example of how you can add a Router to your application:
- * ```
+ * ```ts
  * const appRoutes: Routes = [];
  * bootstrapApplication(AppComponent, {
  *   providers: [provideRouter(appRoutes)]
@@ -66,7 +69,7 @@ import {
  *
  * You can also enable optional features in the Router by adding functions from the `RouterFeatures`
  * type:
- * ```
+ * ```ts
  * const appRoutes: Routes = [];
  * bootstrapApplication(AppComponent,
  *   {
@@ -87,19 +90,26 @@ import {
  * @returns A set of providers to setup a Router.
  */
 export function provideRouter(routes: Routes, ...features: RouterFeatures[]): EnvironmentProviders {
+  if (typeof ngDevMode === 'undefined' || ngDevMode) {
+    // Publish this util when the router is provided so that the devtools can use it.
+    ɵpublishExternalGlobalUtil('ɵgetLoadedRoutes', getLoadedRoutes);
+    ɵpublishExternalGlobalUtil('ɵgetRouterInstance', getRouterInstance);
+    ɵpublishExternalGlobalUtil('ɵnavigateByUrl', navigateByUrl);
+  }
+
   return makeEnvironmentProviders([
     {provide: ROUTES, multi: true, useValue: routes},
     typeof ngDevMode === 'undefined' || ngDevMode
       ? {provide: ROUTER_IS_PROVIDED, useValue: true}
       : [],
-    {provide: ActivatedRoute, useFactory: rootRoute, deps: [Router]},
+    {provide: ActivatedRoute, useFactory: rootRoute},
     {provide: APP_BOOTSTRAP_LISTENER, multi: true, useFactory: getBootstrapListener},
     features.map((feature) => feature.ɵproviders),
   ]);
 }
 
-export function rootRoute(router: Router): ActivatedRoute {
-  return router.routerState.root;
+export function rootRoute(): ActivatedRoute {
+  return inject(Router).routerState.root;
 }
 
 /**
@@ -109,7 +119,7 @@ export function rootRoute(router: Router): ActivatedRoute {
  */
 export interface RouterFeature<FeatureKind extends RouterFeatureKind> {
   ɵkind: FeatureKind;
-  ɵproviders: Provider[];
+  ɵproviders: Array<Provider | EnvironmentProviders>;
 }
 
 /**
@@ -117,7 +127,7 @@ export interface RouterFeature<FeatureKind extends RouterFeatureKind> {
  */
 function routerFeature<FeatureKind extends RouterFeatureKind>(
   kind: FeatureKind,
-  providers: Provider[],
+  providers: Array<Provider | EnvironmentProviders>,
 ): RouterFeature<FeatureKind> {
   return {ɵkind: kind, ɵproviders: providers};
 }
@@ -152,7 +162,7 @@ const routerIsProvidedDevModeCheck = {
  *
  * @usageNotes
  *
- * ```
+ * ```ts
  * @NgModule({
  *   providers: [provideRoutes(ROUTES)]
  * })
@@ -186,7 +196,7 @@ export type InMemoryScrollingFeature = RouterFeature<RouterFeatureKind.InMemoryS
  * @usageNotes
  *
  * Basic example of how you can enable scrolling feature:
- * ```
+ * ```ts
  * const appRoutes: Routes = [];
  * bootstrapApplication(AppComponent,
  *   {
@@ -239,8 +249,8 @@ export function getBootstrapListener() {
       router.initialNavigation();
     }
 
-    injector.get(ROUTER_PRELOADER, null, InjectFlags.Optional)?.setUpPreloading();
-    injector.get(ROUTER_SCROLLER, null, InjectFlags.Optional)?.init();
+    injector.get(ROUTER_PRELOADER, null, {optional: true})?.setUpPreloading();
+    injector.get(ROUTER_SCROLLER, null, {optional: true})?.init();
     router.resetRootComponentType(ref.componentTypes[0]);
     if (!bootstrapDone.closed) {
       bootstrapDone.next();
@@ -270,7 +280,8 @@ const BOOTSTRAP_DONE = new InjectionToken<Subject<void>>(
  *
  * When set to `EnabledBlocking`, the initial navigation starts before the root
  * component is created. The bootstrap is blocked until the initial navigation is complete. This
- * value is required for [server-side rendering](guide/ssr) to work.
+ * value should be set in case you use [server-side rendering](guide/ssr), but do not enable
+ * [hydration](guide/hydration) for your application.
  *
  * When set to `EnabledNonBlocking`, the initial navigation starts after the root component has been
  * created. The bootstrap is not blocked on the completion of the initial navigation.
@@ -321,13 +332,14 @@ export type InitialNavigationFeature =
 /**
  * Configures initial navigation to start before the root component is created.
  *
- * The bootstrap is blocked until the initial navigation is complete. This value is required for
- * [server-side rendering](guide/ssr) to work.
+ * The bootstrap is blocked until the initial navigation is complete. This should be set in case
+ * you use [server-side rendering](guide/ssr), but do not enable [hydration](guide/hydration) for
+ * your application.
  *
  * @usageNotes
  *
  * Basic example of how you can enable this navigation behavior:
- * ```
+ * ```ts
  * const appRoutes: Routes = [];
  * bootstrapApplication(AppComponent,
  *   {
@@ -345,41 +357,36 @@ export type InitialNavigationFeature =
  */
 export function withEnabledBlockingInitialNavigation(): EnabledBlockingInitialNavigationFeature {
   const providers = [
+    {provide: IS_ENABLED_BLOCKING_INITIAL_NAVIGATION, useValue: true},
     {provide: INITIAL_NAVIGATION, useValue: InitialNavigation.EnabledBlocking},
-    {
-      provide: APP_INITIALIZER,
-      multi: true,
-      deps: [Injector],
-      useFactory: (injector: Injector) => {
-        const locationInitialized: Promise<any> = injector.get(
-          LOCATION_INITIALIZED,
-          Promise.resolve(),
-        );
+    provideAppInitializer(() => {
+      const injector = inject(Injector);
+      const locationInitialized: Promise<any> = injector.get(
+        LOCATION_INITIALIZED,
+        Promise.resolve(),
+      );
 
-        return () => {
-          return locationInitialized.then(() => {
-            return new Promise((resolve) => {
-              const router = injector.get(Router);
-              const bootstrapDone = injector.get(BOOTSTRAP_DONE);
-              afterNextNavigation(router, () => {
-                // Unblock APP_INITIALIZER in case the initial navigation was canceled or errored
-                // without a redirect.
-                resolve(true);
-              });
-
-              injector.get(NavigationTransitions).afterPreactivation = () => {
-                // Unblock APP_INITIALIZER once we get to `afterPreactivation`. At this point, we
-                // assume activation will complete successfully (even though this is not
-                // guaranteed).
-                resolve(true);
-                return bootstrapDone.closed ? of(void 0) : bootstrapDone;
-              };
-              router.initialNavigation();
-            });
+      return locationInitialized.then(() => {
+        return new Promise((resolve) => {
+          const router = injector.get(Router);
+          const bootstrapDone = injector.get(BOOTSTRAP_DONE);
+          afterNextNavigation(router, () => {
+            // Unblock APP_INITIALIZER in case the initial navigation was canceled or errored
+            // without a redirect.
+            resolve(true);
           });
-        };
-      },
-    },
+
+          injector.get(NavigationTransitions).afterPreactivation = () => {
+            // Unblock APP_INITIALIZER once we get to `afterPreactivation`. At this point, we
+            // assume activation will complete successfully (even though this is not
+            // guaranteed).
+            resolve(true);
+            return bootstrapDone.closed ? of(void 0) : bootstrapDone;
+          };
+          router.initialNavigation();
+        });
+      });
+    }),
   ];
   return routerFeature(RouterFeatureKind.EnabledBlockingInitialNavigationFeature, providers);
 }
@@ -405,7 +412,7 @@ export type DisabledInitialNavigationFeature =
  * @usageNotes
  *
  * Basic example of how you can disable initial navigation:
- * ```
+ * ```ts
  * const appRoutes: Routes = [];
  * bootstrapApplication(AppComponent,
  *   {
@@ -424,16 +431,9 @@ export type DisabledInitialNavigationFeature =
  */
 export function withDisabledInitialNavigation(): DisabledInitialNavigationFeature {
   const providers = [
-    {
-      provide: APP_INITIALIZER,
-      multi: true,
-      useFactory: () => {
-        const router = inject(Router);
-        return () => {
-          router.setUpLocationChangeListener();
-        };
-      },
-    },
+    provideAppInitializer(() => {
+      inject(Router).setUpLocationChangeListener();
+    }),
     {provide: INITIAL_NAVIGATION, useValue: InitialNavigation.Disabled},
   ];
   return routerFeature(RouterFeatureKind.DisabledInitialNavigationFeature, providers);
@@ -456,7 +456,7 @@ export type DebugTracingFeature = RouterFeature<RouterFeatureKind.DebugTracingFe
  * @usageNotes
  *
  * Basic example of how you can enable debug tracing:
- * ```
+ * ```ts
  * const appRoutes: Routes = [];
  * bootstrapApplication(AppComponent,
  *   {
@@ -522,7 +522,7 @@ export type PreloadingFeature = RouterFeature<RouterFeatureKind.PreloadingFeatur
  * @usageNotes
  *
  * Basic example of how you can configure preloading:
- * ```
+ * ```ts
  * const appRoutes: Routes = [];
  * bootstrapApplication(AppComponent,
  *   {
@@ -566,7 +566,7 @@ export type RouterConfigurationFeature =
  * @usageNotes
  *
  * Basic example of how you can provide extra configuration options:
- * ```
+ * ```ts
  * const appRoutes: Routes = [];
  * bootstrapApplication(AppComponent,
  *   {
@@ -608,7 +608,7 @@ export type RouterHashLocationFeature = RouterFeature<RouterFeatureKind.RouterHa
  * @usageNotes
  *
  * Basic example of how you can use the hash location option:
- * ```
+ * ```ts
  * const appRoutes: Routes = [];
  * bootstrapApplication(AppComponent,
  *   {
@@ -620,7 +620,7 @@ export type RouterHashLocationFeature = RouterFeature<RouterFeatureKind.RouterHa
  * ```
  *
  * @see {@link provideRouter}
- * @see {@link HashLocationStrategy}
+ * @see {@link /api/common/HashLocationStrategy HashLocationStrategy}
  *
  * @returns A set of providers for use with `provideRouter`.
  *
@@ -657,7 +657,7 @@ export type NavigationErrorHandlerFeature =
  * @usageNotes
  *
  * Basic example of how you can use the error handler option:
- * ```
+ * ```ts
  * const appRoutes: Routes = [];
  * bootstrapApplication(AppComponent,
  *   {
@@ -670,7 +670,7 @@ export type NavigationErrorHandlerFeature =
  * ```
  *
  * @see {@link NavigationError}
- * @see {@link core/inject}
+ * @see {@link /api/core/inject inject}
  * @see {@link runInInjectionContext}
  *
  * @returns A set of providers for use with `provideRouter`.
@@ -717,7 +717,7 @@ export type ViewTransitionsFeature = RouterFeature<RouterFeatureKind.ViewTransit
  * @usageNotes
  *
  * Basic example of how you can enable the feature:
- * ```
+ * ```ts
  * const appRoutes: Routes = [];
  * bootstrapApplication(AppComponent,
  *   {
@@ -728,6 +728,24 @@ export type ViewTransitionsFeature = RouterFeature<RouterFeatureKind.ViewTransit
  * );
  * ```
  *
+ * The router bindings information from any of the following sources:
+ *
+ *  - query parameters
+ *  - path and matrix parameters
+ *  - static route data
+ *  - data from resolvers
+ *
+ * Duplicate keys are resolved in the same order from above, from least to greatest,
+ * meaning that resolvers have the highest precedence and override any of the other information
+ * from the route.
+ *
+ * Importantly, when an input does not have an item in the route data with a matching key, this
+ * input is set to `undefined`. This prevents previous information from being
+ * retained if the data got removed from the route (i.e. if a query parameter is removed).
+ * Default values can be provided with a resolver on the route to ensure the value is always present
+ * or an input and use an input transform in the component.
+ *
+ * @see {@link /guide/components/inputs#input-transforms Input Transforms}
  * @returns A set of providers for use with `provideRouter`.
  */
 export function withComponentInputBinding(): ComponentInputBindingFeature {
@@ -750,7 +768,7 @@ export function withComponentInputBinding(): ComponentInputBindingFeature {
  * @usageNotes
  *
  * Basic example of how you can enable the feature:
- * ```
+ * ```ts
  * const appRoutes: Routes = [];
  * bootstrapApplication(AppComponent,
  *   {
@@ -764,11 +782,12 @@ export function withComponentInputBinding(): ComponentInputBindingFeature {
  * @returns A set of providers for use with `provideRouter`.
  * @see https://developer.chrome.com/docs/web-platform/view-transitions/
  * @see https://developer.mozilla.org/en-US/docs/Web/API/View_Transitions_API
- * @experimental
+ * @developerPreview 19.0
  */
 export function withViewTransitions(
   options?: ViewTransitionsFeatureOptions,
 ): ViewTransitionsFeature {
+  performanceMarkFeature('NgRouterViewTransitions');
   const providers = [
     {provide: CREATE_VIEW_TRANSITION, useValue: createViewTransition},
     {

@@ -3,17 +3,14 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 import {animate, style, transition, trigger} from '@angular/animations';
 import {ɵAnimationEngine} from '@angular/animations/browser';
 import {Component} from '@angular/core';
 import {TestBed} from '@angular/core/testing';
-import {
-  BrowserAnimationsModule,
-  NoopAnimationsModule,
-  provideNoopAnimations,
-} from '@angular/platform-browser/animations';
+import {BrowserAnimationsModule, NoopAnimationsModule, provideNoopAnimations} from '../index';
+import {isNode} from '@angular/private/testing';
 
 describe('NoopAnimationsModule', () => {
   beforeEach(() => {
@@ -61,6 +58,7 @@ function noopAnimationTests() {
           ]),
         ]),
       ],
+      standalone: false,
     })
     class Cmp {
       exp: any;
@@ -105,6 +103,7 @@ function noopAnimationTests() {
           transition(':leave', [style({'opacity': '0'}), animate(500, style({'opacity': '1'}))]),
         ]),
       ],
+      standalone: false,
     })
     class Cmp {
       exp: any;

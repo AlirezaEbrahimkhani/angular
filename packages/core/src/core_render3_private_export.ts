@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 // we reexport these symbols just so that they are retained during the dead code elimination
@@ -29,6 +29,7 @@ export {
   NgModuleTransitiveScopes as ɵNgModuleTransitiveScopes,
 } from './metadata/ng_module_def';
 export {getLContext as ɵgetLContext} from './render3/context_discovery';
+export {inferTagNameFromDefinition as ɵinferTagNameFromDefinition} from './render3/component_ref';
 export {
   NG_COMP_DEF as ɵNG_COMP_DEF,
   NG_DIR_DEF as ɵNG_DIR_DEF,
@@ -39,7 +40,6 @@ export {
 export {
   AttributeMarker as ɵAttributeMarker,
   ComponentDef as ɵComponentDef,
-  ComponentDebugMetadata as ɵComponentDebugMetadata,
   ComponentFactory as ɵRender3ComponentFactory,
   ComponentRef as ɵRender3ComponentRef,
   ComponentType as ɵComponentType,
@@ -48,7 +48,6 @@ export {
   DirectiveType as ɵDirectiveType,
   getDirectives as ɵgetDirectives,
   getHostElement as ɵgetHostElement,
-  LifecycleHooksFeature as ɵLifecycleHooksFeature,
   NgModuleFactory as ɵNgModuleFactory,
   NgModuleRef as ɵRender3NgModuleRef,
   NgModuleType as ɵNgModuleType,
@@ -63,30 +62,35 @@ export {
   ɵDeferBlockDependencyInterceptor,
   ɵDEFER_BLOCK_DEPENDENCY_INTERCEPTOR,
   ɵDEFER_BLOCK_CONFIG,
+  Framework as ɵFramework,
+  BaseDirectiveDebugMetadata as ɵBaseDirectiveDebugMetadata,
+  AngularDirectiveDebugMetadata as ɵAngularDirectiveDebugMetadata,
+  AngularComponentDebugMetadata as ɵAngularComponentDebugMetadata,
+  AcxChangeDetectionStrategy as ɵAcxChangeDetectionStrategy,
+  AcxViewEncapsulation as ɵAcxViewEncapsulation,
+  AcxDirectiveDebugMetadata as ɵAcxDirectiveDebugMetadata,
+  AcxComponentDebugMetadata as ɵAcxComponentDebugMetadata,
+  WizComponentDebugMetadata as ɵWizComponentDebugMetadata,
+  DirectiveDebugMetadata as ɵDirectiveDebugMetadata,
   ɵɵadvance,
+  ɵɵariaProperty,
   ɵɵattribute,
-  ɵɵattributeInterpolate1,
-  ɵɵattributeInterpolate2,
-  ɵɵattributeInterpolate3,
-  ɵɵattributeInterpolate4,
-  ɵɵattributeInterpolate5,
-  ɵɵattributeInterpolate6,
-  ɵɵattributeInterpolate7,
-  ɵɵattributeInterpolate8,
-  ɵɵattributeInterpolateV,
+  ɵɵinterpolate,
+  ɵɵinterpolate1,
+  ɵɵinterpolate2,
+  ɵɵinterpolate3,
+  ɵɵinterpolate4,
+  ɵɵinterpolate5,
+  ɵɵinterpolate6,
+  ɵɵinterpolate7,
+  ɵɵinterpolate8,
+  ɵɵinterpolateV,
   ɵɵclassMap,
-  ɵɵclassMapInterpolate1,
-  ɵɵclassMapInterpolate2,
-  ɵɵclassMapInterpolate3,
-  ɵɵclassMapInterpolate4,
-  ɵɵclassMapInterpolate5,
-  ɵɵclassMapInterpolate6,
-  ɵɵclassMapInterpolate7,
-  ɵɵclassMapInterpolate8,
-  ɵɵclassMapInterpolateV,
   ɵɵclassProp,
   ɵɵComponentDeclaration,
   ɵɵconditional,
+  ɵɵconditionalCreate,
+  ɵɵconditionalBranchCreate,
   ɵɵcontentQuery,
   ɵɵcontentQuerySignal,
   ɵɵcomponentInstance,
@@ -104,11 +108,19 @@ export {
   ɵɵelementContainerStart,
   ɵɵelementEnd,
   ɵɵelementStart,
+  ɵɵdomElement,
+  ɵɵdomElementStart,
+  ɵɵdomElementEnd,
+  ɵɵdomElementContainer,
+  ɵɵdomElementContainerStart,
+  ɵɵdomElementContainerEnd,
+  ɵɵdomTemplate,
+  ɵɵdomListener,
   ɵɵenableBindings,
   ɵɵFactoryDeclaration,
   ɵɵgetCurrentView,
   ɵɵgetInheritedFactory,
-  ɵɵhostProperty,
+  ɵɵdomProperty,
   ɵɵi18n,
   ɵɵi18nApply,
   ɵɵi18nAttributes,
@@ -117,7 +129,6 @@ export {
   ɵɵi18nPostprocess,
   ɵɵi18nStart,
   ɵɵInheritDefinitionFeature,
-  ɵɵInputTransformsFeature,
   ɵɵinjectAttribute,
   ɵɵInjectorDeclaration,
   ɵɵinvalidFactory,
@@ -139,16 +150,6 @@ export {
   ɵɵprojection,
   ɵɵprojectionDef,
   ɵɵproperty,
-  ɵɵpropertyInterpolate,
-  ɵɵpropertyInterpolate1,
-  ɵɵpropertyInterpolate2,
-  ɵɵpropertyInterpolate3,
-  ɵɵpropertyInterpolate4,
-  ɵɵpropertyInterpolate5,
-  ɵɵpropertyInterpolate6,
-  ɵɵpropertyInterpolate7,
-  ɵɵpropertyInterpolate8,
-  ɵɵpropertyInterpolateV,
   ɵɵProvidersFeature,
   ɵɵHostDirectivesFeature,
   ɵɵpureFunction0,
@@ -176,27 +177,9 @@ export {
   ɵɵsetComponentScope,
   ɵɵsetNgModuleScope,
   ɵɵgetComponentDepsFactory,
-  ɵɵStandaloneFeature,
+  ɵɵExternalStylesFeature,
   ɵɵstyleMap,
-  ɵɵstyleMapInterpolate1,
-  ɵɵstyleMapInterpolate2,
-  ɵɵstyleMapInterpolate3,
-  ɵɵstyleMapInterpolate4,
-  ɵɵstyleMapInterpolate5,
-  ɵɵstyleMapInterpolate6,
-  ɵɵstyleMapInterpolate7,
-  ɵɵstyleMapInterpolate8,
-  ɵɵstyleMapInterpolateV,
   ɵɵstyleProp,
-  ɵɵstylePropInterpolate1,
-  ɵɵstylePropInterpolate2,
-  ɵɵstylePropInterpolate3,
-  ɵɵstylePropInterpolate4,
-  ɵɵstylePropInterpolate5,
-  ɵɵstylePropInterpolate6,
-  ɵɵstylePropInterpolate7,
-  ɵɵstylePropInterpolate8,
-  ɵɵstylePropInterpolateV,
   ɵɵsyntheticHostListener,
   ɵɵsyntheticHostProperty,
   ɵɵtemplate,
@@ -217,6 +200,14 @@ export {
   ɵɵdeferPrefetchOnInteraction,
   ɵɵdeferPrefetchOnViewport,
   ɵɵdeferEnableTimerScheduling,
+  ɵɵdeferHydrateWhen,
+  ɵɵdeferHydrateNever,
+  ɵɵdeferHydrateOnIdle,
+  ɵɵdeferHydrateOnImmediate,
+  ɵɵdeferHydrateOnTimer,
+  ɵɵdeferHydrateOnHover,
+  ɵɵdeferHydrateOnInteraction,
+  ɵɵdeferHydrateOnViewport,
   ɵɵtext,
   ɵɵtextInterpolate,
   ɵɵtextInterpolate1,
@@ -240,6 +231,13 @@ export {
   ɵɵdeclareLet,
   ɵɵstoreLet,
   ɵɵreadContextLet,
+  ɵɵreplaceMetadata,
+  ɵɵgetReplaceMetadataURL,
+  ɵɵattachSourceLocations,
+  ɵɵanimateEnter,
+  ɵɵanimateEnterListener,
+  ɵɵanimateLeave,
+  ɵɵanimateLeaveListener,
 } from './render3/index';
 export {CONTAINER_HEADER_OFFSET as ɵCONTAINER_HEADER_OFFSET} from './render3/interfaces/container';
 export {LContext as ɵLContext} from './render3/interfaces/context';
@@ -272,8 +270,16 @@ export {
 export {compilePipe as ɵcompilePipe} from './render3/jit/pipe';
 export {isNgModule as ɵisNgModule} from './render3/jit/util';
 export {Profiler as ɵProfiler, ProfilerEvent as ɵProfilerEvent} from './render3/profiler_types';
-export {GlobalDevModeUtils as ɵGlobalDevModeUtils} from './render3/util/global_utils';
-export {ViewRef as ɵViewRef} from './render3/view_ref';
+export {
+  FrameworkAgnosticGlobalUtils as ɵFrameworkAgnosticGlobalUtils,
+  GlobalDevModeUtils as ɵGlobalDevModeUtils,
+} from './render3/util/global_utils';
+export {getTransferState as ɵgetTransferState} from './render3/util/transfer_state_utils';
+export {
+  ViewRef as ɵViewRef,
+  isViewDirty as ɵisViewDirty,
+  markForRefresh as ɵmarkForRefresh,
+} from './render3/view_ref';
 export {
   bypassSanitizationTrustHtml as ɵbypassSanitizationTrustHtml,
   bypassSanitizationTrustResourceUrl as ɵbypassSanitizationTrustResourceUrl,
@@ -293,13 +299,8 @@ export {
 } from './sanitization/sanitization';
 export {ɵɵvalidateIframeAttribute} from './sanitization/iframe_attrs_validation';
 export {noSideEffects as ɵnoSideEffects} from './util/closure';
-export {
-  AfterRenderEventManager as ɵAfterRenderEventManager,
-  internalAfterNextRender as ɵinternalAfterNextRender,
-} from './render3/after_render_hooks';
-export {
-  depsTracker as ɵdepsTracker,
-  USE_RUNTIME_DEPS_TRACKER_FOR_JIT as ɵUSE_RUNTIME_DEPS_TRACKER_FOR_JIT,
-} from './render3/deps_tracker/deps_tracker';
+export {AfterRenderManager as ɵAfterRenderManager} from './render3/after_render/manager';
+export {depsTracker as ɵdepsTracker} from './render3/deps_tracker/deps_tracker';
 export {generateStandaloneInDeclarationsError as ɵgenerateStandaloneInDeclarationsError} from './render3/jit/module';
 export {getAsyncClassMetadataFn as ɵgetAsyncClassMetadataFn} from './render3/metadata';
+export {DeferBlockData as ɵDeferBlockData} from './render3/util/defer';

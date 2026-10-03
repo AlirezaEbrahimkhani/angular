@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {
@@ -42,7 +42,8 @@ class UninvokedFunctionInEventBindingSpec extends TemplateCheckWithVisitor<Error
     if (!(node instanceof TmplAstBoundEvent)) return [];
 
     // If the node is not a regular or animation event, skip it.
-    if (node.type !== ParsedEventType.Regular && node.type !== ParsedEventType.Animation) return [];
+    if (node.type !== ParsedEventType.Regular && node.type !== ParsedEventType.LegacyAnimation)
+      return [];
 
     if (!(node.handler instanceof ASTWithSource)) return [];
 

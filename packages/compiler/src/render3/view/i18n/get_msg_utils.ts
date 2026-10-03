@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 import * as i18n from '../../../i18n/i18n_ast';
 import {mapLiteral} from '../../../output/map_util';
@@ -25,7 +25,7 @@ const GOOG_GET_MSG = 'goog.getMsg';
  *
  * Generates:
  *
- * ```typescript
+ * ```ts
  * const MSG_FOO = goog.getMsg(
  *   // Message template.
  *   'Sent from {$interpolation} to {$startTagSpan}{$interpolation_1}{$closeTagSpan}.',
@@ -98,7 +98,12 @@ export function createGoogleGetMsgStatements(
   //  */
   // const MSG_... = goog.getMsg(..);
   // I18N_X = MSG_...;
-  const googGetMsgStmt = closureVar.set(o.variable(GOOG_GET_MSG).callFn(args)).toConstDecl();
+  const googGetMsgStmt = new o.DeclareVarStmt(
+    closureVar.name,
+    o.variable(GOOG_GET_MSG).callFn(args),
+    o.INFERRED_TYPE,
+    o.StmtModifier.Final,
+  );
   googGetMsgStmt.addLeadingComment(i18nMetaToJSDoc(message));
   const i18nAssignmentStmt = new o.ExpressionStatement(variable.set(closureVar));
   return [googGetMsgStmt, i18nAssignmentStmt];
@@ -128,9 +133,9 @@ class GetMsgSerializerVisitor implements i18n.Visitor {
   visitTagPlaceholder(ph: i18n.TagPlaceholder): any {
     return ph.isVoid
       ? this.formatPh(ph.startName)
-      : `${this.formatPh(ph.startName)}${ph.children.map((child) => child.visit(this)).join('')}${this.formatPh(
-          ph.closeName,
-        )}`;
+      : `${this.formatPh(ph.startName)}${ph.children
+          .map((child) => child.visit(this))
+          .join('')}${this.formatPh(ph.closeName)}`;
   }
 
   visitPlaceholder(ph: i18n.Placeholder): any {
@@ -138,9 +143,9 @@ class GetMsgSerializerVisitor implements i18n.Visitor {
   }
 
   visitBlockPlaceholder(ph: i18n.BlockPlaceholder): any {
-    return `${this.formatPh(ph.startName)}${ph.children.map((child) => child.visit(this)).join('')}${this.formatPh(
-      ph.closeName,
-    )}`;
+    return `${this.formatPh(ph.startName)}${ph.children
+      .map((child) => child.visit(this))
+      .join('')}${this.formatPh(ph.closeName)}`;
   }
 
   visitIcuPlaceholder(ph: i18n.IcuPlaceholder, context?: any): any {

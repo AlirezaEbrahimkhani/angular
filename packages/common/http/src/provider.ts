@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {
@@ -14,15 +14,10 @@ import {
   Provider,
 } from '@angular/core';
 
-import {HttpBackend, HttpHandler} from './backend';
+import {HttpBackend, HttpHandler, HttpInterceptorHandler} from './backend';
 import {HttpClient} from './client';
-import {FetchBackend} from './fetch';
-import {
-  HTTP_INTERCEPTOR_FNS,
-  HttpInterceptorFn,
-  HttpInterceptorHandler,
-  legacyInterceptorFnFactory,
-} from './interceptor';
+import {FETCH_BACKEND, FetchBackend} from './fetch';
+import {HTTP_INTERCEPTOR_FNS, HttpInterceptorFn, legacyInterceptorFnFactory} from './interceptor';
 import {
   jsonpCallbackContext,
   JsonpCallbackContext,
@@ -30,14 +25,7 @@ import {
   jsonpInterceptorFn,
 } from './jsonp';
 import {HttpXhrBackend} from './xhr';
-import {
-  HttpXsrfCookieExtractor,
-  HttpXsrfTokenExtractor,
-  XSRF_COOKIE_NAME,
-  XSRF_ENABLED,
-  XSRF_HEADER_NAME,
-  xsrfInterceptorFn,
-} from './xsrf';
+import {XSRF_COOKIE_NAME, XSRF_ENABLED, XSRF_HEADER_NAME, xsrfInterceptorFn} from './xsrf';
 
 /**
  * Identifies a particular kind of `HttpFeature`.
@@ -82,14 +70,14 @@ function makeHttpFeature<KindT extends HttpFeatureKind>(
  * feature functions to `provideHttpClient`. For example, HTTP interceptors can be added using the
  * `withInterceptors(...)` feature.
  *
- * <div class="alert is-helpful">
+ * <div class="docs-alert docs-alert-helpful">
  *
  * It's strongly recommended to enable
  * [`fetch`](https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API) for applications that use
  * Server-Side Rendering for better performance and compatibility. To enable `fetch`, add
  * `withFetch()` feature to the `provideHttpClient()` call at the root of the application:
  *
- * ```
+ * ```ts
  * provideHttpClient(withFetch());
  * ```
  *
@@ -122,13 +110,12 @@ export function provideHttpClient(
 
   const providers: Provider[] = [
     HttpClient,
-    HttpXhrBackend,
     HttpInterceptorHandler,
     {provide: HttpHandler, useExisting: HttpInterceptorHandler},
     {
       provide: HttpBackend,
       useFactory: () => {
-        return inject(FetchBackend, {optional: true}) ?? inject(HttpXhrBackend);
+        return inject(FETCH_BACKEND, {optional: true}) ?? inject(HttpXhrBackend);
       },
     },
     {
@@ -136,8 +123,6 @@ export function provideHttpClient(
       useValue: xsrfInterceptorFn,
       multi: true,
     },
-    {provide: XSRF_ENABLED, useValue: true},
-    {provide: HttpXsrfTokenExtractor, useClass: HttpXsrfCookieExtractor},
   ];
 
   for (const feature of features) {
@@ -171,7 +156,7 @@ export function withInterceptors(
 }
 
 const LEGACY_INTERCEPTOR_FN = new InjectionToken<HttpInterceptorFn>(
-  ngDevMode ? 'LEGACY_INTERCEPTOR_FN' : '',
+  typeof ngDevMode !== undefined && ngDevMode ? 'LEGACY_INTERCEPTOR_FN' : '',
 );
 
 /**
@@ -276,7 +261,7 @@ export function withJsonpSupport(): HttpFeature<HttpFeatureKind.JsonpSupport> {
  * this option.
  *
  * @see {@link provideHttpClient}
- * @developerPreview
+ * @publicApi 19.0
  */
 export function withRequestsMadeViaParent(): HttpFeature<HttpFeatureKind.RequestsMadeViaParent> {
   return makeHttpFeature(HttpFeatureKind.RequestsMadeViaParent, [
@@ -305,6 +290,7 @@ export function withRequestsMadeViaParent(): HttpFeature<HttpFeatureKind.Request
 export function withFetch(): HttpFeature<HttpFeatureKind.Fetch> {
   return makeHttpFeature(HttpFeatureKind.Fetch, [
     FetchBackend,
+    {provide: FETCH_BACKEND, useExisting: FetchBackend},
     {provide: HttpBackend, useExisting: FetchBackend},
   ]);
 }

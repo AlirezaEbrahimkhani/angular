@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {
@@ -15,7 +15,7 @@ import {
   OutputRefSubscription,
   ɵRuntimeError,
   ɵRuntimeErrorCode,
-} from '@angular/core';
+} from '../../src/core';
 import {Observable} from 'rxjs';
 
 import {takeUntilDestroyed} from './take_until_destroyed';
@@ -80,7 +80,7 @@ class OutputFromObservableRef<T> implements OutputRef<T> {
  * }
  * ```
  *
- * @developerPreview
+ * @publicApi 19.0
  */
 export function outputFromObservable<T>(
   observable: Observable<T>,

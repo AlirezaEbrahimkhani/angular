@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {Log} from '@angular/ng-dev';
@@ -14,7 +14,7 @@ import url from 'url';
 const scriptDir = path.dirname(url.fileURLToPath(import.meta.url));
 
 /** Absolute disk path to the project directory. */
-export const projectDir = path.join(scriptDir, '../..');
+export const projectDir: string = path.join(scriptDir, '../..');
 
 /**
  * Executes the given command, forwarding stdin, stdout and stderr while

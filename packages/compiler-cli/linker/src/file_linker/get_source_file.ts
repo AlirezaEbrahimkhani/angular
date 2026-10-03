@@ -3,10 +3,10 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {AbsoluteFsPath} from '../../../src/ngtsc/file_system';
+import {AbsoluteFsPath} from '../../../src/ngtsc/file_system/src/types';
 import {SourceFile, SourceFileLoader} from '../../../src/ngtsc/sourcemaps';
 
 /**

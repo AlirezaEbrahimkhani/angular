@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {Call, SafeCall} from '@angular/compiler';
@@ -13,8 +13,8 @@ import {SymbolKind} from '@angular/compiler-cli/src/ngtsc/typecheck/api';
 import ts from 'typescript';
 
 import {getTargetAtPosition, TargetNodeKind} from './template_target';
-import {findTightestNode} from './ts_utils';
-import {getTemplateInfoAtPosition} from './utils';
+import {findTightestNode} from './utils/ts_utils';
+import {getTypeCheckInfoAtPosition} from './utils';
 
 /**
  * Queries the TypeScript Language Service to get signature help for a template position.
@@ -26,12 +26,12 @@ export function getSignatureHelp(
   position: number,
   options: ts.SignatureHelpItemsOptions | undefined,
 ): ts.SignatureHelpItems | undefined {
-  const templateInfo = getTemplateInfoAtPosition(fileName, position, compiler);
-  if (templateInfo === undefined) {
+  const typeCheckInfo = getTypeCheckInfoAtPosition(fileName, position, compiler);
+  if (typeCheckInfo === undefined) {
     return undefined;
   }
 
-  const targetInfo = getTargetAtPosition(templateInfo.template, position);
+  const targetInfo = getTargetAtPosition(typeCheckInfo.nodes, position);
   if (targetInfo === null) {
     return undefined;
   }
@@ -46,7 +46,7 @@ export function getSignatureHelp(
 
   const symbol = compiler
     .getTemplateTypeChecker()
-    .getSymbolOfNode(targetInfo.context.node, templateInfo.component);
+    .getSymbolOfNode(targetInfo.context.node, typeCheckInfo.declaration);
   if (symbol === null || symbol.kind !== SymbolKind.Expression) {
     return undefined;
   }

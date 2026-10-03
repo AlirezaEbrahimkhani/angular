@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import '../../lib/rxjs/rxjs-fake-async';
@@ -324,7 +324,7 @@ describe('FakeAsyncTestZoneSpec', () => {
           // will call `task.state` one more time to check whether to clear the
           // task or not, so here we use this count to check the issue is fixed or not
           // For details, please refer to https://github.com/angular/angular/issues/40387
-          expect(taskSpy.calls.count()).toEqual(5);
+          expect(taskSpy.calls.count()).toBe(4);
         });
     });
     it(
@@ -1152,6 +1152,86 @@ describe('FakeAsyncTestZoneSpec', () => {
       emptyRun,
     ),
   );
+
+  describe('setTickMode', () => {
+    it('should execute timers automatically when mode is set to automatic', async () => {
+      let ran = false;
+      await new Promise<void>((resolve) => {
+        fakeAsyncTestZone.run(() => {
+          setTimeout(() => {
+            ran = true;
+            resolve();
+          }, 10);
+          testZoneSpec.setTickMode('automatic');
+        });
+      });
+
+      expect(ran).toBe(true);
+      fakeAsyncTestZone.run(() => {
+        testZoneSpec.setTickMode('manual');
+      });
+    });
+
+    it('should execute multiple timers automatically', async () => {
+      const log: string[] = [];
+      const promise = new Promise<void>((resolve) => {
+        fakeAsyncTestZone.run(() => {
+          setTimeout(() => {
+            log.push('timer A');
+          }, 10);
+          setTimeout(() => {
+            log.push('timer B');
+            resolve();
+          }, 20);
+          testZoneSpec.setTickMode('automatic');
+        });
+      });
+
+      await promise;
+      expect(log).toEqual(['timer A', 'timer B']);
+      fakeAsyncTestZone.run(() => {
+        testZoneSpec.setTickMode('manual');
+      });
+    });
+
+    it('should allow mutation observers to execute between timers', async () => {
+      if (isNode) {
+        return;
+      }
+      const log: string[] = [];
+      const el = document.createElement('div');
+      let observer: MutationObserver;
+
+      await new Promise<void>((resolve) => {
+        fakeAsyncTestZone.run(() => {
+          document.body.appendChild(el);
+          observer = new MutationObserver(() => {
+            log.push('mutation');
+          });
+          observer.observe(el, {attributes: true});
+
+          setTimeout(() => {
+            log.push('timer A');
+            el.style.width = '100px'; // trigger mutation observer
+          }, 10);
+          setTimeout(() => {
+            debugger;
+            log.push('timer B');
+            resolve();
+          }, 10);
+
+          testZoneSpec.setTickMode('automatic');
+        });
+      });
+
+      expect(log).toEqual(['timer A', 'mutation', 'timer B']);
+      fakeAsyncTestZone.run(() => {
+        testZoneSpec.setTickMode('manual');
+        observer.disconnect();
+      });
+      document.body.removeChild(el);
+    });
+  });
 });
 
 class Log<T> {
@@ -1333,17 +1413,23 @@ describe('fake async', () => {
 
     it('should throw an error on dangling timers', () => {
       expect(() => {
-        fakeAsync(() => {
-          setTimeout(() => {}, 10);
-        })();
+        fakeAsync(
+          () => {
+            setTimeout(() => {}, 10);
+          },
+          {flush: false},
+        )();
       }).toThrowError('1 timer(s) still in the queue.');
     });
 
     it('should throw an error on dangling periodic timers', () => {
       expect(() => {
-        fakeAsync(() => {
-          setInterval(() => {}, 10);
-        })();
+        fakeAsync(
+          () => {
+            setInterval(() => {}, 10);
+          },
+          {flush: false},
+        )();
       }).toThrowError('1 periodic timer(s) still in the queue.');
     });
 
@@ -1377,9 +1463,7 @@ describe('fake async', () => {
 
     it('should be able to cancel periodic timers from a callback', fakeAsync(() => {
       let cycles = 0;
-      let id: NodeJS.Timer;
-
-      id = setInterval(() => {
+      let id = setInterval(() => {
         cycles++;
         clearInterval(id);
       }, 10);

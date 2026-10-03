@@ -12,15 +12,15 @@ import {ChangeDetectorRef, signal} from '@angular/core';
 import {ComponentFixture, TestBed} from '@angular/core/testing';
 import {MatTabGroupHarness} from '@angular/material/tabs/testing';
 import {By} from '@angular/platform-browser';
-import {NoopAnimationsModule} from '@angular/platform-browser/animations';
-import {BehaviorSubject} from 'rxjs';
+import {provideNoopAnimations} from '@angular/platform-browser/animations';
+import {NEVER} from 'rxjs';
 
 import {EmbeddedTutorialManager} from '../embedded-tutorial-manager.service';
 
 import {CodeEditor, REQUIRED_FILES} from './code-editor.component';
 import {CodeMirrorEditor} from './code-mirror-editor.service';
-import {FakeChangeDetectorRef} from '@angular/docs/testing';
-import {TutorialType} from '@angular/docs';
+import {FakeChangeDetectorRef, TutorialType} from '@angular/docs';
+import {MatTooltipHarness} from '@angular/material/tooltip/testing';
 
 const files = [
   {filename: 'a', content: '', language: {} as any},
@@ -34,7 +34,10 @@ const files = [
 ];
 
 class FakeCodeMirrorEditor implements Partial<CodeMirrorEditor> {
-  init(element: HTMLElement) {}
+  isInit = false;
+  init(element: HTMLElement) {
+    this.isInit = true;
+  }
   changeCurrentFile(fileName: string) {}
   disable() {}
   files = signal(files);
@@ -51,8 +54,11 @@ describe('CodeEditor', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [CodeEditor, NoopAnimationsModule],
+      imports: [CodeEditor],
       providers: [
+        // Removing the noop animations makes the test VERY flaky.
+        // TODO: understand why and fix the flakiness.
+        provideNoopAnimations(),
         {
           provide: CodeMirrorEditor,
           useValue: codeMirrorEditorService,
@@ -64,7 +70,11 @@ describe('CodeEditor', () => {
         {
           provide: EmbeddedTutorialManager,
           useValue: {
-            tutorialChanged$: new BehaviorSubject(true),
+            // We make sure to never emit so the
+            // setSelectedTabOnTutorialChange never resets the tab selection in an incontrolable way in unit tests.
+            // Changing this makes the tests flaky.
+            tutorialChanged$: NEVER,
+
             tutorialId: () => 'tutorial',
             tutorialFilesystemTree: () => ({'app.component.ts': ''}),
             commonFilesystemTree: () => ({'app.component.ts': ''}),
@@ -77,7 +87,7 @@ describe('CodeEditor', () => {
           },
         },
       ],
-    }).compileComponents();
+    });
 
     fixture = TestBed.createComponent(CodeEditor);
     loader = TestbedHarnessEnvironment.loader(fixture);
@@ -90,19 +100,21 @@ describe('CodeEditor', () => {
     expect(component).toBeTruthy();
   });
 
-  it('should initialize the code editor service afterViewInit with the code editor wrapper element', () => {
+  it('should initialize the code editor service with the code editor wrapper element', async () => {
+    // Spy should be init before the fixture is created
     const codeMirrorEditorInitSpy = spyOn(codeMirrorEditorService, 'init');
 
-    component.ngAfterViewInit();
+    fixture = TestBed.createComponent(CodeEditor);
+    fixture.detectChanges();
+    component = fixture.componentInstance;
 
-    expect(codeMirrorEditorInitSpy).toHaveBeenCalledWith(
-      component['codeEditorWrapperRef'].nativeElement,
-    );
+    expect(component.codeEditorWrapperRef()).toBeDefined();
+    expect(codeMirrorEditorService.isInit).toBeTrue();
+
+    expect(codeMirrorEditorInitSpy).toHaveBeenCalled();
   });
 
   it('should render tabs based on filenames order', async () => {
-    component.ngAfterViewInit();
-
     const matTabGroup = await loader.getHarness(MatTabGroupHarness);
     const tabs = await matTabGroup.getTabs();
     const expectedLabels = files.map((file, index) => {
@@ -123,7 +135,6 @@ describe('CodeEditor', () => {
 
     beforeEach(() => {
       codeMirrorEditorChangeCurrentFileSpy = spyOn(codeMirrorEditorService, 'changeCurrentFile');
-      component.ngAfterViewInit();
     });
 
     it('should change file content when clicking on an unselected tab', async () => {
@@ -147,6 +158,9 @@ describe('CodeEditor', () => {
     });
 
     it('should focused on a new tab when adding a new file', async () => {
+      // Wait until the asynchronous injection stuff is done.
+      await fixture.whenStable();
+
       const button = fixture.debugElement.query(By.css('button.adev-add-file')).nativeElement;
       button.click();
 
@@ -199,5 +213,29 @@ describe('CodeEditor', () => {
 
       expect(fixture.debugElement.query(By.css('[aria-label="Delete file"]'))).toBeNull();
     }
+  });
+
+  it('should be able to display the tooltip on the download button', async () => {
+    const tooltip = await loader.getHarness(
+      MatTooltipHarness.with({selector: '.adev-editor-download-button'}),
+    );
+    expect(await tooltip.isOpen()).toBeFalse();
+    await tooltip.show();
+    expect(await tooltip.isOpen()).toBeTrue();
+  });
+
+  it('should be able to get the tooltip message on the download button', async () => {
+    const tooltip = await loader.getHarness(
+      MatTooltipHarness.with({selector: '.adev-editor-download-button'}),
+    );
+    await tooltip.show();
+    expect(await tooltip.getTooltipText()).toBe('Download current source code');
+  });
+
+  it('should not be able to get the tooltip message on the download button when the tooltip is not shown', async () => {
+    const tooltip = await loader.getHarness(
+      MatTooltipHarness.with({selector: '.adev-editor-download-button'}),
+    );
+    expect(await tooltip.getTooltipText()).toBe('');
   });
 });

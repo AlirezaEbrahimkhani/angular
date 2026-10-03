@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 export {NgtscCompilerHost} from './src/compiler_host';
 export {
@@ -34,3 +34,5 @@ export {
   ReadonlyFileSystem,
 } from './src/types';
 export {getSourceFileOrError} from './src/util';
+export {createFileSystemTsReadDirectoryFn} from './src/ts_read_directory';
+export {InvalidFileSystem} from './src/invalid_file_system';

@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {
@@ -22,7 +22,12 @@ import {
   ɵWritable as Writable,
 } from '@angular/core';
 
-import {AbstractControl, FormHooks} from '../model/abstract_model';
+import {
+  AbstractControl,
+  FormHooks,
+  FormResetEvent,
+  FormSubmittedEvent,
+} from '../model/abstract_model';
 import {FormControl} from '../model/form_control';
 import {FormGroup} from '../model/form_group';
 import {
@@ -35,8 +40,8 @@ import {
 import {ControlContainer} from './control_container';
 import {Form} from './form_interface';
 import {NgControl} from './ng_control';
-import {NgModel} from './ng_model';
-import {NgModelGroup} from './ng_model_group';
+import type {NgModel} from './ng_model';
+import type {NgModelGroup} from './ng_model_group';
 import {
   CALL_SET_DISABLED_STATE,
   SetDisabledStateOption,
@@ -118,11 +123,12 @@ const resolvedPromise = (() => Promise.resolve())();
  * @publicApi
  */
 @Directive({
-  selector: 'form:not([ngNoForm]):not([formGroup]),ng-form,[ngForm]',
+  selector: 'form:not([ngNoForm]):not([formGroup]):not([formArray]),ng-form,[ngForm]',
   providers: [formDirectiveProvider],
   host: {'(submit)': 'onSubmit($event)', '(reset)': 'onReset()'},
   outputs: ['ngSubmit'],
   exportAs: 'ngForm',
+  standalone: false,
 })
 export class NgForm extends ControlContainer implements Form, AfterViewInit {
   /**
@@ -159,7 +165,6 @@ export class NgForm extends ControlContainer implements Form, AfterViewInit {
    * Possible values: `'change'` | `'blur'` | `'submit'`.
    *
    */
-  // TODO(issue/24571): remove '!'.
   @Input('ngFormOptions') options!: {updateOn?: FormHooks};
 
   constructor(
@@ -180,7 +185,7 @@ export class NgForm extends ControlContainer implements Form, AfterViewInit {
     );
   }
 
-  /** @nodoc */
+  /** @docs-private */
   ngAfterViewInit() {
     this._setUpdateStrategy();
   }
@@ -338,6 +343,7 @@ export class NgForm extends ControlContainer implements Form, AfterViewInit {
     this.submittedReactive.set(true);
     syncPendingControls(this.form, this._directives);
     this.ngSubmit.emit($event);
+    this.form._events.next(new FormSubmittedEvent(this.control));
     // Forms with `method="dialog"` have some special behavior
     // that won't reload the page and that shouldn't be prevented.
     return ($event?.target as HTMLFormElement | null)?.method === 'dialog';

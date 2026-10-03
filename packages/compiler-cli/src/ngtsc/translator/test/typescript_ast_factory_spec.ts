@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 import {leadingComment} from '@angular/compiler';
 import ts from 'typescript';
@@ -27,6 +27,19 @@ describe('TypeScriptAstFactory', () => {
 
       expect(generate(stmt)).toEqual(['/* comment 1 */', '//comment 2', 'x = 10;'].join('\n'));
     });
+
+    it('should add the comments to the given expression', () => {
+      const {
+        items: [expr],
+        generate,
+      } = setupExpressions('x + 10');
+      factory.attachComments(expr, [
+        leadingComment('comment 1', true),
+        leadingComment('comment 2', false),
+      ]);
+
+      expect(generate(expr)).toEqual(['/* comment 1 */', '//comment 2', 'x + 10'].join('\n'));
+    });
   });
 
   describe('createArrayLiteral()', () => {
@@ -46,7 +59,7 @@ describe('TypeScriptAstFactory', () => {
         items: [target, value],
         generate,
       } = setupExpressions(`x`, `42`);
-      const assignment = factory.createAssignment(target, value);
+      const assignment = factory.createAssignment(target, '=', value);
       expect(generate(assignment)).toEqual('x = 42');
     });
   });
@@ -60,14 +73,29 @@ describe('TypeScriptAstFactory', () => {
       const assignment = factory.createBinaryExpression(left, '+', right);
       expect(generate(assignment)).toEqual('17 + 42');
     });
+
+    it('should create a binary operation node for exponentiation', () => {
+      const {
+        items: [left, right],
+        generate,
+      } = setupExpressions(`2`, `3`);
+      const assignment = factory.createBinaryExpression(left, '**', right);
+      expect(generate(assignment)).toEqual('2 ** 3');
+    });
   });
 
   describe('createDynamicImport()', () => {
-    it('should create a dynamic import expression', () => {
+    it('should create a dynamic import expression from a string URL', () => {
       const {generate} = setupExpressions(``);
       const url = './some/path';
       const assignment = factory.createDynamicImport(url);
       expect(generate(assignment)).toEqual(`import("${url}")`);
+    });
+
+    it('should create a dynamic import expression from an expression URL', () => {
+      const {items, generate} = setupExpressions(`'/' + 'abc' + '/'`);
+      const assignment = factory.createDynamicImport(items[0]);
+      expect(generate(assignment)).toEqual(`import('/' + 'abc' + '/')`);
     });
   });
 
@@ -390,6 +418,17 @@ describe('TypeScriptAstFactory', () => {
     });
   });
 
+  describe('createVoidExpression()', () => {
+    it('should create a void expression node', () => {
+      const {
+        items: [expr],
+        generate,
+      } = setupExpressions(`42`);
+      const voidExpr = factory.createVoidExpression(expr);
+      expect(generate(voidExpr)).toEqual('void 42');
+    });
+  });
+
   describe('createUnaryExpression()', () => {
     it('should create a unary expression with the operator and operand', () => {
       const {
@@ -433,6 +472,20 @@ describe('TypeScriptAstFactory', () => {
       const {generate} = setupStatements();
       const varDecl = factory.createVariableDeclaration('foo', null, 'let');
       expect(generate(varDecl)).toEqual('let foo;');
+    });
+  });
+
+  describe('createRegularExpressionLiteral()', () => {
+    it('should create a regular expressions without flags', () => {
+      const {generate} = setupStatements();
+      const regex = factory.createRegularExpressionLiteral('^\\d+-foo$', null);
+      expect(generate(regex)).toEqual('/^\\d+-foo$/');
+    });
+
+    it('should create a regular expressions with flags', () => {
+      const {generate} = setupStatements();
+      const regex = factory.createRegularExpressionLiteral('^\\d+-foo$', 'gi');
+      expect(generate(regex)).toEqual('/^\\d+-foo$/gi');
     });
   });
 

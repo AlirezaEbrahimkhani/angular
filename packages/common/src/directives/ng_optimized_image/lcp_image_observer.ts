@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {
@@ -11,9 +11,9 @@ import {
   Injectable,
   OnDestroy,
   ɵformatRuntimeError as formatRuntimeError,
+  DOCUMENT,
 } from '@angular/core';
 
-import {DOCUMENT} from '../../dom_tokens';
 import {RuntimeErrorCode} from '../../errors';
 
 import {assertDevMode} from './asserts';
@@ -42,14 +42,16 @@ export class LCPImageObserver implements OnDestroy {
   // Map of full image URLs -> original `ngSrc` values.
   private images = new Map<string, ObservedImageState>();
 
-  private window: Window | null = null;
+  private window: Window | null = inject(DOCUMENT).defaultView;
   private observer: PerformanceObserver | null = null;
 
   constructor() {
     assertDevMode('LCP checker');
-    const win = inject(DOCUMENT).defaultView;
-    if (typeof win !== 'undefined' && typeof PerformanceObserver !== 'undefined') {
-      this.window = win;
+
+    if (
+      (typeof ngServerMode === 'undefined' || !ngServerMode) &&
+      typeof PerformanceObserver !== 'undefined'
+    ) {
       this.observer = this.initPerformanceObserver();
     }
   }
@@ -107,6 +109,7 @@ export class LCPImageObserver implements OnDestroy {
   }
 
   updateImage(originalSrc: string, newSrc: string) {
+    if (!this.observer) return;
     const originalUrl = getUrl(originalSrc, this.window!).href;
     const img = this.images.get(originalUrl);
     if (img) {

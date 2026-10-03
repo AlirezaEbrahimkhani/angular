@@ -1,5 +1,7 @@
 # Reusable animations
 
+IMPORTANT: The `@angular/animations` package is now deprecated. The Angular team recommends using native CSS with `animate.enter` and `animate.leave` for animations for all new code. Learn more at the new enter and leave [animation guide](guide/animations/enter-and-leave). Also see [Migrating away from Angular's Animations package](guide/animations/migration) to learn how you can start migrating to pure CSS animations in your apps.
+
 This topic provides some examples of how to create reusable animations.
 
 ## Create reusable animations
@@ -28,8 +30,9 @@ For example, the following code snippet imports the `transitionAnimation` variab
 You might also be interested in the following:
 
 <docs-pill-row>
-  <docs-pill href="guide/animations" title="Introduction to Angular animations"/>
-  <docs-pill href="guide/animations/transition-and-triggers" title="Transition and triggers"/>
-  <docs-pill href="guide/animations/complex-sequences" title="Complex animation sequences"/>
-  <docs-pill href="guide/animations/route-animations" title="Route transition animations"/>
+  <docs-pill href="guide/legacy-animations" title="Introduction to Angular animations"/>
+  <docs-pill href="guide/legacy-animations/transition-and-triggers" title="Transition and triggers"/>
+  <docs-pill href="guide/legacy-animations/complex-sequences" title="Complex animation sequences"/>
+  <docs-pill href="guide/routing/route-transition-animations" title="Route transition animations"/>
+  <docs-pill href="guide/animations/migration" title="Migrating to Native CSS Animations"/>
 </docs-pill-row>

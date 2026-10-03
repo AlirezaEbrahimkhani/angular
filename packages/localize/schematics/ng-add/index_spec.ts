@@ -3,12 +3,12 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {EmptyTree, Tree} from '@angular-devkit/schematics';
-import {SchematicTestRunner} from '@angular-devkit/schematics/testing';
-import {runfiles} from '@bazel/runfiles';
+import {SchematicTestRunner} from '@angular-devkit/schematics/testing/index.js';
+import {resolve} from 'node:path';
 import ts from 'typescript';
 
 interface TsConfig {
@@ -21,7 +21,7 @@ describe('ng-add schematic', () => {
   const defaultOptions = {project: 'demo'};
   const schematicRunner = new SchematicTestRunner(
     '@angular/localize',
-    runfiles.resolvePackageRelative('../collection.json'),
+    resolve('../collection.json'),
   );
   let host: Tree;
 
@@ -72,6 +72,13 @@ describe('ng-add schematic', () => {
               },
               test: {
                 builder: '@angular-devkit/build-angular:karma',
+                options: {
+                  tsConfig: './tsconfig.spec.json',
+                  polyfills: 'zone.js',
+                },
+              },
+              testKarmaBuild: {
+                builder: '@angular/build:karma',
                 options: {
                   tsConfig: './tsconfig.spec.json',
                   polyfills: 'zone.js',
@@ -170,6 +177,13 @@ describe('ng-add schematic', () => {
     host = await schematicRunner.runSchematic('ng-add', defaultOptions, host);
     const workspace = host.readJson('angular.json') as any;
     const polyfills = workspace.projects['demo'].architect.test.options.polyfills;
+    expect(polyfills).toEqual(['zone.js', '@angular/localize/init']);
+  });
+
+  it(`should add '@angular/localize/init' in 'polyfills' in karma application builder`, async () => {
+    host = await schematicRunner.runSchematic('ng-add', defaultOptions, host);
+    const workspace = host.readJson('angular.json') as any;
+    const polyfills = workspace.projects['demo'].architect.testKarmaBuild.options.polyfills;
     expect(polyfills).toEqual(['zone.js', '@angular/localize/init']);
   });
 

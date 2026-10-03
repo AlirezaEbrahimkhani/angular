@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import * as o from '@angular/compiler';
@@ -123,23 +123,19 @@ class TypeTranslatorVisitor implements o.ExpressionVisitor, o.TypeVisitor {
     return ts.factory.createTypeQueryNode(ts.factory.createIdentifier(ast.name));
   }
 
-  visitWriteVarExpr(expr: o.WriteVarExpr, context: Context): never {
-    throw new Error('Method not implemented.');
-  }
-
-  visitWriteKeyExpr(expr: o.WriteKeyExpr, context: Context): never {
-    throw new Error('Method not implemented.');
-  }
-
-  visitWritePropExpr(expr: o.WritePropExpr, context: Context): never {
-    throw new Error('Method not implemented.');
-  }
-
   visitInvokeFunctionExpr(ast: o.InvokeFunctionExpr, context: Context): never {
     throw new Error('Method not implemented.');
   }
 
-  visitTaggedTemplateExpr(ast: o.TaggedTemplateExpr, context: Context): never {
+  visitTaggedTemplateLiteralExpr(ast: o.TaggedTemplateLiteralExpr, context: Context): never {
+    throw new Error('Method not implemented.');
+  }
+
+  visitTemplateLiteralExpr(ast: o.TemplateLiteralExpr, context: any) {
+    throw new Error('Method not implemented.');
+  }
+
+  visitTemplateLiteralElementExpr(ast: o.TemplateLiteralElementExpr, context: any) {
     throw new Error('Method not implemented.');
   }
 
@@ -190,6 +186,10 @@ class TypeTranslatorVisitor implements o.ExpressionVisitor, o.TypeVisitor {
   }
 
   visitDynamicImportExpr(ast: o.outputAst.DynamicImportExpr, context: any) {
+    throw new Error('Method not implemented.');
+  }
+
+  visitRegularExpressionLiteral(ast: o.outputAst.RegularExpressionLiteral, context: any) {
     throw new Error('Method not implemented.');
   }
 
@@ -266,6 +266,14 @@ class TypeTranslatorVisitor implements o.ExpressionVisitor, o.TypeVisitor {
           ${ts.SyntaxKind[typeNode.kind]}`);
     }
     return ts.factory.createTypeQueryNode(typeNode.typeName);
+  }
+
+  visitVoidExpr(ast: o.VoidExpr, context: Context) {
+    throw new Error('Method not implemented.');
+  }
+
+  visitParenthesizedExpr(ast: o.ParenthesizedExpr, context: any) {
+    throw new Error('Method not implemented.');
   }
 
   private translateType(type: o.Type, context: Context): ts.TypeNode {

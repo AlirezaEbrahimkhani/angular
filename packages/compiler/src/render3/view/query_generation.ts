@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {ConstantPool} from '../../constant_pool';
@@ -17,7 +17,7 @@ import {CONTEXT_NAME, RENDER_FLAGS, TEMPORARY_NAME, temporaryAllocator} from './
 
 //  if (rf & flags) { .. }
 function renderFlagCheckIfStmt(flags: core.RenderFlags, statements: o.Statement[]): o.IfStmt {
-  return o.ifStmt(o.variable(RENDER_FLAGS).bitwiseAnd(o.literal(flags), null, false), statements);
+  return o.ifStmt(o.variable(RENDER_FLAGS).bitwiseAnd(o.literal(flags), null), statements);
 }
 
 /**
@@ -131,7 +131,7 @@ const queryAdvancePlaceholder = Symbol('queryAdvancePlaceholder');
  *
  *   --> will turn into
  *
- * ```
+ * ```ts
  *   bla();
  *   queryAdvance(2);
  *   bla();

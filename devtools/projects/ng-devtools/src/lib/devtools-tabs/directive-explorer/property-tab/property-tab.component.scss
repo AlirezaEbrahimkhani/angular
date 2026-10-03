@@ -1,4 +1,11 @@
-ng-property-view-body {
-  width: 100%;
-  overflow: auto;
+.dehydrated-component {
+  padding: 0.75rem;
+}
+
+/* FRAGILE */
+::ng-deep {
+  .mat-expansion-panel {
+    border-bottom: 1px solid var(--color-separator);
+    box-shadow: none !important;
+  }
 }

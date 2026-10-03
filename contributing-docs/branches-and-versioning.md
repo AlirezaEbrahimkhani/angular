@@ -92,8 +92,23 @@ The vast majority of pull requests will target `major`, `minor`, or `patch` base
 the code change. In rare cases, a pull request will specify `target: rc` or `target: lts` to
 explicitly target a special branch.
 
+Note that PRs merged with `target: rc` often benefit from additional testing in an RC release.
+Therefore PR authors and caretakers should consider publishing a new `-next` release after merging
+any PRs to an RC branch to support extra testing before the stable release.
+
 Breaking changes, marked with `target: major`, can only be merged when `main` represents the next
 major version.
+
+Two additional target labels do not map to specific versions while still defining which branch to merge into.
+
+| Label                | Description                                                                 |
+|----------------------|-----------------------------------------------------------------------------|
+| target: automation   | A automated change made by the angular-robot account.                       |
+| target: feature      | A change to be made in a feature branch.                                    |
+
+Changes made to a feature branch, outside of our typical branching and merging process utilize the
+`target: feature` branch. Additionally, the `target: automation` label, which is only able to be
+utilized by the `angular-robot` account targets only the branch defined within the Github UI.
 
 ### Pull request examples
 

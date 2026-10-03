@@ -3,28 +3,31 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {inject, Injector} from '../di';
 import {isRootTemplateMessage} from '../render3/i18n/i18n_util';
-import {createIcuIterator} from '../render3/instructions/i18n_icu_container_visitor';
+import {createIcuIterator} from '../render3/i18n/i18n_icu_container_visitor';
 import {I18nNode, I18nNodeKind, I18nPlaceholderType, TI18n, TIcu} from '../render3/interfaces/i18n';
 import {isTNodeShape, TNode, TNodeType} from '../render3/interfaces/node';
 import type {Renderer} from '../render3/interfaces/renderer';
 import type {RNode} from '../render3/interfaces/renderer_dom';
 import {HEADER_OFFSET, HYDRATION, LView, RENDERER, TView, TVIEW} from '../render3/interfaces/view';
-import {getFirstNativeNode, nativeRemoveNode} from '../render3/node_manipulation';
+import {getFirstNativeNode} from '../render3/node_manipulation';
+import {nativeRemoveNode} from '../render3/dom_node_manipulation';
 import {unwrapRNode} from '../render3/util/view_utils';
 import {assertDefined, assertNotEqual} from '../util/assert';
 
 import type {HydrationContext} from './annotate';
 import {DehydratedIcuData, DehydratedView, I18N_DATA} from './interfaces';
 import {isDisconnectedRNode, locateNextRNode, tryLocateRNodeByPath} from './node_lookup_utils';
+import {isI18nInSkipHydrationBlock} from './skip_hydration';
 import {IS_I18N_HYDRATION_ENABLED} from './tokens';
 import {
   getNgContainerSize,
   initDisconnectedNodes,
+  isDisconnectedNode,
   isSerializedElementContainer,
   processTextNodeBeforeSerialization,
 } from './utils';
@@ -184,6 +187,11 @@ export function trySerializeI18nBlock(
   const tView = lView[TVIEW];
   const tI18n = tView.data[index] as TI18n | undefined;
   if (!tI18n || !tI18n.ast) {
+    return null;
+  }
+
+  const parentTNode = tView.data[tI18n.parentTNodeIndex] as TNode;
+  if (parentTNode && isI18nInSkipHydrationBlock(parentTNode)) {
     return null;
   }
 
@@ -401,12 +409,17 @@ function prepareI18nBlockForHydrationImpl(
   parentTNode: TNode | null,
   subTemplateIndex: number,
 ) {
-  if (!isI18nHydrationSupportEnabled()) {
+  const hydrationInfo = lView[HYDRATION];
+  if (!hydrationInfo) {
     return;
   }
 
-  const hydrationInfo = lView[HYDRATION];
-  if (!hydrationInfo) {
+  if (
+    !isI18nHydrationSupportEnabled() ||
+    (parentTNode &&
+      (isI18nInSkipHydrationBlock(parentTNode) ||
+        isDisconnectedNode(hydrationInfo, parentTNode.index - HEADER_OFFSET)))
+  ) {
     return;
   }
 

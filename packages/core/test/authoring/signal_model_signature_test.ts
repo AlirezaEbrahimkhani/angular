@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 /**
@@ -12,10 +12,10 @@
  * the resulting types match our expectations (via comments asserting the `.d.ts`).
  */
 
-import {model} from '@angular/core';
+import {model} from '../../src/core';
 // import preserved to simplify `.d.ts` emit and simplify the `type_tester` logic.
 // tslint:disable-next-line no-duplicate-imports
-import {ModelSignal} from '@angular/core';
+import {ModelSignal} from '../../src/core';
 
 export class SignalModelSignatureTest {
   /** string | undefined */

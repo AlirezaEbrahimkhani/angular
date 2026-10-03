@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {CommonModule} from '@angular/common';
@@ -25,18 +25,23 @@ import {
   ɵɵdefineNgModule as defineNgModule,
   ɵɵelement as element,
   ɵɵproperty as property,
-} from '@angular/core';
-import {KNOWN_CONTROL_FLOW_DIRECTIVES} from '@angular/core/src/render3/instructions/element_validation';
-import {TestBed} from '@angular/core/testing';
-import {BrowserModule} from '@angular/platform-browser';
-import {platformBrowserDynamic} from '@angular/platform-browser-dynamic';
+} from '../../src/core';
+import {KNOWN_CONTROL_FLOW_DIRECTIVES} from '../../src/render3/instructions/element_validation';
+import {TestBed} from '../../testing';
+import {BrowserModule, platformBrowser} from '@angular/platform-browser';
 import {withBody} from '@angular/private/testing';
 
 describe('NgModule', () => {
-  @Component({template: 'hello'})
+  @Component({
+    template: 'hello',
+    standalone: false,
+  })
   class TestCmp {}
 
-  @Component({template: 'hello'})
+  @Component({
+    template: 'hello',
+    standalone: false,
+  })
   class TestCmp2 {}
 
   describe('bootstrap', () => {
@@ -92,7 +97,6 @@ describe('NgModule', () => {
     it('should throw when a standalone component is added to NgModule declarations', () => {
       @Component({
         selector: 'my-comp',
-        standalone: true,
         template: '',
       })
       class MyComp {}
@@ -114,13 +118,13 @@ describe('NgModule', () => {
     it('should throw when a standalone directive is added to NgModule declarations', () => {
       @Directive({
         selector: '[my-dir]',
-        standalone: true,
       })
       class MyDir {}
 
       @Component({
         selector: 'my-comp',
         template: '',
+        standalone: false,
       })
       class MyComp {}
 
@@ -141,13 +145,13 @@ describe('NgModule', () => {
     it('should throw when a standalone pipe is added to NgModule declarations', () => {
       @Pipe({
         name: 'my-pipe',
-        standalone: true,
       })
       class MyPipe {}
 
       @Component({
         selector: 'my-comp',
         template: '',
+        standalone: false,
       })
       class MyComp {}
 
@@ -169,7 +173,6 @@ describe('NgModule', () => {
       @Component({
         selector: 'my-comp',
         template: '',
-        standalone: true,
       })
       class MyComp {}
 
@@ -192,6 +195,7 @@ describe('NgModule', () => {
         @Component({
           selector: 'button',
           template: 'button content',
+          standalone: false,
         })
         class App {
           ngOnDestroy() {
@@ -205,7 +209,7 @@ describe('NgModule', () => {
           bootstrap: [App],
         })
         class AppModule {}
-        const ngModuleRef = await platformBrowserDynamic().bootstrapModule(AppModule);
+        const ngModuleRef = await platformBrowser().bootstrapModule(AppModule);
 
         const button = document.body.querySelector('button')!;
         expect(button.textContent).toEqual('button content');
@@ -229,6 +233,7 @@ describe('NgModule', () => {
             <div [unknown-prop]="true"></div>
           </ng-container>
         `,
+        standalone: false,
       })
       class MyComp {
         condition = true;
@@ -254,6 +259,7 @@ describe('NgModule', () => {
       @Component({
         selector: 'my-comp',
         template: ` <ng-template *ngIf="condition"></ng-template> `,
+        standalone: false,
       })
       class MyComp {
         condition = true;
@@ -279,6 +285,7 @@ describe('NgModule', () => {
       @Component({
         selector: 'my-comp',
         template: ` <ng-container *ngIf="condition"></ng-container> `,
+        standalone: false,
       })
       class MyComp {
         condition = true;
@@ -304,6 +311,7 @@ describe('NgModule', () => {
       @Component({
         selector: 'my-comp',
         template: ` <ng-content *ngIf="condition"></ng-content> `,
+        standalone: false,
       })
       class MyComp {
         condition = true;
@@ -333,6 +341,7 @@ describe('NgModule', () => {
             <div [unknown-prop]="true"></div>
           </ng-container>
         `,
+        standalone: false,
       })
       class MyComp {
         condition = true;
@@ -362,6 +371,7 @@ describe('NgModule', () => {
             <div [unknown-prop]="true"></div>
           </ng-container>
         `,
+        standalone: false,
       })
       class MyComp {
         condition = true;
@@ -390,6 +400,7 @@ describe('NgModule', () => {
             <div [unknown-prop]="true"></div>
           </ng-container>
         `,
+        standalone: false,
       })
       class MyComp {
         condition = true;
@@ -411,7 +422,10 @@ describe('NgModule', () => {
     });
 
     it('should log an error about unknown element without CUSTOM_ELEMENTS_SCHEMA for element with dash in tag name', () => {
-      @Component({template: `<custom-el></custom-el>`})
+      @Component({
+        template: `<custom-el></custom-el>`,
+        standalone: false,
+      })
       class MyComp {}
 
       const spy = spyOn(console, 'error');
@@ -424,7 +438,6 @@ describe('NgModule', () => {
     it('should log an error about unknown element for a standalone component without CUSTOM_ELEMENTS_SCHEMA', () => {
       @Component({
         template: `<custom-el></custom-el>`,
-        standalone: true,
       })
       class MyComp {}
 
@@ -438,7 +451,6 @@ describe('NgModule', () => {
     it('should not log an error about unknown element for a standalone component with CUSTOM_ELEMENTS_SCHEMA', () => {
       @Component({
         template: `<custom-el></custom-el>`,
-        standalone: true,
         schemas: [CUSTOM_ELEMENTS_SCHEMA],
       })
       class MyComp {}
@@ -451,7 +463,10 @@ describe('NgModule', () => {
     });
 
     it('should throw an error about unknown element without CUSTOM_ELEMENTS_SCHEMA for element with dash in tag name', () => {
-      @Component({template: `<custom-el></custom-el>`})
+      @Component({
+        template: `<custom-el></custom-el>`,
+        standalone: false,
+      })
       class MyComp {}
 
       TestBed.configureTestingModule({declarations: [MyComp], errorOnUnknownElements: true});
@@ -462,7 +477,10 @@ describe('NgModule', () => {
     });
 
     it('should log an error about unknown element without CUSTOM_ELEMENTS_SCHEMA for element without dash in tag name', () => {
-      @Component({template: `<custom></custom>`})
+      @Component({
+        template: `<custom></custom>`,
+        standalone: false,
+      })
       class MyComp {}
 
       const spy = spyOn(console, 'error');
@@ -473,7 +491,10 @@ describe('NgModule', () => {
     });
 
     it('should throw an error about unknown element without CUSTOM_ELEMENTS_SCHEMA for element without dash in tag name', () => {
-      @Component({template: `<custom></custom>`})
+      @Component({
+        template: `<custom></custom>`,
+        standalone: false,
+      })
       class MyComp {}
 
       TestBed.configureTestingModule({declarations: [MyComp], errorOnUnknownElements: true});
@@ -484,7 +505,10 @@ describe('NgModule', () => {
     });
 
     it('should report unknown property bindings on ng-content', () => {
-      @Component({template: `<ng-content *unknownProp="123"></ng-content>`})
+      @Component({
+        template: `<ng-content *unknownProp="123"></ng-content>`,
+        standalone: false,
+      })
       class App {}
 
       TestBed.configureTestingModule({declarations: [App]});
@@ -498,7 +522,10 @@ describe('NgModule', () => {
     });
 
     it('should throw an error on unknown property bindings on ng-content when errorOnUnknownProperties is enabled', () => {
-      @Component({template: `<ng-content *unknownProp="123"></ng-content>`})
+      @Component({
+        template: `<ng-content *unknownProp="123"></ng-content>`,
+        standalone: false,
+      })
       class App {}
 
       TestBed.configureTestingModule({declarations: [App], errorOnUnknownProperties: true});
@@ -511,7 +538,10 @@ describe('NgModule', () => {
     });
 
     it('should report unknown property bindings on ng-container', () => {
-      @Component({template: `<ng-container [unknown-prop]="123"></ng-container>`})
+      @Component({
+        template: `<ng-container [unknown-prop]="123"></ng-container>`,
+        standalone: false,
+      })
       class App {}
 
       TestBed.configureTestingModule({declarations: [App]});
@@ -525,7 +555,10 @@ describe('NgModule', () => {
     });
 
     it('should throw error on unknown property bindings on ng-container when errorOnUnknownProperties is enabled', () => {
-      @Component({template: `<ng-container [unknown-prop]="123"></ng-container>`})
+      @Component({
+        template: `<ng-container [unknown-prop]="123"></ng-container>`,
+        standalone: false,
+      })
       class App {}
 
       TestBed.configureTestingModule({declarations: [App], errorOnUnknownProperties: true});
@@ -541,12 +574,14 @@ describe('NgModule', () => {
       @Component({
         selector: 'may-be-web-component',
         template: `...`,
+        standalone: false,
       })
       class MaybeWebComp {}
 
       @Component({
         selector: 'my-comp',
         template: `<may-be-web-component [unknownProp]="condition"></may-be-web-component>`,
+        standalone: false,
       })
       class MyComp {
         condition = true;
@@ -582,6 +617,7 @@ describe('NgModule', () => {
         () => {
           @Component({
             template: `<div *${directive}="expr"></div>`,
+            standalone: false,
           })
           class App {
             expr = true;
@@ -614,7 +650,6 @@ describe('NgModule', () => {
           `is used in a template, but not imported in a standalone component`,
         () => {
           @Component({
-            standalone: true,
             template: `<div *${directive}="expr"></div>`,
           })
           class App {
@@ -772,7 +807,10 @@ describe('NgModule', () => {
     });
 
     it('should not log an error about unknown elements with CUSTOM_ELEMENTS_SCHEMA', () => {
-      @Component({template: `<custom-el></custom-el>`})
+      @Component({
+        template: `<custom-el></custom-el>`,
+        standalone: false,
+      })
       class MyComp {}
 
       const spy = spyOn(console, 'error');
@@ -787,7 +825,10 @@ describe('NgModule', () => {
     });
 
     it('should not throw an error about unknown elements with CUSTOM_ELEMENTS_SCHEMA', () => {
-      @Component({template: `<custom-el></custom-el>`})
+      @Component({
+        template: `<custom-el></custom-el>`,
+        standalone: false,
+      })
       class MyComp {}
 
       const spy = spyOn(console, 'error');
@@ -805,7 +846,10 @@ describe('NgModule', () => {
     });
 
     it('should not log an error about unknown elements with NO_ERRORS_SCHEMA', () => {
-      @Component({template: `<custom-el></custom-el>`})
+      @Component({
+        template: `<custom-el></custom-el>`,
+        standalone: false,
+      })
       class MyComp {}
 
       const spy = spyOn(console, 'error');
@@ -820,7 +864,10 @@ describe('NgModule', () => {
     });
 
     it('should not throw an error about unknown elements with NO_ERRORS_SCHEMA', () => {
-      @Component({template: `<custom-el></custom-el>`})
+      @Component({
+        template: `<custom-el></custom-el>`,
+        standalone: false,
+      })
       class MyComp {}
 
       const spy = spyOn(console, 'error');
@@ -841,10 +888,14 @@ describe('NgModule', () => {
       @Component({
         selector: 'custom-el',
         template: '',
+        standalone: false,
       })
       class CustomEl {}
 
-      @Component({template: `<custom-el></custom-el>`})
+      @Component({
+        template: `<custom-el></custom-el>`,
+        standalone: false,
+      })
       class MyComp {}
 
       const spy = spyOn(console, 'error');
@@ -859,10 +910,14 @@ describe('NgModule', () => {
       @Component({
         selector: 'custom-el',
         template: '',
+        standalone: false,
       })
       class CustomEl {}
 
-      @Component({template: `<custom-el></custom-el>`})
+      @Component({
+        template: `<custom-el></custom-el>`,
+        standalone: false,
+      })
       class MyComp {}
 
       const spy = spyOn(console, 'error');
@@ -887,6 +942,7 @@ describe('NgModule', () => {
             </svg:foreignObject>
           </svg>
         `,
+        standalone: false,
       })
       class MyComp {}
 
@@ -910,6 +966,7 @@ describe('NgModule', () => {
             </svg:foreignObject>
           </svg>
         `,
+        standalone: false,
       })
       class MyComp {}
 

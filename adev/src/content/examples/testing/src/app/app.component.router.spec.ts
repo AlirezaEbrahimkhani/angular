@@ -28,7 +28,6 @@ describe('AppComponent & router testing', () => {
       Object.assign({}, appConfig, {
         providers: [
           {provide: HeroService, useClass: TestHeroService},
-          UserService,
           TwainService,
           provideHttpClient(),
           provideLocationMocks(),
@@ -39,7 +38,7 @@ describe('AppComponent & router testing', () => {
           ]),
         ],
       }),
-    ).compileComponents();
+    );
   }));
 
   it('should navigate to "Dashboard" immediately', fakeAsync(() => {
@@ -87,7 +86,7 @@ import {provideHttpClient} from '@angular/common/http';
 ///////// Can't get lazy loaded Heroes to work yet
 xdescribe('AppComponent & Lazy Loading (not working yet)', () => {
   beforeEach(waitForAsync(() => {
-    TestBed.configureTestingModule(appConfig).compileComponents();
+    TestBed.configureTestingModule(appConfig);
   }));
 
   beforeEach(fakeAsync(() => {

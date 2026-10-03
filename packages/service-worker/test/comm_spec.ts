@@ -3,28 +3,29 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {PLATFORM_ID} from '@angular/core';
+import {Injector, PLATFORM_ID} from '@angular/core';
 import {TestBed} from '@angular/core/testing';
 import {
   NgswCommChannel,
   NoNewVersionDetectedEvent,
   VersionDetectedEvent,
   VersionEvent,
+  VersionFailedEvent,
   VersionReadyEvent,
-} from '@angular/service-worker/src/low_level';
-import {ngswCommChannelFactory, SwRegistrationOptions} from '@angular/service-worker/src/provider';
-import {SwPush} from '@angular/service-worker/src/push';
-import {SwUpdate} from '@angular/service-worker/src/update';
+} from '../src/low_level';
+import {ngswCommChannelFactory, SwRegistrationOptions} from '../src/provider';
+import {SwPush} from '../src/push';
+import {SwUpdate} from '../src/update';
 import {
   MockPushManager,
   MockPushSubscription,
   MockServiceWorkerContainer,
   MockServiceWorkerRegistration,
   patchDecodeBase64,
-} from '@angular/service-worker/testing/mock';
+} from '../testing/mock';
 import {filter} from 'rxjs/operators';
 
 describe('ServiceWorker library', () => {
@@ -62,21 +63,32 @@ describe('ServiceWorker library', () => {
   });
 
   describe('ngswCommChannelFactory', () => {
-    it('gives disabled NgswCommChannel for platform-server', () => {
-      TestBed.configureTestingModule({
-        providers: [
-          {provide: PLATFORM_ID, useValue: 'server'},
-          {provide: SwRegistrationOptions, useValue: {enabled: true}},
-          {
-            provide: NgswCommChannel,
-            useFactory: ngswCommChannelFactory,
-            deps: [SwRegistrationOptions, PLATFORM_ID],
-          },
-        ],
+    describe('server', () => {
+      beforeEach(() => {
+        globalThis['ngServerMode'] = true;
       });
 
-      expect(TestBed.inject(NgswCommChannel).isEnabled).toEqual(false);
+      afterEach(() => {
+        globalThis['ngServerMode'] = undefined;
+      });
+
+      it('gives disabled NgswCommChannel for platform-server', () => {
+        TestBed.configureTestingModule({
+          providers: [
+            {provide: PLATFORM_ID, useValue: 'server'},
+            {provide: SwRegistrationOptions, useValue: {enabled: true}},
+            {
+              provide: NgswCommChannel,
+              useFactory: ngswCommChannelFactory,
+              deps: [SwRegistrationOptions, Injector],
+            },
+          ],
+        });
+
+        expect(TestBed.inject(NgswCommChannel).isEnabled).toEqual(false);
+      });
     });
+
     it("gives disabled NgswCommChannel when 'enabled' option is false", () => {
       TestBed.configureTestingModule({
         providers: [
@@ -85,7 +97,7 @@ describe('ServiceWorker library', () => {
           {
             provide: NgswCommChannel,
             useFactory: ngswCommChannelFactory,
-            deps: [SwRegistrationOptions, PLATFORM_ID],
+            deps: [SwRegistrationOptions, Injector],
           },
         ],
       });
@@ -100,7 +112,7 @@ describe('ServiceWorker library', () => {
           {
             provide: NgswCommChannel,
             useFactory: ngswCommChannelFactory,
-            deps: [SwRegistrationOptions, PLATFORM_ID],
+            deps: [SwRegistrationOptions, Injector],
           },
         ],
       });
@@ -129,7 +141,7 @@ describe('ServiceWorker library', () => {
           {
             provide: NgswCommChannel,
             useFactory: ngswCommChannelFactory,
-            deps: [SwRegistrationOptions, PLATFORM_ID],
+            deps: [SwRegistrationOptions, Injector],
           },
         ],
       });
@@ -226,7 +238,7 @@ describe('ServiceWorker library', () => {
           await push.unsubscribe();
           throw new Error('`unsubscribe()` should fail');
         } catch (err) {
-          expect((err as Error).message).toBe('Not subscribed to push notifications.');
+          expect((err as Error).message).toContain('Not subscribed to push notifications.');
         }
       });
 
@@ -259,7 +271,7 @@ describe('ServiceWorker library', () => {
           await push.unsubscribe();
           throw new Error('`unsubscribe()` should fail');
         } catch (err) {
-          expect((err as Error).message).toBe('Unsubscribe failed!');
+          expect((err as Error).message).toContain('Unsubscribe failed!');
         }
       });
 
@@ -339,6 +351,22 @@ describe('ServiceWorker library', () => {
         sendMessage('KCILC_NOITACIFITON', 'this was a KCILC_NOITACIFITON message');
 
         expect(receivedMessages).toEqual(['this was a click', 'this was a click too']);
+      });
+    });
+
+    describe('notificationCloses', () => {
+      it('receives notification closes messages', () => {
+        const sendMessage = (type: string, action: string) =>
+          mock.sendMessage({type, data: {action}});
+
+        const receivedMessages: string[] = [];
+        push.notificationCloses.subscribe((msg: {action: string}) =>
+          receivedMessages.push(msg.action),
+        );
+
+        sendMessage('NOTIFICATION_CLOSE', 'empty_string');
+
+        expect(receivedMessages).toEqual(['empty_string']);
       });
     });
 
@@ -480,6 +508,25 @@ describe('ServiceWorker library', () => {
         version: {
           hash: 'A',
         },
+      });
+    });
+    it('processes version failed events with cache corruption error', (done) => {
+      update.versionUpdates.subscribe((event) => {
+        expect(event.type).toEqual('VERSION_FAILED');
+        expect((event as VersionFailedEvent).version).toEqual({
+          hash: 'B',
+          appData: {name: 'test-app'},
+        });
+        expect((event as VersionFailedEvent).error).toContain('Cache corruption detected');
+        done();
+      });
+      mock.sendMessage({
+        type: 'VERSION_FAILED',
+        version: {
+          hash: 'B',
+          appData: {name: 'test-app'},
+        },
+        error: 'Cache corruption detected during resource fetch',
       });
     });
     it('activates updates when requested', async () => {

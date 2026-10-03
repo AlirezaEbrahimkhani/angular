@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {json, normalize, virtualFs, workspaces} from '@angular-devkit/core';
@@ -72,7 +72,7 @@ function* allTargetOptions(
 function createHost(tree: Tree): workspaces.WorkspaceHost {
   return {
     async readFile(path: string): Promise<string> {
-      const data = tree.read(path);
+      const data = tree.read(path) as unknown as virtualFs.FileBuffer;
       if (!data) {
         throw new Error('File not found.');
       }

@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import * as o from '../../../../output/output_ast';
@@ -42,6 +42,8 @@ function recursivelyProcessView(view: ViewCompilationUnit, parentScope: Scope | 
 
   for (const op of view.create) {
     switch (op.kind) {
+      case ir.OpKind.ConditionalCreate:
+      case ir.OpKind.ConditionalBranchCreate:
       case ir.OpKind.Template:
         // Descend into child embedded views.
         recursivelyProcessView(view.job.views.get(op.xref)!, scope);
@@ -57,7 +59,12 @@ function recursivelyProcessView(view: ViewCompilationUnit, parentScope: Scope | 
         if (op.emptyView) {
           recursivelyProcessView(view.job.views.get(op.emptyView)!, scope);
         }
+        if (op.trackByOps !== null) {
+          op.trackByOps.prepend(generateVariablesInScopeForView(view, scope, false));
+        }
         break;
+      case ir.OpKind.Animation:
+      case ir.OpKind.AnimationListener:
       case ir.OpKind.Listener:
       case ir.OpKind.TwoWayListener:
         // Prepend variables to listener handler functions.
@@ -174,6 +181,8 @@ function getScopeForView(view: ViewCompilationUnit, parent: Scope | null): Scope
   for (const op of view.create) {
     switch (op.kind) {
       case ir.OpKind.ElementStart:
+      case ir.OpKind.ConditionalCreate:
+      case ir.OpKind.ConditionalBranchCreate:
       case ir.OpKind.Template:
         if (!Array.isArray(op.localRefs)) {
           throw new Error(`AssertionError: expected localRefs to be an array`);
@@ -223,7 +232,7 @@ function getScopeForView(view: ViewCompilationUnit, parent: Scope | null): Scope
 function generateVariablesInScopeForView(
   view: ViewCompilationUnit,
   scope: Scope,
-  isListener: boolean,
+  isCallback: boolean,
 ): ir.VariableOp<ir.UpdateOp>[] {
   const newOps: ir.VariableOp<ir.UpdateOp>[] = [];
 
@@ -281,7 +290,7 @@ function generateVariablesInScopeForView(
     );
   }
 
-  if (scope.view !== view.xref || isListener) {
+  if (scope.view !== view.xref || isCallback) {
     for (const decl of scope.letDeclarations) {
       newOps.push(
         ir.createVariableOp<ir.UpdateOp>(

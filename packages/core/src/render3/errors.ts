@@ -3,13 +3,13 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {RuntimeError, RuntimeErrorCode} from '../errors';
 import {Type} from '../interface/type';
 
-import {getComponentDef} from './definition';
+import {getComponentDef} from './def_getters';
 import {getDeclarationComponentDef} from './instructions/element_validation';
 import {TNode} from './interfaces/node';
 import {LView, TVIEW} from './interfaces/view';
@@ -30,8 +30,8 @@ export function assertStandaloneComponentType(type: Type<unknown>) {
       RuntimeErrorCode.TYPE_IS_NOT_STANDALONE,
       `The ${stringifyForError(type)} component is not marked as standalone, ` +
         `but Angular expects to have a standalone component here. ` +
-        `Please make sure the ${stringifyForError(type)} component has ` +
-        `the \`standalone: true\` flag in the decorator.`,
+        `Please make sure the ${stringifyForError(type)} component does not have ` +
+        `the \`standalone: false\` flag in the decorator.`,
     );
   }
 }
@@ -72,7 +72,9 @@ export function throwErrorIfNoChangesMode(
   const hostComponentDef = getDeclarationComponentDef(lView);
   const componentClassName = hostComponentDef?.type?.name;
   const field = propName ? ` for '${propName}'` : '';
-  let msg = `ExpressionChangedAfterItHasBeenCheckedError: Expression has changed after it was checked. Previous value${field}: '${formatValue(oldValue)}'. Current value: '${formatValue(currValue)}'.${
+  let msg = `ExpressionChangedAfterItHasBeenCheckedError: Expression has changed after it was checked. Previous value${field}: '${formatValue(
+    oldValue,
+  )}'. Current value: '${formatValue(currValue)}'.${
     componentClassName ? ` Expression location: ${componentClassName} component` : ''
   }`;
   if (creationMode) {

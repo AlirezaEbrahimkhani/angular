@@ -3,11 +3,11 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {ɵMetadataOverrider as MetadataOverrider} from '@angular/core/testing';
-import {expect} from '@angular/platform-browser/testing/src/matchers';
+import {expect} from '@angular/private/testing/matchers';
 
 interface SomeMetadataType {
   plainProp?: string;

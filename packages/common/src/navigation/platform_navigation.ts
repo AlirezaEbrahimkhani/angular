@@ -3,27 +3,31 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {Injectable} from '@angular/core';
-
 import {
-  NavigateEvent,
-  Navigation,
-  NavigationCurrentEntryChangeEvent,
-  NavigationHistoryEntry,
-  NavigationNavigateOptions,
-  NavigationOptions,
-  NavigationReloadOptions,
-  NavigationResult,
-  NavigationTransition,
-  NavigationUpdateCurrentEntryOptions,
-} from './navigation_types';
+  Injectable,
+  ɵNavigateEvent as NavigateEvent,
+  ɵNavigation as Navigation,
+  ɵNavigationCurrentEntryChangeEvent as NavigationCurrentEntryChangeEvent,
+  ɵNavigationHistoryEntry as NavigationHistoryEntry,
+  ɵNavigationNavigateOptions as NavigationNavigateOptions,
+  ɵNavigationOptions as NavigationOptions,
+  ɵNavigationReloadOptions as NavigationReloadOptions,
+  ɵNavigationResult as NavigationResult,
+  ɵNavigationTransition as NavigationTransition,
+  ɵNavigationUpdateCurrentEntryOptions as NavigationUpdateCurrentEntryOptions,
+} from '@angular/core';
 
 /**
  * This class wraps the platform Navigation API which allows server-specific and test
  * implementations.
+ *
+ * Browser support is limited, so this API may not be available in all environments,
+ * may contain bugs, and is experimental.
+ *
+ * @experimental 21.0.0
  */
 @Injectable({providedIn: 'platform', useFactory: () => (window as any).navigation})
 export abstract class PlatformNavigation implements Navigation {

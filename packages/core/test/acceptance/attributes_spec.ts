@@ -3,17 +3,18 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {Component} from '@angular/core';
-import {TestBed} from '@angular/core/testing';
+import {Component, provideZoneChangeDetection} from '../../src/core';
+import {TestBed} from '../../testing';
 import {By, DomSanitizer, SafeUrl} from '@angular/platform-browser';
 
 describe('attribute creation', () => {
   it('should create an element', () => {
     @Component({
       template: `<div id="test" title="Hello"></div>`,
+      standalone: false,
     })
     class Comp {}
 
@@ -28,6 +29,7 @@ describe('attribute creation', () => {
   it('should allow for setting xlink namespaced attributes', () => {
     @Component({
       template: `<div id="test" xlink:href="bar" title="Hello"></div>`,
+      standalone: false,
     })
     class Comp {}
 
@@ -53,9 +55,15 @@ describe('attribute creation', () => {
 });
 
 describe('attribute binding', () => {
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      providers: [provideZoneChangeDetection()],
+    });
+  });
   it('should set attribute values', () => {
     @Component({
       template: `<a [attr.href]="url"></a>`,
+      standalone: false,
     })
     class Comp {
       url = 'https://angular.io/robots.txt';
@@ -73,6 +81,7 @@ describe('attribute binding', () => {
   it('should be able to bind multiple attribute values per element', () => {
     @Component({
       template: `<a [attr.id]="id" [attr.href]="url" [attr.tabindex]="'-1'"></a>`,
+      standalone: false,
     })
     class Comp {
       url = 'https://angular.io/robots.txt';
@@ -93,6 +102,7 @@ describe('attribute binding', () => {
   it('should be able to bind multiple attributes in the presence of other bindings', () => {
     @Component({
       template: `<a [id]="id" [attr.href]="url" [title]="'hello'"></a>`,
+      standalone: false,
     })
     class Comp {
       url = 'https://angular.io/robots.txt';
@@ -117,6 +127,7 @@ describe('attribute binding', () => {
           attr.id="my-{{id}}-button"
           [attr.title]="title"
           attr.tabindex="{{1 + 3 + 7}}"></button>`,
+      standalone: false,
     })
     class Comp {
       title = 'hello';
@@ -145,6 +156,7 @@ describe('attribute binding', () => {
           <span attr.title="span-{{title}}" id="custom-span" [attr.tabindex]="-1"></span>
         </button>
       `,
+      standalone: false,
     })
     class Comp {
       title = 'hello';
@@ -170,6 +182,7 @@ describe('attribute binding', () => {
   it('should sanitize attribute values', () => {
     @Component({
       template: `<a [attr.href]="badUrl"></a>`,
+      standalone: false,
     })
     class Comp {
       badUrl: string | SafeUrl = 'javascript:true';
@@ -209,6 +222,7 @@ describe('attribute interpolation', () => {
         <div attr.title="a{{a}}b"></div>
         <div attr.title="{{a}}"></div>
       `,
+      standalone: false,
     })
     class App {
       a = 1;

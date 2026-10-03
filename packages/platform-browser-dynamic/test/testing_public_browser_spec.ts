@@ -3,13 +3,27 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {ResourceLoader} from '@angular/compiler';
-import {Compiler, Component, NgModule} from '@angular/core';
+import {
+  Compiler,
+  Component,
+  getPlatform,
+  NgModule,
+  provideZonelessChangeDetection,
+} from '@angular/core';
 import {fakeAsync, inject, TestBed, tick, waitForAsync} from '@angular/core/testing';
-import {ResourceLoaderImpl} from '@angular/platform-browser-dynamic/src/resource_loader/resource_loader_impl';
+import {ResourceLoaderImpl} from '../src/resource_loader/resource_loader_impl';
+import {BrowserDynamicTestingModule, platformBrowserDynamicTesting} from '../testing';
+import {BrowserTestingModule, platformBrowserTesting} from '@angular/platform-browser/testing';
+import {NoopAnimationsModule} from '@angular/platform-browser/animations';
+import {isBrowser} from '@angular/private/testing';
+@NgModule({
+  providers: [provideZonelessChangeDetection()],
+})
+export class TestModule {}
 
 // Components for the tests.
 class FancyService {
@@ -43,17 +57,24 @@ if (isBrowser) {
 
       it('should run async tests with ResourceLoaders', waitForAsync(() => {
         const resourceLoader = new ResourceLoaderImpl();
-        resourceLoader
-          .get('/base/angular/packages/platform-browser/test/static_assets/test.html')
-          .then(() => {
-            actuallyDone = true;
-          });
+        resourceLoader.get('/packages/platform-browser/test/static_assets/test.html').then(() => {
+          actuallyDone = true;
+        });
       }), 10000); // Long timeout here because this test makes an actual ResourceLoader.
     });
 
     describe('using the test injector with the inject helper', () => {
       describe('setting up Providers', () => {
         beforeEach(() => {
+          getPlatform()?.destroy();
+          // We need to reset the test environment because
+          // browser_tests.init.ts doesn't use platformBrowserDynamicTesting
+          TestBed.resetTestEnvironment();
+          TestBed.initTestEnvironment(
+            [BrowserDynamicTestingModule, TestModule],
+            platformBrowserDynamicTesting(),
+          );
+
           TestBed.configureTestingModule({
             providers: [{provide: FancyService, useValue: new FancyService()}],
           });
@@ -76,6 +97,17 @@ if (isBrowser) {
             expect(value).toEqual('async value');
           }),
         ));
+
+        afterEach(() => {
+          getPlatform()?.destroy();
+
+          // We're reset the test environment to their default values, cf browser_tests.init.ts
+          TestBed.resetTestEnvironment();
+          TestBed.initTestEnvironment(
+            [BrowserTestingModule, NoopAnimationsModule, TestModule],
+            platformBrowserTesting(),
+          );
+        });
       });
     });
 
@@ -98,7 +130,11 @@ if (isBrowser) {
       describe('should fail when an ResourceLoader fails', () => {
         // TODO(alxhub): figure out why this is failing on saucelabs
         xit('should fail with an error from a promise', async () => {
-          @Component({selector: 'bad-template-comp', templateUrl: 'non-existent.html'})
+          @Component({
+            selector: 'bad-template-comp',
+            templateUrl: 'non-existent.html',
+            standalone: false,
+          })
           class BadTemplateUrl {}
 
           TestBed.configureTestingModule({declarations: [BadTemplateUrl]});
@@ -115,6 +151,7 @@ if (isBrowser) {
         @Component({
           selector: 'external-template-comp',
           templateUrl: '/base/angular/packages/platform-browser/test/static_assets/test.html',
+          standalone: false,
         })
         class ExternalTemplateComp {}
 

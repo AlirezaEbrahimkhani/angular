@@ -3,11 +3,11 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {
-  AnimationTriggerNames,
+  LegacyAnimationTriggerNames,
   DeclarationListEmitMode,
   DeferBlockDepsEmitMode,
   R3ClassDebugInfo,
@@ -24,15 +24,16 @@ import ts from 'typescript';
 import {Reference} from '../../../imports';
 import {
   ClassPropertyMapping,
-  ComponentResources,
+  DirectiveResources,
   DirectiveTypeCheckMeta,
   HostDirectiveMeta,
   InputMapping,
 } from '../../../metadata';
-import {ClassDeclaration} from '../../../reflection';
+import {ClassDeclaration, Import} from '../../../reflection';
 import {SubsetOfKeys} from '../../../util/src/typescript';
 
 import {ParsedTemplateWithSource, StyleUrlMeta} from './resources';
+import {HostBindingNodes} from '../../directive';
 
 /**
  * These fields of `R3ComponentMetadata` are updated in the `resolve` phase.
@@ -42,7 +43,7 @@ import {ParsedTemplateWithSource, StyleUrlMeta} from './resources';
  */
 export type ComponentMetadataResolvedFields = SubsetOfKeys<
   R3ComponentMetadata<R3TemplateDependencyMetadata>,
-  'declarations' | 'declarationListEmitMode' | 'defer'
+  'declarations' | 'declarationListEmitMode' | 'defer' | 'hasDirectiveDependencies'
 >;
 
 export interface ComponentAnalysisData {
@@ -58,6 +59,8 @@ export interface ComponentAnalysisData {
   classDebugInfo: R3ClassDebugInfo | null;
 
   inputs: ClassPropertyMapping<InputMapping>;
+  inputFieldNamesFromMetadataArray: Set<string>;
+
   outputs: ClassPropertyMapping;
 
   /**
@@ -72,7 +75,7 @@ export interface ComponentAnalysisData {
    */
   viewProvidersRequiringFactory: Set<Reference<ClassDeclaration>> | null;
 
-  resources: ComponentResources;
+  resources: DirectiveResources;
 
   /**
    * `styleUrls` extracted from the decorator, if present.
@@ -85,7 +88,7 @@ export interface ComponentAnalysisData {
   inlineStyles: string[] | null;
 
   isPoisoned: boolean;
-  animationTriggerNames: AnimationTriggerNames | null;
+  legacyAnimationTriggerNames: LegacyAnimationTriggerNames | null;
 
   rawImports: ts.Expression | null;
   resolvedImports: Reference<ClassDeclaration>[] | null;
@@ -106,6 +109,18 @@ export interface ComponentAnalysisData {
 
   /** Raw expression that defined the host directives array. Used for diagnostics. */
   rawHostDirectives: ts.Expression | null;
+
+  /** Raw nodes representing the host bindings of the directive. */
+  hostBindingNodes: HostBindingNodes;
+
+  /** Whether selectorless is enabled for the specific component. */
+  selectorlessEnabled: boolean;
+
+  /**
+   * Names of the symbols within the source file that are referenced directly inside the template.
+   * Used to reduce the amount of lookups when determining which dependencies to expose.
+   */
+  localReferencedSymbols: Set<string> | null;
 }
 
 export interface ComponentResolutionData {
@@ -114,10 +129,11 @@ export interface ComponentResolutionData {
 
   /**
    * Map of all types that can be defer loaded (ts.ClassDeclaration) ->
-   * corresponding import declaration (ts.ImportDeclaration) within
-   * the current source file.
+   * corresponding import information (reflection `Import`) within
+   * the current source file. The `Import` preserves the exported name
+   * as seen by the importing module so aliasing is handled correctly.
    */
-  deferrableDeclToImportDecl: Map<ClassDeclaration, ts.ImportDeclaration>;
+  deferrableDeclToImportDecl: Map<ClassDeclaration, Import>;
 
   /**
    * Map of `@defer` blocks -> their corresponding dependencies.
@@ -137,6 +153,9 @@ export interface ComponentResolutionData {
    * defer resolver function in `PerComponent` mode.
    */
   deferPerComponentDependencies: R3DeferPerComponentDependency[];
+
+  /** Whether the component is standalone and has any directly-imported directive dependencies. */
+  hasDirectiveDependencies: boolean;
 }
 
 /**

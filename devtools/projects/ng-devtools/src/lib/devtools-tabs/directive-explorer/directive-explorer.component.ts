@@ -3,25 +3,28 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {
-  ChangeDetectorRef,
   Component,
+  afterRenderEffect,
   ElementRef,
-  EventEmitter,
   inject,
   Input,
-  NgZone,
-  OnDestroy,
-  OnInit,
-  Output,
-  ViewChild,
+  input,
+  output,
+  signal,
+  viewChild,
+  ChangeDetectionStrategy,
+  computed,
+  linkedSignal,
+  DestroyRef,
 } from '@angular/core';
 import {
   ComponentExplorerView,
   ComponentExplorerViewQuery,
+  DebugSignalGraphNode,
   DevToolsNode,
   DirectivePosition,
   ElementPosition,
@@ -29,11 +32,10 @@ import {
   MessageBus,
   PropertyQuery,
   PropertyQueryTypes,
-} from 'protocol';
+} from '../../../../../protocol';
 
-import {SplitComponent} from '../../../lib/vendor/angular-split/public_api';
 import {ApplicationOperations} from '../../application-operations/index';
-import {FrameManager} from '../../frame_manager';
+import {FrameManager} from '../../application-services/frame_manager';
 
 import {BreadcrumbsComponent} from './directive-forest/breadcrumbs/breadcrumbs.component';
 import {FlatNode} from './directive-forest/component-data-source';
@@ -45,9 +47,24 @@ import {
   FlatNode as PropertyFlatNode,
 } from './property-resolver/element-property-resolver';
 import {PropertyTabComponent} from './property-tab/property-tab.component';
-import {SplitAreaDirective} from '../../vendor/angular-split/lib/component/splitArea.directive';
 import {MatSlideToggle} from '@angular/material/slide-toggle';
 import {FormsModule} from '@angular/forms';
+import {Platform} from '@angular/cdk/platform';
+import {MatSnackBarModule, MatSnackBar} from '@angular/material/snack-bar';
+import {SignalsTabComponent} from './signals-view/signals-tab.component';
+import {
+  ResponsiveSplitConfig,
+  ResponsiveSplitDirective,
+} from '../../shared/split/responsive-split.directive';
+import {SplitAreaDirective} from '../../shared/split/splitArea.directive';
+import {SplitComponent} from '../../shared/split/split.component';
+import {Direction} from '../../shared/split/interface';
+import {SignalGraphManager} from './signal-graph/signal-graph-manager';
+
+const FOREST_VER_SPLIT_SIZE = 30;
+const SIGNAL_GRAPH_VER_SPLIT_SIZE = 70;
+
+const HOR_SPLIT_SIZE = 50;
 
 const sameDirectives = (a: IndexedNode, b: IndexedNode) => {
   if ((a.component && !b.component) || (!a.component && b.component)) {
@@ -74,8 +91,8 @@ const sameDirectives = (a: IndexedNode, b: IndexedNode) => {
       provide: ElementPropertyResolver,
       useClass: ElementPropertyResolver,
     },
+    SignalGraphManager,
   ],
-  standalone: true,
   imports: [
     SplitComponent,
     SplitAreaDirective,
@@ -84,64 +101,92 @@ const sameDirectives = (a: IndexedNode, b: IndexedNode) => {
     PropertyTabComponent,
     MatSlideToggle,
     FormsModule,
+    MatSnackBarModule,
+    SignalsTabComponent,
+    ResponsiveSplitDirective,
   ],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class DirectiveExplorerComponent implements OnInit, OnDestroy {
-  @Input() showCommentNodes = false;
+export class DirectiveExplorerComponent {
+  readonly showCommentNodes = input(false);
   @Input() isHydrationEnabled = false;
-  @Output() toggleInspector = new EventEmitter<void>();
+  readonly toggleInspector = output<void>();
 
-  @ViewChild(DirectiveForestComponent) directiveForest!: DirectiveForestComponent;
-  @ViewChild(BreadcrumbsComponent) breadcrumbs!: BreadcrumbsComponent;
-  @ViewChild(SplitComponent, {static: true, read: ElementRef}) splitElementRef!: ElementRef;
-  @ViewChild('directiveForestSplitArea', {static: true, read: ElementRef})
-  directiveForestSplitArea!: ElementRef;
+  readonly directiveForest = viewChild.required(DirectiveForestComponent);
+  readonly splitElementRef = viewChild.required(SplitComponent, {read: ElementRef});
+  readonly directiveForestSplitArea = viewChild.required('directiveForestSplitArea', {
+    read: ElementRef,
+  });
 
-  currentSelectedElement: IndexedNode | null = null;
-  forest!: DevToolsNode[];
-  splitDirection: 'horizontal' | 'vertical' = 'horizontal';
-  parents: FlatNode[] | null = null;
-  showHydrationNodeHighlights: boolean = false;
+  readonly currentSelectedElement = signal<IndexedNode | null>(null);
+  readonly forest = signal<DevToolsNode[]>([]);
+  readonly splitDirection = signal<'horizontal' | 'vertical'>('horizontal');
+  readonly parents = signal<FlatNode[] | null>(null);
+  readonly showHydrationNodeHighlights = signal(false);
 
-  private _resizeObserver = new ResizeObserver((entries) =>
-    this._ngZone.run(() => {
-      this.refreshHydrationNodeHighlightsIfNeeded();
-
-      const resizedEntry = entries[0];
-      if (resizedEntry.target === this.splitElementRef.nativeElement) {
-        this.splitDirection = resizedEntry.contentRect.width <= 500 ? 'vertical' : 'horizontal';
-      }
-
-      if (!this.breadcrumbs) {
-        return;
-      }
-
-      this.breadcrumbs.updateScrollButtonVisibility();
-    }),
-  );
+  readonly signalsOpen = signal(false);
 
   private _clickedElement: IndexedNode | null = null;
   private _refreshRetryTimeout: null | ReturnType<typeof setTimeout> = null;
 
-  constructor(
-    private readonly _appOperations: ApplicationOperations,
-    private readonly _messageBus: MessageBus<Events>,
-    private readonly _propResolver: ElementPropertyResolver,
-    private readonly _cdr: ChangeDetectorRef,
-    private readonly _ngZone: NgZone,
-    private readonly _frameManager: FrameManager,
-  ) {}
+  private readonly _appOperations = inject(ApplicationOperations);
+  private readonly _messageBus = inject<MessageBus<Events>>(MessageBus);
+  private readonly _propResolver = inject(ElementPropertyResolver);
+  private readonly _frameManager = inject(FrameManager);
 
-  ngOnInit(): void {
+  private readonly platform = inject(Platform);
+  private readonly snackBar = inject(MatSnackBar);
+  protected readonly signalGraph = inject(SignalGraphManager);
+
+  protected readonly preselectedSignalNodeId = linkedSignal<IndexedNode | null, string | null>({
+    source: this.currentSelectedElement,
+    computation: () => null,
+  });
+
+  protected readonly responsiveSplitConfig: ResponsiveSplitConfig = {
+    defaultDirection: 'vertical',
+    aspectRatioBreakpoint: 1.5,
+    breakpointDirection: 'horizontal',
+  };
+
+  protected readonly forestSplitSize = signal<number>(FOREST_VER_SPLIT_SIZE);
+  protected readonly signalGraphSplitSize = signal<number>(SIGNAL_GRAPH_VER_SPLIT_SIZE);
+
+  private readonly currentElementPos = computed(() => this.currentSelectedElement()?.position);
+
+  constructor() {
+    afterRenderEffect((cleanup) => {
+      const splitElement = this.splitElementRef().nativeElement;
+      const directiveForestSplitArea = this.directiveForestSplitArea().nativeElement;
+      const resizeObserver = new ResizeObserver((entries) => {
+        this.refreshHydrationNodeHighlightsIfNeeded();
+
+        const resizedEntry = entries[0];
+        if (resizedEntry.target === splitElement) {
+          this.splitDirection.set(
+            resizedEntry.contentRect.width <= 500 ? 'vertical' : 'horizontal',
+          );
+        }
+      });
+
+      resizeObserver.observe(splitElement);
+      resizeObserver.observe(directiveForestSplitArea);
+      cleanup(() => {
+        resizeObserver.disconnect();
+      });
+    });
+
     this.subscribeToBackendEvents();
     this.refresh();
-    this._resizeObserver.observe(this.splitElementRef.nativeElement);
-    this._resizeObserver.observe(this.directiveForestSplitArea.nativeElement);
+    this.signalGraph.listen(this.currentElementPos);
+
+    inject(DestroyRef).onDestroy(() => {
+      this.signalGraph.destroy();
+    });
   }
 
-  ngOnDestroy(): void {
-    this._resizeObserver.unobserve(this.splitElementRef.nativeElement);
-    this._resizeObserver.unobserve(this.directiveForestSplitArea.nativeElement);
+  private isNonTopLevelFirefoxFrame() {
+    return this.platform.FIREFOX && !this._frameManager.topLevelFrameIsActive();
   }
 
   handleNodeSelection(node: IndexedNode | null): void {
@@ -157,16 +202,17 @@ export class DirectiveExplorerComponent implements OnInit, OnDestroy {
       this._messageBus.emit('setSelectedComponent', [node.position]);
       this.refresh();
     } else {
-      this._clickedElement = this.currentSelectedElement = null;
+      this._clickedElement = null;
+      this.currentSelectedElement.set(null);
     }
   }
 
   subscribeToBackendEvents(): void {
     this._messageBus.on('latestComponentExplorerView', (view: ComponentExplorerView) => {
-      this.forest = view.forest;
-      this.currentSelectedElement = this._clickedElement;
-      if (view.properties && this.currentSelectedElement) {
-        this._propResolver.setProperties(this.currentSelectedElement, view.properties);
+      this.forest.set(view.forest);
+      this.currentSelectedElement.set(this._clickedElement);
+      if (view.properties && this._clickedElement) {
+        this._propResolver.setProperties(this._clickedElement, view.properties);
       }
     });
 
@@ -177,6 +223,7 @@ export class DirectiveExplorerComponent implements OnInit, OnDestroy {
     const success = this._messageBus.emit('getLatestComponentExplorerView', [
       this._constructViewQuery(),
     ]);
+    this._messageBus.emit('getRoutes');
     // If the event was not throttled, we no longer need to retry.
     if (success) {
       this._refreshRetryTimeout && clearTimeout(this._refreshRetryTimeout);
@@ -192,46 +239,50 @@ export class DirectiveExplorerComponent implements OnInit, OnDestroy {
 
   viewSource(directiveName: string): void {
     // find the index of the directive with directiveName in this.currentSelectedElement.directives
+    const selectedEl = this.currentSelectedElement();
+    if (!selectedEl) return;
 
-    if (!this.currentSelectedElement) {
-      return;
-    }
-
-    const directiveIndex = this.currentSelectedElement.directives.findIndex(
+    const directiveIndex = selectedEl.directives.findIndex(
       (directive) => directive.name === directiveName,
     );
 
-    const selectedFrame = this._frameManager.selectedFrame;
-    if (!this._frameManager.frameHasUniqueUrl(selectedFrame)) {
-      this._messageBus.emit('log', [
-        {
-          level: 'warn',
-          message: `The currently inspected frame does not have a unique url on this page. Cannot view source.`,
-        },
-      ]);
+    const selectedFrame = this._frameManager.selectedFrame();
+    if (!this._frameManager.activeFrameHasUniqueUrl()) {
+      const error = `The currently inspected frame does not have a unique url on this page. Cannot view source.`;
+      this.snackBar.open(error, 'Dismiss', {duration: 5000, horizontalPosition: 'left'});
+      this._messageBus.emit('log', [{level: 'warn', message: error}]);
       return;
     }
 
-    this._appOperations.viewSource(
-      this.currentSelectedElement.position,
-      directiveIndex !== -1 ? directiveIndex : undefined,
-      new URL(selectedFrame!.url),
-    );
+    if (this.isNonTopLevelFirefoxFrame()) {
+      const error = `Viewing source is not supported in Firefox when the inspected frame is not the top-level frame.`;
+      this.snackBar.open(error, 'Dismiss', {duration: 5000, horizontalPosition: 'left'});
+      this._messageBus.emit('log', [{level: 'warn', message: error}]);
+    } else {
+      this._appOperations.viewSource(
+        selectedEl.position,
+        selectedFrame!,
+        directiveIndex !== -1 ? directiveIndex : undefined,
+      );
+    }
   }
 
   handleSelectDomElement(node: IndexedNode): void {
-    const selectedFrame = this._frameManager.selectedFrame;
-    if (!this._frameManager.frameHasUniqueUrl(selectedFrame)) {
-      this._messageBus.emit('log', [
-        {
-          level: 'warn',
-          message: `The currently inspected frame does not have a unique url on this page. Cannot select DOM element.`,
-        },
-      ]);
+    const selectedFrame = this._frameManager.selectedFrame();
+    if (!this._frameManager.activeFrameHasUniqueUrl()) {
+      const error = `The currently inspected frame does not have a unique url on this page. Cannot select DOM element.`;
+      this.snackBar.open(error, 'Dismiss', {duration: 5000, horizontalPosition: 'left'});
+      this._messageBus.emit('log', [{level: 'warn', message: error}]);
       return;
     }
 
-    this._appOperations.selectDomElement(node.position, new URL(selectedFrame!.url));
+    if (this.isNonTopLevelFirefoxFrame()) {
+      const error = `Inspecting a component's DOM element is not supported in Firefox when the inspected frame is not the top-level frame.`;
+      this.snackBar.open(error, 'Dismiss', {duration: 5000, horizontalPosition: 'left'});
+      this._messageBus.emit('log', [{level: 'warn', message: error}]);
+    } else {
+      this._appOperations.selectDomElement(node.position, selectedFrame!);
+    }
   }
 
   highlight(node: FlatNode): void {
@@ -262,8 +313,8 @@ export class DirectiveExplorerComponent implements OnInit, OnDestroy {
     // set of properties which are already expanded.
     if (
       !this._clickedElement ||
-      !this.currentSelectedElement ||
-      !sameDirectives(this._clickedElement, this.currentSelectedElement)
+      !this.currentSelectedElement() ||
+      !sameDirectives(this._clickedElement, this.currentSelectedElement()!)
     ) {
       return {
         type: PropertyQueryTypes.All,
@@ -284,12 +335,11 @@ export class DirectiveExplorerComponent implements OnInit, OnDestroy {
   }
 
   handleSelect(node: FlatNode): void {
-    this.directiveForest.handleSelect(node);
+    this.directiveForest()?.selectAndEnsureVisible(node);
   }
 
   handleSetParents(parents: FlatNode[] | null): void {
-    this.parents = parents;
-    this._cdr.detectChanges();
+    this.parents.set(parents);
   }
 
   inspect({
@@ -301,18 +351,22 @@ export class DirectiveExplorerComponent implements OnInit, OnDestroy {
   }): void {
     const objectPath = constructPathOfKeysToPropertyValue(node.prop);
 
-    const selectedFrame = this._frameManager.selectedFrame;
-    if (!this._frameManager.frameHasUniqueUrl(selectedFrame)) {
-      this._messageBus.emit('log', [
-        {
-          level: 'warn',
-          message: `The currently inspected frame does not have a unique url on this page. Cannot inspect object.`,
-        },
-      ]);
+    const selectedFrame = this._frameManager.selectedFrame();
+
+    if (!this._frameManager.activeFrameHasUniqueUrl()) {
+      const error = `The currently inspected frame does not have a unique url on this page. Cannot inspect object.`;
+      this.snackBar.open(error, 'Dismiss', {duration: 5000, horizontalPosition: 'left'});
+      this._messageBus.emit('log', [{level: 'warn', message: error}]);
       return;
     }
 
-    this._appOperations.inspect(directivePosition, objectPath, new URL(selectedFrame!.url));
+    if (this.isNonTopLevelFirefoxFrame()) {
+      const error = `Inspecting object is not supported in Firefox when the inspected frame is not the top-level frame.`;
+      this.snackBar.open(error, 'Dismiss', {duration: 5000, horizontalPosition: 'left'});
+      this._messageBus.emit('log', [{level: 'warn', message: error}]);
+    } else {
+      this._appOperations.inspect(directivePosition, objectPath, selectedFrame!);
+    }
   }
 
   hightlightHydrationNodes() {
@@ -324,9 +378,26 @@ export class DirectiveExplorerComponent implements OnInit, OnDestroy {
   }
 
   refreshHydrationNodeHighlightsIfNeeded() {
-    if (this.showHydrationNodeHighlights) {
+    if (this.showHydrationNodeHighlights()) {
       this.removeHydrationNodesHightlights();
       this.hightlightHydrationNodes();
+    }
+  }
+
+  showSignalGraph(node: DebugSignalGraphNode | null) {
+    if (node) {
+      this.preselectedSignalNodeId.set(node.id);
+    }
+    this.signalsOpen.set(true);
+  }
+
+  onResponsiveSplitDirChange(direction: Direction) {
+    if (direction === 'vertical') {
+      this.forestSplitSize.set(FOREST_VER_SPLIT_SIZE);
+      this.signalGraphSplitSize.set(SIGNAL_GRAPH_VER_SPLIT_SIZE);
+    } else {
+      this.forestSplitSize.set(HOR_SPLIT_SIZE);
+      this.signalGraphSplitSize.set(HOR_SPLIT_SIZE);
     }
   }
 }

@@ -6,6 +6,6 @@ template:function MyComponent_Template(rf, $ctx$){
     $i0$.ɵɵelement(0, "a", 0);
   }
   if (rf & 2) {
-    $i0$.ɵɵpropertyInterpolate1("title", "Hello ", $ctx$.name, "");
+    $i0$.ɵɵproperty("title", $r3$.ɵɵinterpolate1("Hello ", $ctx$.name));
   }
 }

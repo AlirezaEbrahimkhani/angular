@@ -3,7 +3,6 @@ import {bootstrapApplication} from '@angular/platform-browser';
 
 @Component({
   selector: 'app-root',
-  standalone: true,
   template: `
     <h2>Todos</h2>
     <input #text />
@@ -23,7 +22,7 @@ import {bootstrapApplication} from '@angular/platform-browser';
     }
   `,
 })
-export class TodosComponent {
+export class Todos {
   todos: Array<{done: boolean; text: string}> = [];
 
   add(text: string) {
@@ -35,4 +34,4 @@ export class TodosComponent {
   }
 }
 
-bootstrapApplication(TodosComponent);
+bootstrapApplication(Todos);

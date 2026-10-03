@@ -3,13 +3,13 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {processNavigationUrls} from '../../config/src/generator';
 import {CacheDatabase} from '../src/db-cache';
 import {Driver, DriverReadyState} from '../src/driver';
-import {AssetGroupConfig, DataGroupConfig, Manifest} from '../src/manifest';
+import {Manifest} from '../src/manifest';
 import {sha1} from '../src/sha1';
 import {clearAllCaches, MockCache} from '../testing/cache';
 import {MockWindowClient} from '../testing/clients';
@@ -113,24 +113,6 @@ import {envIsSupported} from '../testing/utils';
     navigationUrls: processNavigationUrls(''),
     navigationRequestStrategy: 'performance',
     hashTable: tmpHashTableForFs(brokenFs, {'/bar.txt': true}),
-  };
-
-  // Manifest without navigation urls to test backward compatibility with
-  // versions < 6.0.0.
-  interface ManifestV5 {
-    configVersion: number;
-    appData?: {[key: string]: string};
-    index: string;
-    assetGroups?: AssetGroupConfig[];
-    dataGroups?: DataGroupConfig[];
-    hashTable: {[url: string]: string};
-  }
-
-  // To simulate versions < 6.0.0
-  const manifestOld: ManifestV5 = {
-    configVersion: 1,
-    index: '/foo.txt',
-    hashTable: tmpHashTableForFs(dist),
   };
 
   const manifest: Manifest = {
@@ -291,36 +273,6 @@ import {envIsSupported} from '../testing/utils';
 
       await scope.startup(true);
       expect(claimSpy).toHaveBeenCalledTimes(1);
-    });
-
-    it('cleans up old `@angular/service-worker` caches, after activation', async () => {
-      const claimSpy = spyOn(scope.clients, 'claim');
-      const cleanupOldSwCachesSpy = spyOn(driver, 'cleanupOldSwCaches');
-
-      // Automatically advance time to trigger idle tasks as they are added.
-      scope.autoAdvanceTime = true;
-      await scope.startup(true);
-      await scope.resolveSelfMessages();
-      scope.autoAdvanceTime = false;
-
-      expect(cleanupOldSwCachesSpy).toHaveBeenCalledTimes(1);
-      expect(claimSpy).toHaveBeenCalledBefore(cleanupOldSwCachesSpy);
-    });
-
-    it('does not blow up if cleaning up old `@angular/service-worker` caches fails', async () => {
-      spyOn(driver, 'cleanupOldSwCaches').and.callFake(() => Promise.reject('Ooops'));
-
-      // Automatically advance time to trigger idle tasks as they are added.
-      scope.autoAdvanceTime = true;
-      await scope.startup(true);
-      await scope.resolveSelfMessages();
-      scope.autoAdvanceTime = false;
-
-      server.clearRequests();
-
-      expect(driver.state).toBe(DriverReadyState.NORMAL);
-      expect(await makeRequest(scope, '/foo.txt')).toBe('this is foo');
-      server.assertNoOtherRequests();
     });
 
     it('initializes prefetched content correctly, after activation', async () => {
@@ -518,6 +470,24 @@ import {envIsSupported} from '../testing/utils';
       ]);
 
       expect(await makeRequest(scope, '/foo.txt')).toEqual('this is foo v2');
+    });
+
+    it('returns old content for worker initialized from old version', async () => {
+      expect(await makeRequest(scope, '/foo.txt')).toEqual('this is foo');
+      expect(await makeRequest(scope, '/baz.txt')).toEqual('this is baz');
+      await driver.initialized;
+
+      const client = scope.clients.getMock('default')!;
+      expect(client.messages).toEqual([]);
+
+      scope.updateServerState(serverUpdate);
+      expect(await driver.checkForUpdate()).toEqual(true);
+
+      // Worker request came from default client, old version should be served
+      expect(await makeWorkerRequest(scope, '/foo.txt')).toEqual('this is foo');
+      // Worker has been initialized from default client, further requests from worker should be served from old version
+      expect(await makeRequest(scope, '/foo.txt', 'worker')).toEqual('this is foo');
+      expect(await makeRequest(scope, '/baz.txt', 'worker')).toEqual('this is baz');
     });
 
     it('handles empty client ID', async () => {
@@ -1220,6 +1190,74 @@ import {envIsSupported} from '../testing/utils';
             expect(scope.clients.openWindow).toHaveBeenCalledWith('http://other.host/baz/qux');
           });
         });
+      });
+    });
+
+    describe('messageerror events', () => {
+      it('logs message deserialization errors', async () => {
+        await driver.initialized;
+
+        const debuggerLogSpy = spyOn(driver.debugger, 'log');
+
+        scope.handleMessageError('someClient');
+
+        expect(debuggerLogSpy).toHaveBeenCalledWith(
+          'Message error occurred - data could not be deserialized',
+          'Driver.onMessageError(origin: )',
+        );
+      });
+    });
+
+    describe('unhandledrejection events', () => {
+      it('logs unhandled promise rejection errors', async () => {
+        await driver.initialized;
+
+        const debuggerLogSpy = spyOn(driver.debugger, 'log');
+
+        scope.handleUnhandledRejection('Test rejection reason');
+
+        expect(debuggerLogSpy).toHaveBeenCalledWith(
+          'Unhandled promise rejection occurred',
+          'Driver.onUnhandledRejection(reason: Test rejection reason)',
+        );
+      });
+    });
+
+    describe('notification close events', () => {
+      it('broadcasts notification close events', async () => {
+        expect(await makeRequest(scope, '/foo.txt')).toEqual('this is foo');
+        const notification = {title: 'This is a test with action', body: 'Test body with action'};
+        await driver.initialized;
+        await scope.handleClick(
+          {title: 'This is a test with action', body: 'Test body with action'},
+          'button',
+        );
+        await scope.handleClose(notification, '');
+
+        const {messages} = scope.clients.getMock('default')!;
+
+        expect(messages).toEqual([
+          {
+            type: 'NOTIFICATION_CLICK',
+            data: {
+              action: 'button',
+              notification: {
+                title: notification.title,
+                body: notification.body,
+              },
+            },
+          },
+          {
+            type: 'NOTIFICATION_CLOSE',
+            data: {
+              action: '',
+              notification: {
+                title: notification.title,
+                body: notification.body,
+              },
+            },
+          },
+        ]);
       });
     });
 
@@ -2029,53 +2067,6 @@ import {envIsSupported} from '../testing/utils';
       });
     });
 
-    describe('cleanupOldSwCaches()', () => {
-      it('should delete the correct caches', async () => {
-        const oldSwCacheNames = [
-          // Example cache names from the beta versions of `@angular/service-worker`.
-          'ngsw:active',
-          'ngsw:staged',
-          'ngsw:manifest:a1b2c3:super:duper',
-          // Example cache names from the beta versions of `@angular/service-worker`.
-          'ngsw:a1b2c3:assets:foo',
-          'ngsw:db:a1b2c3:assets:bar',
-        ];
-        const otherCacheNames = [
-          'ngsuu:active',
-          'not:ngsw:active',
-          'NgSw:StAgEd',
-          'ngsw:/:db:control',
-          'ngsw:/foo/:active',
-          'ngsw:/bar/:staged',
-        ];
-        const allCacheNames = oldSwCacheNames.concat(otherCacheNames);
-
-        await Promise.all(allCacheNames.map((name) => scope.caches.original.open(name)));
-        expect(await scope.caches.original.keys()).toEqual(
-          jasmine.arrayWithExactContents(allCacheNames),
-        );
-
-        await driver.cleanupOldSwCaches();
-        expect(await scope.caches.original.keys()).toEqual(
-          jasmine.arrayWithExactContents(otherCacheNames),
-        );
-      });
-
-      it('should delete other caches even if deleting one of them fails', async () => {
-        const oldSwCacheNames = ['ngsw:active', 'ngsw:staged', 'ngsw:manifest:a1b2c3:super:duper'];
-        const deleteSpy = spyOn(scope.caches.original, 'delete').and.callFake((cacheName: string) =>
-          Promise.reject(`Failed to delete cache '${cacheName}'.`),
-        );
-
-        await Promise.all(oldSwCacheNames.map((name) => scope.caches.original.open(name)));
-        const error = await driver.cleanupOldSwCaches().catch((err) => err);
-
-        expect(error).toBe("Failed to delete cache 'ngsw:active'.");
-        expect(deleteSpy).toHaveBeenCalledTimes(3);
-        oldSwCacheNames.forEach((name) => expect(deleteSpy).toHaveBeenCalledWith(name));
-      });
-    });
-
     describe('bugs', () => {
       it('does not crash with bad index hash', async () => {
         scope = new SwTestHarnessBuilder().withServerState(brokenServer).build();
@@ -2603,31 +2594,12 @@ import {envIsSupported} from '../testing/utils';
           expect(await makeRequest(scope, '/foo.hash.js', 'client-2')).toBeNull();
           expect(mockClient2.messages).toEqual([
             jasmine.objectContaining({type: 'UNRECOVERABLE_STATE'}),
+            jasmine.objectContaining({type: 'VERSION_FAILED'}),
           ]);
 
           // This should also enter the `SW` into degraded mode, because the broken version was the
           // latest one.
           expect(driver.state).toEqual(DriverReadyState.EXISTING_CLIENTS_ONLY);
-        });
-      });
-
-      describe('backwards compatibility with v5', () => {
-        beforeEach(() => {
-          const serverV5 = new MockServerStateBuilder()
-            .withStaticFiles(dist)
-            .withManifest(<Manifest>manifestOld)
-            .build();
-
-          scope = new SwTestHarnessBuilder().withServerState(serverV5).build();
-          driver = new Driver(scope, scope, new CacheDatabase(scope));
-        });
-
-        // Test this bug: https://github.com/angular/angular/issues/27209
-        it('fills previous versions of manifests with default navigation urls for backwards compatibility', async () => {
-          expect(await makeRequest(scope, '/foo.txt')).toEqual('this is foo');
-          await driver.initialized;
-          scope.updateServerState(serverUpdate);
-          expect(await driver.checkForUpdate()).toEqual(true);
         });
       });
     });
@@ -2677,6 +2649,70 @@ import {envIsSupported} from '../testing/utils';
         return {server, scope, driver};
       }
     });
+
+    describe('applicationMaxAge', () => {
+      // When within the `applicationMaxAge`, the app should act like `performance` mode
+      // When outside of it, it should act like `freshness` mode, except it also uncaches asset
+      // requests
+      it("doesn't create navigate requests within the maxAge", async () => {
+        const {server, scope, driver} = createSwForMaxAge();
+
+        await makeRequest(scope, '/foo.txt');
+        await driver.initialized;
+        await server.clearRequests();
+
+        // Create multiple requests to prove no navigation OR asset requests were made.
+        // By default the navigation request is not sent, it's replaced
+        // with the index request - thus, the `this is foo` value.
+        expect(await makeNavigationRequest(scope, '/', '')).toBe('this is foo');
+        expect(await makeNavigationRequest(scope, '/foo', '')).toBe('this is foo');
+
+        expect(await makeRequest(scope, '/foo.txt')).toBe('this is foo');
+        expect(await makeRequest(scope, '/bar.txt')).toBe('this is bar');
+
+        server.assertNoOtherRequests();
+      });
+
+      it('creates navigate requests outside the maxAge', async () => {
+        const {server, scope, driver} = createSwForMaxAge();
+
+        await makeRequest(scope, '/foo.txt');
+        await driver.initialized;
+        await server.clearRequests();
+
+        await scope.advance(3000);
+
+        // Create multiple requests to prove the navigation and asset requests are all made
+        // When enabled, the navigation request is made each time and not replaced
+        // with the index request - thus, the `null` value.
+        expect(await makeNavigationRequest(scope, '/', '')).toBe(null);
+        expect(await makeNavigationRequest(scope, '/foo', '')).toBe(null);
+
+        expect(await makeRequest(scope, '/foo.txt')).toBe('this is foo');
+        expect(await makeRequest(scope, '/bar.txt')).toBe('this is bar');
+
+        server.assertSawRequestFor('/');
+        server.assertSawRequestFor('/foo');
+        server.assertSawRequestFor('/foo.txt');
+        server.assertSawRequestFor('/bar.txt');
+        server.assertNoOtherRequests();
+      });
+
+      function createSwForMaxAge() {
+        const scope = new SwTestHarnessBuilder().build();
+        // set the timestamp of the manifest using the server time so it's always "new" on test start
+        const maxAgeManifest: Manifest = {
+          ...manifest,
+          timestamp: scope.time,
+          applicationMaxAge: 2000,
+        };
+        const server = serverBuilderBase.withManifest(maxAgeManifest).build();
+        const driver = new Driver(scope, scope, new CacheDatabase(scope));
+        scope.updateServerState(server);
+
+        return {server, scope, driver};
+      }
+    });
   });
 })();
 
@@ -2700,6 +2736,26 @@ async function makeRequest(
   init?: Object,
 ): Promise<string | null> {
   const [resPromise, done] = scope.handleFetch(new MockRequest(url, init), clientId);
+  await done;
+  const res = await resPromise;
+  if (res !== undefined && res.ok) {
+    return res.text();
+  }
+  return null;
+}
+
+async function makeWorkerRequest(
+  scope: SwTestHarness,
+  url: string,
+  clientId = 'default',
+  resultingClientId = 'worker',
+  init?: Object,
+): Promise<string | null> {
+  const [resPromise, done] = scope.handleFetch(
+    new MockRequest(url, {...init, destination: 'worker'}),
+    clientId,
+    resultingClientId,
+  );
   await done;
   const res = await resPromise;
   if (res !== undefined && res.ok) {

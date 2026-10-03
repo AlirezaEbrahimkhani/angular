@@ -3,16 +3,17 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {DOCUMENT} from '@angular/common';
+import {DOCUMENT} from '../../index';
 import {
   EnvironmentInjector,
   Inject,
   inject,
   Injectable,
   runInInjectionContext,
+  ɵRuntimeError as RuntimeError,
 } from '@angular/core';
 import {Observable, Observer} from 'rxjs';
 
@@ -26,6 +27,7 @@ import {
   HttpEventType,
   HttpResponse,
 } from './response';
+import {RuntimeErrorCode} from './errors';
 
 // Every request made through JSONP needs a callback name that's unique across the
 // whole page. Each request is assigned an id and the callback name is constructed
@@ -115,15 +117,24 @@ export class JsonpClientBackend implements HttpBackend {
     // Firstly, check both the method and response type. If either doesn't match
     // then the request was improperly routed here and cannot be handled.
     if (req.method !== 'JSONP') {
-      throw new Error(JSONP_ERR_WRONG_METHOD);
+      throw new RuntimeError(
+        RuntimeErrorCode.JSONP_WRONG_METHOD,
+        ngDevMode && JSONP_ERR_WRONG_METHOD,
+      );
     } else if (req.responseType !== 'json') {
-      throw new Error(JSONP_ERR_WRONG_RESPONSE_TYPE);
+      throw new RuntimeError(
+        RuntimeErrorCode.JSONP_WRONG_RESPONSE_TYPE,
+        ngDevMode && JSONP_ERR_WRONG_RESPONSE_TYPE,
+      );
     }
 
     // Check the request headers. JSONP doesn't support headers and
     // cannot set any that were supplied.
     if (req.headers.keys().length > 0) {
-      throw new Error(JSONP_ERR_HEADERS_NOT_SUPPORTED);
+      throw new RuntimeError(
+        RuntimeErrorCode.JSONP_HEADERS_NOT_SUPPORTED,
+        ngDevMode && JSONP_ERR_HEADERS_NOT_SUPPORTED,
+      );
     }
 
     // Everything else happens inside the Observable boundary.
@@ -163,10 +174,11 @@ export class JsonpClientBackend implements HttpBackend {
       // the response callback from the window. This logic is used in both the
       // success, error, and cancellation paths, so it's extracted out for convenience.
       const cleanup = () => {
+        node.removeEventListener('load', onLoad);
+        node.removeEventListener('error', onError);
+
         // Remove the <script> tag if it's still on the page.
-        if (node.parentNode) {
-          node.parentNode.removeChild(node);
-        }
+        node.remove();
 
         // Remove the response callback from the callbackMap (window object in the
         // browser).
@@ -177,7 +189,7 @@ export class JsonpClientBackend implements HttpBackend {
       // if the JSONP script loads successfully. The event itself is unimportant.
       // If something went wrong, onLoad() may run without the response callback
       // having been invoked.
-      const onLoad = (event: Event) => {
+      const onLoad = () => {
         // We wrap it in an extra Promise, to ensure the microtask
         // is scheduled after the loaded endpoint has executed any potential microtask itself,
         // which is not guaranteed in Internet Explorer and EdgeHTML. See issue #39496
@@ -219,7 +231,7 @@ export class JsonpClientBackend implements HttpBackend {
       // onError() is the error callback, which runs if the script returned generates
       // a Javascript error. It emits the error via the Observable error channel as
       // a HttpErrorResponse.
-      const onError: any = (error: Error) => {
+      const onError = (error: Error) => {
         cleanup();
 
         // Wrap the error in a HttpErrorResponse.

@@ -3,13 +3,13 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {DocEntry} from '@angular/compiler-cli/src/ngtsc/docs';
-import {EntryType, FunctionEntry} from '@angular/compiler-cli/src/ngtsc/docs/src/entities';
-import {runInEachFileSystem} from '@angular/compiler-cli/src/ngtsc/file_system/testing';
-import {loadStandardTestFiles} from '@angular/compiler-cli/src/ngtsc/testing';
+import {DocEntry} from '../../../src/ngtsc/docs';
+import {EntryType, FunctionEntry} from '../../../src/ngtsc/docs/src/entities';
+import {runInEachFileSystem} from '../../../src/ngtsc/file_system/testing';
+import {loadStandardTestFiles} from '../../../src/ngtsc/testing';
 
 import {NgtscTestEnvironment} from '../env';
 
@@ -38,8 +38,8 @@ runInEachFileSystem(() => {
       const functionEntry = docs[0] as FunctionEntry;
       expect(functionEntry.name).toBe('getInjector');
       expect(functionEntry.entryType).toBe(EntryType.Function);
-      expect(functionEntry.params.length).toBe(0);
-      expect(functionEntry.returnType).toBe('void');
+      expect(functionEntry.implementation.params.length).toBe(0);
+      expect(functionEntry.implementation.returnType).toBe('void');
     });
 
     it('should extract function with parameters', () => {
@@ -57,11 +57,11 @@ runInEachFileSystem(() => {
 
       const functionEntry = docs[0] as FunctionEntry;
       expect(functionEntry.entryType).toBe(EntryType.Function);
-      expect(functionEntry.returnType).toBe('boolean');
+      expect(functionEntry.implementation.returnType).toBe('boolean');
 
-      expect(functionEntry.params.length).toBe(3);
+      expect(functionEntry.implementation.params.length).toBe(3);
 
-      const [numParam, intlParam, areaParam] = functionEntry.params;
+      const [numParam, intlParam, areaParam] = functionEntry.implementation.params;
       expect(numParam.name).toBe('num');
       expect(numParam.isOptional).toBe(false);
       expect(numParam.type).toBe('string');
@@ -87,7 +87,7 @@ runInEachFileSystem(() => {
 
       const docs: DocEntry[] = env.driveDocsExtraction('index.ts');
       const functionEntry = docs[0] as FunctionEntry;
-      const [prefixParamEntry, idsParamEntry] = functionEntry.params;
+      const [prefixParamEntry, idsParamEntry] = functionEntry.implementation.params;
 
       expect(prefixParamEntry.name).toBe('prefix');
       expect(prefixParamEntry.type).toBe('string');
@@ -110,10 +110,10 @@ runInEachFileSystem(() => {
       `,
       );
 
-      const docs: DocEntry[] = env.driveDocsExtraction('index.ts');
-      expect(docs.length).toBe(2);
+      const docs = env.driveDocsExtraction('index.ts') as FunctionEntry[];
+      expect(docs[0].signatures?.length).toBe(2);
 
-      const [booleanOverloadEntry, numberOverloadEntry] = docs as FunctionEntry[];
+      const [booleanOverloadEntry, numberOverloadEntry] = docs[0].signatures!;
 
       expect(booleanOverloadEntry.name).toBe('ident');
       expect(booleanOverloadEntry.params.length).toBe(1);
@@ -138,12 +138,26 @@ runInEachFileSystem(() => {
       expect(docs.length).toBe(1);
 
       const [functionEntry] = docs as FunctionEntry[];
-      expect(functionEntry.generics.length).toBe(1);
+      expect(functionEntry.signatures.length).toBe(1);
 
-      const [genericEntry] = functionEntry.generics;
+      const [genericEntry] = functionEntry.implementation.generics;
       expect(genericEntry.name).toBe('T');
       expect(genericEntry.constraint).toBeUndefined();
       expect(genericEntry.default).toBeUndefined();
+    });
+
+    it('should extract type predicates as return type of type guards', () => {
+      env.write(
+        'index.ts',
+        `export function isSignal(value: unknown): value is Signal<unknown> {}`,
+      );
+
+      const docs: DocEntry[] = env.driveDocsExtraction('index.ts');
+      expect(docs.length).toBe(1);
+
+      const [functionEntry] = docs as FunctionEntry[];
+      expect(functionEntry.implementation.returnType).toBe('value is Signal<unknown>');
+      expect(functionEntry.signatures[0].returnType).toBe('value is Signal<unknown>');
     });
   });
 });

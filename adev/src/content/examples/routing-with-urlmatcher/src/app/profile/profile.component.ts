@@ -1,11 +1,10 @@
-import {Component, Input} from '@angular/core';
+import {Component, input} from '@angular/core';
 
 @Component({
   selector: 'app-profile',
-  standalone: true,
   templateUrl: './profile.component.html',
   styleUrls: ['./profile.component.css'],
 })
 export class ProfileComponent {
-  @Input() username!: string;
+  readonly username = input.required<string>();
 }

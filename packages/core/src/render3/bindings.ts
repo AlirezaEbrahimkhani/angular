@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {assertIndexInRange, assertLessThan, assertNotSame} from '../util/assert';
@@ -42,9 +42,13 @@ export function getBinding(lView: LView, bindingIndex: number): any {
  *          `CheckNoChangesMode`)
  */
 export function bindingUpdated(lView: LView, bindingIndex: number, value: any): boolean {
-  ngDevMode && assertNotSame(value, NO_CHANGE, 'Incoming value should never be NO_CHANGE.');
   ngDevMode &&
     assertLessThan(bindingIndex, lView.length, `Slot should have been initialized to NO_CHANGE`);
+
+  if (value === NO_CHANGE) {
+    return false;
+  }
+
   const oldValue = lView[bindingIndex];
 
   if (Object.is(oldValue, value)) {

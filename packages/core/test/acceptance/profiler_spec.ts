@@ -3,16 +3,17 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {setProfiler} from '@angular/core/src/render3/profiler';
-import {ProfilerEvent} from '@angular/core/src/render3/profiler_types';
-import {TestBed} from '@angular/core/testing';
+import {setProfiler, profiler} from '../../src/render3/profiler';
+import {ProfilerEvent} from '../../src/render3/profiler_types';
+import {TestBed} from '../../testing';
 
 import {
   AfterContentChecked,
   AfterContentInit,
+  afterEveryRender,
   AfterViewChecked,
   AfterViewInit,
   Component,
@@ -24,18 +25,24 @@ import {
   OnDestroy,
   OnInit,
   Output,
+  provideZoneChangeDetection,
   ViewChild,
 } from '../../src/core';
 
 describe('profiler', () => {
-  class Profiler {
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      providers: [provideZoneChangeDetection()],
+    });
+  });
+  class TestProfiler {
     profile() {}
   }
 
   let profilerSpy: jasmine.Spy;
 
   beforeEach(() => {
-    const profiler = new Profiler();
+    const profiler = new TestProfiler();
     profilerSpy = spyOn(profiler, 'profile').and.callThrough();
     setProfiler(profiler.profile);
   });
@@ -57,7 +64,11 @@ describe('profiler', () => {
 
   describe('change detection hooks', () => {
     it('should call the profiler for creation and change detection', () => {
-      @Component({selector: 'my-comp', template: '<button (click)="onClick()"></button>'})
+      @Component({
+        selector: 'my-comp',
+        template: '<button (click)="onClick()"></button>',
+        standalone: false,
+      })
       class MyComponent {
         onClick() {}
       }
@@ -95,7 +106,7 @@ describe('profiler', () => {
     });
 
     it('should invoke the profiler when the template throws', () => {
-      @Component({selector: 'my-comp', template: '{{ throw() }}'})
+      @Component({selector: 'my-comp', template: '{{ throw() }}', standalone: false})
       class MyComponent {
         throw() {
           throw new Error();
@@ -127,7 +138,11 @@ describe('profiler', () => {
 
   describe('outputs and events', () => {
     it('should invoke the profiler on event handler', () => {
-      @Component({selector: 'my-comp', template: '<button (click)="onClick()"></button>'})
+      @Component({
+        selector: 'my-comp',
+        template: '<button (click)="onClick()"></button>',
+        standalone: false,
+      })
       class MyComponent {
         onClick() {}
       }
@@ -151,7 +166,11 @@ describe('profiler', () => {
     });
 
     it('should invoke the profiler on event handler even when it throws', () => {
-      @Component({selector: 'my-comp', template: '<button (click)="onClick()"></button>'})
+      @Component({
+        selector: 'my-comp',
+        template: '<button (click)="onClick()"></button>',
+        standalone: false,
+      })
       class MyComponent {
         onClick() {
           throw new Error();
@@ -162,6 +181,7 @@ describe('profiler', () => {
       const errorSpy = spyOn(handler, 'handleError');
 
       TestBed.configureTestingModule({
+        rethrowApplicationErrors: false,
         declarations: [MyComponent],
         providers: [{provide: ErrorHandler, useValue: handler}],
       });
@@ -182,12 +202,16 @@ describe('profiler', () => {
     });
 
     it('should invoke the profiler on output handler execution', async () => {
-      @Component({selector: 'child', template: ''})
+      @Component({selector: 'child', template: '', standalone: false})
       class Child {
         @Output() childEvent = new EventEmitter();
       }
 
-      @Component({selector: 'my-comp', template: '<child (childEvent)="onEvent()"></child>'})
+      @Component({
+        selector: 'my-comp',
+        template: '<child (childEvent)="onEvent()"></child>',
+        standalone: false,
+      })
       class MyComponent {
         @ViewChild(Child) child!: Child;
         onEvent() {}
@@ -214,7 +238,12 @@ describe('profiler', () => {
       class Service implements OnDestroy {
         ngOnDestroy() {}
       }
-      @Component({selector: 'my-comp', template: '{{prop}}', providers: [Service]})
+      @Component({
+        selector: 'my-comp',
+        template: '{{prop}}',
+        providers: [Service],
+        standalone: false,
+      })
       class MyComponent
         implements
           OnInit,
@@ -240,7 +269,11 @@ describe('profiler', () => {
         ngAfterContentChecked() {}
       }
 
-      @Component({selector: 'my-parent', template: '<my-comp [prop]="prop"></my-comp>'})
+      @Component({
+        selector: 'my-parent',
+        template: '<my-comp [prop]="prop"></my-comp>',
+        standalone: false,
+      })
       class MyParent {
         prop = 1;
         @ViewChild(MyComponent) child!: MyComponent;
@@ -375,27 +408,193 @@ describe('profiler', () => {
       expect(serviceNgOnDestroyStart).toBeTruthy();
       expect(serviceNgOnDestroyEnd).toBeTruthy();
     });
+
+    it('should call the profiler on lifecycle execution even after error', () => {
+      @Component({selector: 'my-comp', template: '', standalone: false})
+      class MyComponent implements OnInit {
+        ngOnInit() {
+          throw new Error();
+        }
+      }
+
+      TestBed.configureTestingModule({declarations: [MyComponent]});
+      const fixture = TestBed.createComponent(MyComponent);
+
+      expect(() => {
+        fixture.detectChanges();
+      }).toThrow();
+
+      const lifecycleStart = findProfilerCall(ProfilerEvent.LifecycleHookStart);
+      const lifecycleEnd = findProfilerCall(ProfilerEvent.LifecycleHookEnd);
+
+      expect(lifecycleStart).toBeTruthy();
+      expect(lifecycleEnd).toBeTruthy();
+    });
   });
 
-  it('should call the profiler on lifecycle execution even after error', () => {
-    @Component({selector: 'my-comp', template: ''})
-    class MyComponent implements OnInit {
-      ngOnInit() {
-        throw new Error();
+  describe('entry point events', () => {
+    class EventRecordingProfiler {
+      events: ProfilerEvent[] = [];
+
+      clearEvents() {
+        this.events.length = 0;
       }
+
+      hasEvents(...events: ProfilerEvent[]): boolean {
+        for (const e of events) {
+          if (this.events.indexOf(e) === -1) {
+            return false;
+          }
+        }
+
+        return true;
+      }
+
+      profile = (event: ProfilerEvent, instance?: {} | null, eventFn?: Function): void => {
+        this.events.push(event);
+      };
     }
 
-    TestBed.configureTestingModule({declarations: [MyComponent]});
-    const fixture = TestBed.createComponent(MyComponent);
+    let p: EventRecordingProfiler;
 
-    expect(() => {
+    beforeEach(() => {
+      p = new EventRecordingProfiler();
+      setProfiler(p.profile);
+    });
+
+    afterEach(() => {
+      setProfiler(null);
+    });
+
+    it('should capture component creation and change detection entry points', () => {
+      @Component({selector: 'my-comp', template: ''})
+      class MyComponent {}
+
+      const fixture = TestBed.createComponent(MyComponent);
+      expect(p.events).toEqual([
+        ProfilerEvent.DynamicComponentStart,
+        ProfilerEvent.ComponentStart,
+        ProfilerEvent.TemplateCreateStart,
+        ProfilerEvent.TemplateCreateEnd,
+        ProfilerEvent.ComponentEnd,
+        ProfilerEvent.DynamicComponentEnd,
+        ProfilerEvent.ChangeDetectionStart,
+        ProfilerEvent.ChangeDetectionSyncStart,
+        ProfilerEvent.ChangeDetectionSyncEnd,
+        ProfilerEvent.ChangeDetectionEnd,
+      ]);
+
+      p.clearEvents();
+      fixture.detectChanges(false);
+
+      expect(
+        p.hasEvents(ProfilerEvent.TemplateUpdateStart, ProfilerEvent.TemplateUpdateEnd),
+      ).toBeTrue();
+    });
+
+    it('should invoke a profiler when host bindings are evaluated', () => {
+      @Component({
+        selector: 'my-comp',
+        host: {
+          '[id]': '"someId"',
+        },
+        template: '',
+      })
+      class MyComponent {}
+
+      const fixture = TestBed.createComponent(MyComponent);
       fixture.detectChanges();
-    }).toThrow();
 
-    const lifecycleStart = findProfilerCall(ProfilerEvent.LifecycleHookStart);
-    const lifecycleEnd = findProfilerCall(ProfilerEvent.LifecycleHookEnd);
+      expect(
+        p.hasEvents(ProfilerEvent.HostBindingsUpdateStart, ProfilerEvent.HostBindingsUpdateEnd),
+      ).toBeTrue();
+    });
 
-    expect(lifecycleStart).toBeTruthy();
-    expect(lifecycleEnd).toBeTruthy();
+    it('should invoke a profiler when after render hooks are executing', () => {
+      @Component({
+        selector: 'my-comp',
+        template: '',
+      })
+      class MyComponent {
+        arRef = afterEveryRender(() => {});
+      }
+
+      const fixture = TestBed.createComponent(MyComponent);
+      fixture.detectChanges();
+
+      expect(
+        p.hasEvents(ProfilerEvent.AfterRenderHooksStart, ProfilerEvent.AfterRenderHooksEnd),
+      ).toBeTrue();
+    });
+
+    it('should invoke a profiler when defer block transitions between states', () => {
+      @Component({
+        selector: 'my-comp',
+        template: `
+          @defer (on immediate) {
+            nothing to see here...
+          } 
+        `,
+      })
+      class MyComponent {}
+
+      const fixture = TestBed.createComponent(MyComponent);
+      fixture.detectChanges();
+
+      expect(
+        p.hasEvents(ProfilerEvent.DeferBlockStateStart, ProfilerEvent.DeferBlockStateEnd),
+      ).toBeTrue();
+    });
+  });
+});
+
+describe('profiler activation and removal', () => {
+  it('should allow adding and removing multiple profilers', () => {
+    const events: string[] = [];
+    const r1 = setProfiler((e) => events.push('P1: ' + e));
+    const r2 = setProfiler((e) => events.push('P2: ' + e));
+
+    profiler(ProfilerEvent.TemplateCreateStart);
+    expect(events).toEqual(['P1: 0', 'P2: 0']);
+
+    r1();
+    profiler(ProfilerEvent.TemplateCreateEnd);
+    expect(events).toEqual(['P1: 0', 'P2: 0', 'P2: 1']);
+
+    r2();
+    profiler(ProfilerEvent.TemplateCreateStart);
+    expect(events).toEqual(['P1: 0', 'P2: 0', 'P2: 1']);
+  });
+
+  it('should not add / remove the same profiler twice', () => {
+    const events: string[] = [];
+    const p1 = (e: ProfilerEvent) => events.push('P1: ' + e);
+    const r1 = setProfiler(p1);
+    const r2 = setProfiler(p1);
+
+    profiler(ProfilerEvent.TemplateCreateStart);
+    expect(events).toEqual(['P1: 0']);
+
+    r1();
+    profiler(ProfilerEvent.TemplateCreateStart);
+    expect(events).toEqual(['P1: 0']);
+
+    // subsequent removals should be noop
+    r1();
+    r2();
+  });
+
+  it('should clear all profilers when passing null', () => {
+    const events: string[] = [];
+    setProfiler((e) => events.push('P1: ' + e));
+    setProfiler((e) => events.push('P2: ' + e));
+
+    profiler(ProfilerEvent.TemplateCreateStart);
+    expect(events).toEqual(['P1: 0', 'P2: 0']);
+
+    // clear all profilers
+    setProfiler(null);
+    profiler(ProfilerEvent.TemplateCreateEnd);
+    expect(events).toEqual(['P1: 0', 'P2: 0']);
   });
 });

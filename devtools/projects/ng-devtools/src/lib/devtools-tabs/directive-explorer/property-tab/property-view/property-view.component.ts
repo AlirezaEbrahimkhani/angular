@@ -3,47 +3,46 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {Component, EventEmitter, Input, Output} from '@angular/core';
-import {DirectivePosition} from 'protocol';
+import {ChangeDetectionStrategy, Component, computed, inject, input, output} from '@angular/core';
+import {DebugSignalGraphNode, DirectivePosition} from '../../../../../../../protocol';
 
-import {
-  DirectivePropertyResolver,
-  DirectiveTreeData,
-} from '../../property-resolver/directive-property-resolver';
 import {ElementPropertyResolver, FlatNode} from '../../property-resolver/element-property-resolver';
-import {PropertyViewBodyComponent} from './property-view-body.component';
-import {PropertyViewHeaderComponent} from './property-view-header.component';
+import {PropertyViewBodyComponent} from './property-view-body/property-view-body.component';
+import {PropertyViewHeaderComponent} from './property-view-header/property-view-header.component';
 
 @Component({
   selector: 'ng-property-view',
   templateUrl: './property-view.component.html',
   styleUrls: ['./property-view.component.scss'],
-  standalone: true,
   imports: [PropertyViewHeaderComponent, PropertyViewBodyComponent],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class PropertyViewComponent {
-  @Input({required: true}) directive!: string;
-  @Output() inspect = new EventEmitter<{node: FlatNode; directivePosition: DirectivePosition}>();
-  @Output() viewSource = new EventEmitter<void>();
+  readonly directive = input.required<{name: string}>();
 
-  constructor(private _nestedProps: ElementPropertyResolver) {}
+  readonly inspect = output<{node: FlatNode; directivePosition: DirectivePosition}>();
+  readonly viewSource = output<void>();
+  readonly showSignalGraph = output<DebugSignalGraphNode>();
 
-  get controller(): DirectivePropertyResolver | undefined {
-    return this._nestedProps.getDirectiveController(this.directive);
-  }
+  private _nestedProps = inject(ElementPropertyResolver);
 
-  get directiveInputControls(): DirectiveTreeData | void {
-    return this.controller?.directiveInputControls;
-  }
+  protected readonly controller = computed(() =>
+    this._nestedProps.getDirectiveController(this.directive().name),
+  );
 
-  get directiveOutputControls(): DirectiveTreeData | void {
-    return this.controller?.directiveOutputControls;
-  }
-
-  get directiveStateControls(): DirectiveTreeData | void {
-    return this.controller?.directiveStateControls;
-  }
+  protected readonly directiveInputControls = computed(
+    () => this.controller()?.directiveInputControls,
+  );
+  protected readonly directivePropControls = computed(
+    () => this.controller()?.directivePropControls,
+  );
+  protected readonly directiveOutputControls = computed(
+    () => this.controller()?.directiveOutputControls,
+  );
+  protected readonly directiveStateControls = computed(
+    () => this.controller()?.directiveStateControls,
+  );
 }

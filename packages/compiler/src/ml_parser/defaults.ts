@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {assertInterpolationSymbols} from '../assertions';
@@ -24,6 +24,9 @@ export class InterpolationConfig {
   ) {}
 }
 
+/**
+ * This symbol is referenced inside G3 and will require some cleanup.
+ */
 export const DEFAULT_INTERPOLATION_CONFIG: InterpolationConfig = new InterpolationConfig(
   '{{',
   '}}',

@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {initMockFileSystem} from '../../file_system/testing';
@@ -85,7 +85,7 @@ describe('type check blocks diagnostics', () => {
     it('should annotate safe calls', () => {
       const TEMPLATE = `{{ method?.(a, b) }}`;
       expect(tcbWithSpans(TEMPLATE)).toContain(
-        '((null as any ? (((this).method /*3,9*/) /*3,9*/)!(((this).a /*12,13*/) /*12,13*/, ((this).b /*15,16*/) /*15,16*/) : undefined) /*3,17*/)',
+        '((0 as any ? (((this).method /*3,9*/) /*3,9*/)!(((this).a /*12,13*/) /*12,13*/, ((this).b /*15,16*/) /*15,16*/) : undefined) /*3,17*/)',
       );
     });
 
@@ -113,14 +113,14 @@ describe('type check blocks diagnostics', () => {
     it('should annotate property writes', () => {
       const TEMPLATE = `<div (click)='a.b.c = d'></div>`;
       expect(tcbWithSpans(TEMPLATE)).toContain(
-        '(((((((this).a /*14,15*/) /*14,15*/).b /*16,17*/) /*14,17*/).c /*18,19*/) /*14,23*/ = (((this).d /*22,23*/) /*22,23*/)) /*14,23*/',
+        '(((((((this).a /*14,15*/) /*14,15*/).b /*16,17*/) /*14,17*/).c /*18,19*/) /*14,19*/) = (((this).d /*22,23*/) /*22,23*/) /*14,23*/;',
       );
     });
 
-    it('should $event property writes', () => {
+    it('should annotate $event property writes', () => {
       const TEMPLATE = `<div (click)='a = $event'></div>`;
       expect(tcbWithSpans(TEMPLATE)).toContain(
-        '(((this).a /*14,15*/) /*14,24*/ = ($event /*18,24*/)) /*14,24*/;',
+        '(((this).a /*14,15*/) /*14,15*/) = ($event /*18,24*/) /*14,24*/; }) /*5,25*/;',
       );
     });
 
@@ -134,28 +134,28 @@ describe('type check blocks diagnostics', () => {
     it('should annotate keyed property writes', () => {
       const TEMPLATE = `<div (click)="a[b] = c"></div>`;
       expect(tcbWithSpans(TEMPLATE)).toContain(
-        '((((this).a /*14,15*/) /*14,15*/)[((this).b /*16,17*/) /*16,17*/] = (((this).c /*21,22*/) /*21,22*/)) /*14,22*/',
+        '((((this).a /*14,15*/) /*14,15*/)[((this).b /*16,17*/) /*16,17*/] /*14,18*/) = (((this).c /*21,22*/) /*21,22*/) /*14,22*/;',
       );
     });
 
     it('should annotate safe property access', () => {
       const TEMPLATE = `{{ a?.b }}`;
       expect(tcbWithSpans(TEMPLATE)).toContain(
-        '(null as any ? (((this).a /*3,4*/) /*3,4*/)!.b /*6,7*/ : undefined) /*3,7*/',
+        '(0 as any ? (((this).a /*3,4*/) /*3,4*/)!.b /*6,7*/ : undefined) /*3,7*/',
       );
     });
 
     it('should annotate safe method calls', () => {
       const TEMPLATE = `{{ a?.method(b) }}`;
       expect(tcbWithSpans(TEMPLATE)).toContain(
-        '((null as any ? (null as any ? (((this).a /*3,4*/) /*3,4*/)!.method /*6,12*/ : undefined) /*3,12*/!(((this).b /*13,14*/) /*13,14*/) : undefined) /*3,15*/)',
+        '((0 as any ? (0 as any ? (((this).a /*3,4*/) /*3,4*/)!.method /*6,12*/ : undefined) /*3,12*/!(((this).b /*13,14*/) /*13,14*/) : undefined) /*3,15*/)',
       );
     });
 
     it('should annotate safe keyed reads', () => {
       const TEMPLATE = `{{ a?.[0] }}`;
       expect(tcbWithSpans(TEMPLATE)).toContain(
-        '(null as any ? (((this).a /*3,4*/) /*3,4*/)![0 /*7,8*/] /*3,9*/ : undefined) /*3,9*/',
+        '(0 as any ? (((this).a /*3,4*/) /*3,4*/)![0 /*7,8*/] /*3,9*/ : undefined) /*3,9*/',
       );
     });
 

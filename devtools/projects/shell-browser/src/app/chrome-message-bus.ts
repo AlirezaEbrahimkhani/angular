@@ -3,12 +3,12 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 /// <reference types="chrome"/>
 
-import {Events, MessageBus, Parameters} from 'protocol';
+import {Events, MessageBus, Parameters} from '../../../protocol';
 
 interface ChromeMessage<T, K extends keyof T> {
   topic: K;
@@ -74,6 +74,7 @@ export class ChromeMessageBus extends MessageBus<Events> {
       topic,
       args,
       __ignore_ng_zone__: true,
+      __NG_DEVTOOLS_EVENT__: true,
     });
     return true;
   }

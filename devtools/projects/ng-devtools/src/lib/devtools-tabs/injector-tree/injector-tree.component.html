@@ -1,62 +1,78 @@
-@if (!diDebugAPIsAvailable) {
+@if (!diDebugAPIsAvailable()) {
   <p class="not-supported">
     This feature is only available on version 17.0.0 or higher of Angular.
   </p>
-}
-<as-split [class.hidden]="!diDebugAPIsAvailable" unit="pixel" direction="vertical" [gutterSize]="9" [disabled]="true">
-  <as-split-area size="50">
-    <mat-checkbox
-      (change)="toggleHideInjectorsWithNoProviders()"
-      >
-      Hide injectors with no providers
-    </mat-checkbox>
-    <mat-checkbox
-      (change)="toggleHideAngularInjectors()"
-      >
-      Hide framework injectors
-    </mat-checkbox>
-  </as-split-area>
-  <as-split-area>
-    <as-split unit="percent" direction="horizontal" [gutterSize]="9">
+} @else {
+  <div class="wrapper">
+    <div class="options">
+      <div class="option">
+        <input
+          id="hide-injectors-no-providers"
+          type="checkbox"
+          (change)="toggleHideInjectorsWithNoProviders()"
+        />
+        <label for="hide-injectors-no-providers">Hide injectors with no providers</label>
+      </div>
+      <div class="option">
+        <input id="hide-fw-injectors" type="checkbox" (change)="toggleHideAngularInjectors()" />
+        <label for="hide-fw-injectors">Hide framework injectors</label>
+      </div>
+    </div>
+    <as-split class="trees" unit="percent" direction="horizontal" [gutterSize]="9">
       <as-split-area size="60">
-        <as-split unit="percent" direction="vertical" [gutterSize]="9">
-          <as-split-area size="35">
+        <as-split
+          [ngResponsiveSplit]="responsiveSplitConfig"
+          (directionChange)="onResponsiveSplitDirChange($event)"
+          unit="percent"
+          [gutterSize]="9"
+        >
+          <as-split-area [size]="envHierarchySize()">
             <div class="injector-hierarchy">
               <h2>
-                Environment Hierarchy
-                <a class="hierarchy-ref" href="https://angular.dev/guide/di/hierarchical-dependency-injection#types-of-injector-hierarchies" target="_blank">
-                  <mat-icon matTooltip="Open docs reference"> open_in_new </mat-icon>
-                </a>
+                <span>Environment Hierarchy</span>
+                <ng-docs-ref-button docs="injector-hierarchies" />
               </h2>
-              <section #injectorTree class="environment-injectors injector-graph">
-                <svg #svgContainer>
-                  <g #mainGroup></g>
-                </svg>
+              <section class="injector-graph">
+                <ng-tree-visualizer
+                  #environmentTree
+                  a11yTitle="Environment hierarchy visualization"
+                  [root]="environmentInjectorTree()!"
+                  [config]="environmentTreeConfig"
+                  (nodeClick)="selectInjectorByNode($event)"
+                  (render)="onTreeRender(environmentTree, $event)"
+                />
               </section>
             </div>
           </as-split-area>
-          <as-split-area size="65">
+          <as-split-area [size]="elHierarchySize()">
             <div class="injector-hierarchy">
               <h2>
-                Element Hierarchy
-                <a class="hierarchy-ref" href="https://angular.dev/guide/di/hierarchical-dependency-injection#types-of-injector-hierarchies" target="_blank">
-                  <mat-icon matTooltip="Open docs reference"> open_in_new </mat-icon>
-                </a>
+                <span>Element Hierarchy</span>
+                <ng-docs-ref-button docs="injector-hierarchies" />
               </h2>
-              <section #elementInjectorTree class="element-injectors injector-graph">
-                <svg #elementSvgContainer>
-                  <g #elementMainGroup></g>
-                </svg>
+              <section class="injector-graph">
+                <ng-tree-visualizer
+                  #elementTree
+                  a11yTitle="Element hierarchy visualization"
+                  [root]="elementInjectorTree()!"
+                  [config]="elementTreeConfig"
+                  (nodeClick)="selectInjectorByNode($event)"
+                  (render)="onTreeRender(elementTree, $event)"
+                />
               </section>
             </div>
           </as-split-area>
         </as-split>
       </as-split-area>
-      @if (selectedNode && providers.length > 0) {
-        <as-split-area size="40" minSize="25">
-          <ng-injector-providers [injector]="selectedNode.data.injector" [providers]="providers"/>
+      @if (injectorProvidersEnabled()) {
+        <as-split-area size="40" [minSize]="25">
+          <ng-injector-providers
+            [injector]="selectedNode()!.data.injector"
+            [providers]="providers()"
+            (close)="injectorProvidersEnabled.set(false)"
+          />
         </as-split-area>
       }
     </as-split>
-  </as-split-area>
-</as-split>
+  </div>
+}

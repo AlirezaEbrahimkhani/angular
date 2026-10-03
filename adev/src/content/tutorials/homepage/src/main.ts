@@ -4,7 +4,6 @@ import {bootstrapApplication} from '@angular/platform-browser';
 
 @Component({
   selector: 'app-root',
-  standalone: true,
   template: `
     <label for="name">Name:</label>
     <input type="text" id="name" [(ngModel)]="name" placeholder="Enter a name here" />
@@ -13,8 +12,8 @@ import {bootstrapApplication} from '@angular/platform-browser';
   `,
   imports: [FormsModule],
 })
-export class DemoComponent {
+export class Demo {
   name = '';
 }
 
-bootstrapApplication(DemoComponent);
+bootstrapApplication(Demo);

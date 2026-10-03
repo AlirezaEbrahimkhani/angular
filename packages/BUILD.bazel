@@ -1,6 +1,5 @@
-load("//tools:defaults.bzl", "ts_config", "ts_library")
 load("//:packages.bzl", "DOCS_ENTRYPOINTS")
-load("@npm//@angular/build-tooling/bazel/api-gen/manifest:generate_api_manifest.bzl", "generate_api_manifest")
+load("//tools:defaults.bzl", "copy_to_bin", "ts_config", "ts_project")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -9,27 +8,50 @@ exports_files([
     "tsconfig.json",
 ])
 
-ts_library(
+copy_to_bin(
+    name = "package_json",
+    srcs = ["package.json"],
+)
+
+copy_to_bin(
+    name = "tsec_exemption",
+    srcs = ["tsec-exemption.json"],
+)
+
+ts_project(
+    name = "goog_types",
+    srcs = ["goog.d.ts"],
+)
+
+ts_project(
     name = "types",
-    srcs = glob(["*.ts"]),
+    srcs = glob(
+        ["*.ts"],
+        exclude = ["goog.d.ts"],
+    ),
     deps = [
-        "//packages/zone.js/lib:zone_d_ts",
-        "@npm//@types/hammerjs",
+        ":goog_types",
+        "//:node_modules/@types/hammerjs",
+        "//:node_modules/tslib",
+        "//:node_modules/zone.js",
     ],
 )
 
 ts_config(
-    name = "tsconfig-test",
-    src = "tsconfig-test.json",
-    deps = [":tsconfig-build.json"],
+    name = "tsconfig_build",
+    src = "tsconfig-build.json",
+    deps = [
+        "//:node_modules/tslib",
+    ],
 )
 
 ts_config(
-    name = "tsec_config",
-    src = "tsconfig-tsec-base.json",
+    name = "tsconfig_test",
+    src = "tsconfig-test.json",
     deps = [
-        ":tsconfig-build.json",
-        ":tsec-exemption.json",
+        ":tsconfig_build",
+        "//:node_modules/@types/jasmine",
+        "//:node_modules/@types/node",
     ],
 )
 
@@ -50,6 +72,8 @@ filegroup(
 filegroup(
     name = "common_files_and_deps_for_docs",
     srcs = [
+        "//:node_modules/rxjs",
+        "//:node_modules/zone.js",
         "//packages:types",
         "//packages/common:files_for_docgen",
         "//packages/common/http:files_for_docgen",
@@ -60,15 +84,14 @@ filegroup(
         "//packages/core/src/interface:files_for_docgen",
         "//packages/core/src/reflection:files_for_docgen",
         "//packages/core/src/util:files_for_docgen",
+        "//packages/examples:files_for_docgen",
         "//packages/platform-browser:files_for_docgen",
         "//packages/platform-browser-dynamic:files_for_docgen",
-        "//packages/zone.js/lib:zone_d_ts",
-        "@npm//rxjs",
     ],
 )
 
-generate_api_manifest(
-    name = "docs_api_manifest",
+filegroup(
+    name = "docs_extracted_apis",
     srcs = [
         "//packages/animations:animations_docs_extraction",
         "//packages/animations/browser:animations_browser_docs_extraction",
@@ -80,12 +103,13 @@ generate_api_manifest(
         "//packages/common/upgrade:common_upgrade_docs_extraction",
         "//packages/core:core_docs_extraction",
         "//packages/core/global:core_global_docs_extraction",
-        "//packages/core/reference-manifests",
         "//packages/core/rxjs-interop:core_rxjs-interop_docs_extraction",
         "//packages/core/testing:core_testing_docs_extraction",
         "//packages/elements:elements_docs_extraction",
         "//packages/forms:forms_docs_extraction",
+        "//packages/forms/signals:forms_signals_docs_extraction",
         "//packages/localize:localize_docs_extraction",
+        "//packages/localize/src/localize:localize_init_docs_extraction",
         "//packages/platform-browser:platform-browser_docs_extraction",
         "//packages/platform-browser-dynamic:platform-browser_dynamic_docs_extraction",
         "//packages/platform-browser-dynamic/testing:platform-browser_dynamic_testing_docs_extraction",
@@ -98,10 +122,13 @@ generate_api_manifest(
         "//packages/router/testing:router_testing_docs_extraction",
         "//packages/router/upgrade:router_upgrade_docs_extraction",
         "//packages/service-worker:service-worker_docs_extraction",
+        "//packages/ssr/docs:ssr_docs_extraction",
+        "//packages/ssr/docs:ssr_node_docs_extraction",
         "//packages/upgrade:upgrade_docs_extraction",
         "//packages/upgrade/static:upgrade_static_docs_extraction",
         "//packages/upgrade/static/testing:upgrade_static_testing_docs_extraction",
         "//tools/manual_api_docs/blocks",
         "//tools/manual_api_docs/elements",
     ],
+    visibility = ["//visibility:public"],
 )

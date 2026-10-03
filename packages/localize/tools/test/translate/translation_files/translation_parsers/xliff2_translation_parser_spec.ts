@@ -3,9 +3,9 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
-import {ɵcomputeMsgId, ɵmakeParsedTranslation} from '@angular/localize';
+import {ɵcomputeMsgId, ɵmakeParsedTranslation} from '../../../../../index';
 
 import {
   ParseAnalysis,
@@ -745,14 +745,13 @@ describe('Xliff2TranslationParser', () => {
           XLIFF,
           /Invalid element found in message/,
           [
-            `Error: Invalid element found in message.`,
-            `At /some/file.xlf@6:16:`,
-            `...`,
-            `        <source/>`,
-            `        <target>[ERROR ->]<b>msg should contain only ph and pc tags</b></target>`,
-            `      </segment>`,
-            `...`,
-            ``,
+            'Invalid element found in message. ("',
+            '      <segment>',
+            '        <source/>',
+            '        <target>[ERROR ->]<b>msg should contain only ph and pc tags</b></target>',
+            '      </segment>',
+            '    </unit>',
+            '"): /some/file.xlf@6:16',
           ].join('\n'),
         );
       });
@@ -777,14 +776,13 @@ describe('Xliff2TranslationParser', () => {
           XLIFF,
           /Missing required "equiv" attribute/,
           [
-            `Error: Missing required "equiv" attribute:`,
-            `At /some/file.xlf@6:16:`,
-            `...`,
-            `        <source/>`,
-            `        <target>[ERROR ->]<ph/></target>`,
-            `      </segment>`,
-            `...`,
-            ``,
+            'Missing required "equiv" attribute: ("',
+            '      <segment>',
+            '        <source/>',
+            '        <target>[ERROR ->]<ph/></target>',
+            '      </segment>',
+            '    </unit>',
+            '"): /some/file.xlf@6:16',
           ].join('\n'),
         );
       });

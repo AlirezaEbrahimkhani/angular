@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {
@@ -11,7 +11,7 @@ import {
   i18nRemoveOpCodesToString,
   i18nUpdateOpCodesToString,
   icuCreateOpCodesToString,
-} from '@angular/core/src/render3/i18n/i18n_debug';
+} from '../../src/render3/i18n/i18n_debug';
 import {
   ELEMENT_MARKER,
   I18nCreateOpCode,
@@ -21,7 +21,7 @@ import {
   I18nUpdateOpCodes,
   ICU_MARKER,
   IcuCreateOpCode,
-} from '@angular/core/src/render3/interfaces/i18n';
+} from '../../src/render3/interfaces/i18n';
 
 describe('i18n debug', () => {
   describe('i18nUpdateOpCodesToString', () => {

@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 import ts from 'typescript';
 
@@ -20,6 +20,38 @@ export function assertFileNames(refs: Array<{fileName: string}>, expectedFileNam
   const actualPaths = refs.map((r) => r.fileName);
   const actualFileNames = actualPaths.map((p) => last(p.split('/')));
   expect(new Set(actualFileNames)).toEqual(new Set(expectedFileNames));
+}
+
+/**
+ * Expect that a list of objects with a `fileName` property matches a set
+ * of file paths.
+ *
+ * This assertion is independent of the order of either list.
+ */
+export function assertFilePaths(refs: Array<{fileName: string}>, expectedPaths: RegExp[]) {
+  const actualPaths = Array.from(new Set(refs.map((r) => r.fileName)));
+
+  if (actualPaths.length !== expectedPaths.length) {
+    expect(actualPaths.length)
+      .withContext('Expected expected paths to be the same size.')
+      .toBe(expectedPaths.length);
+    return;
+  }
+
+  for (const pattern of expectedPaths) {
+    const matching = actualPaths.findIndex((p) => pattern.test(p));
+    if (matching !== -1) {
+      actualPaths.splice(matching, 1);
+    } else {
+      expect(true)
+        .withContext(
+          `Expected ${pattern} to match a file path. ` +
+            `Remaining unmatched paths: ${actualPaths.join(', ')}`,
+        )
+        .toBe(false);
+      return;
+    }
+  }
 }
 
 export function assertTextSpans(items: Array<{textSpan: string}>, expectedTextSpans: string[]) {
@@ -53,6 +85,7 @@ export function createModuleAndProjectWithDeclarations(
   projectFiles: ProjectFiles,
   angularCompilerOptions: TestableOptions = {},
   standaloneFiles: ProjectFiles = {},
+  tsCompilerOptions = {},
 ): Project {
   const externalClasses: string[] = [];
   const externalImports: string[] = [];
@@ -76,6 +109,31 @@ export function createModuleAndProjectWithDeclarations(
         export class AppModule {}
       `;
   projectFiles['app-module.ts'] = moduleContents;
+  return env.addProject(
+    projectName,
+    {...projectFiles, ...standaloneFiles},
+    angularCompilerOptions,
+    tsCompilerOptions,
+  );
+}
+
+export function createProjectWithStandaloneDeclarations(
+  env: LanguageServiceTestEnv,
+  projectName: string,
+  projectFiles: ProjectFiles,
+  angularCompilerOptions: TestableOptions = {},
+  standaloneFiles: ProjectFiles = {},
+): Project {
+  const externalClasses: string[] = [];
+  const externalImports: string[] = [];
+  for (const [fileName, fileContents] of Object.entries(projectFiles)) {
+    if (!fileName.endsWith('.ts')) {
+      continue;
+    }
+    const className = getFirstClassDeclaration(fileContents);
+    externalClasses.push(className);
+    externalImports.push(`import {${className}} from './${fileName.replace('.ts', '')}';`);
+  }
   return env.addProject(projectName, {...projectFiles, ...standaloneFiles}, angularCompilerOptions);
 }
 
@@ -97,9 +155,7 @@ export function humanizeDocumentSpanLike<T extends ts.DocumentSpan>(
       : undefined,
   };
 }
-type Stringy<T> = {
-  [P in keyof T]: string;
-};
+type Stringy<T> = {[P in keyof T]: string};
 
 export function getText(contents: string, textSpan: ts.TextSpan) {
   return contents.slice(textSpan.start, textSpan.start + textSpan.length);

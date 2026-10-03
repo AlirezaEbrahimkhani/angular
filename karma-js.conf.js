@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 const browserProvidersConf = require('./browser-providers.conf');
@@ -42,8 +42,6 @@ module.exports = function (config) {
       {pattern: 'node_modules/angular-1.8/angular?(.min).js', included: false, watched: false},
       {pattern: 'node_modules/angular-mocks-1.8/angular-mocks.js', included: false, watched: false},
 
-      'node_modules/jasmine-ajax/lib/mock-ajax.js',
-
       // Static test assets.
       {pattern: 'packages/platform-browser/test/static_assets/**/*', included: false},
       {pattern: 'packages/platform-browser/test/browser/static_assets/**/*', included: false},
@@ -64,7 +62,7 @@ module.exports = function (config) {
     // Bazel inter-op: Allow tests to request resources from either
     //   /base/node_modules/path/to/thing
     // or
-    //   /base/angular/node_modules/path/to/thing
+    //   /base/_main/node_modules/path/to/thing
     // This can be removed when all karma tests are run under Bazel, then we
     // don't need this entire config file.
     proxies: {
@@ -130,7 +128,7 @@ module.exports = function (config) {
   // the tunnel. We do this because devices are sometimes not able to properly resolve
   // `localhost` or `127.0.0.1` through the SauceLabs tunnel. Using a domain that does not
   // resolve to anything on SauceLabs VMs ensures that such requests are always resolved through
-  // the tunnel, and resolve to the actual tunnel host machine (commonly the CircleCI VMs).
+  // the tunnel, and resolve to the actual tunnel host machine (commonly the GHA VMs).
   // More context can be found in: https://github.com/angular/angular/pull/35171.
   if (process.env.SAUCE_LOCALHOST_ALIAS_DOMAIN) {
     conf.hostname = process.env.SAUCE_LOCALHOST_ALIAS_DOMAIN;

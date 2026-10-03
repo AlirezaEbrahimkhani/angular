@@ -2,9 +2,9 @@
  * A collection of demo components showing different ways to provide services
  * in @Component metadata
  */
-import {Component, Inject, Injectable, OnInit} from '@angular/core';
+import {Component, inject, Injectable, OnInit} from '@angular/core';
 
-import {APP_CONFIG, AppConfig, HERO_DI_CONFIG} from './injection.config';
+import {APP_CONFIG, HERO_DI_CONFIG} from './injection.config';
 
 import {HeroService} from './heroes/hero.service';
 import {heroServiceProvider} from './heroes/hero.service.provider';
@@ -14,7 +14,6 @@ import {UserService} from './user.service';
 const template = '{{log}}';
 
 @Component({
-  standalone: true,
   selector: 'provider-1',
   template,
   // #docregion providers-logger
@@ -23,7 +22,8 @@ const template = '{{log}}';
 })
 export class Provider1Component {
   log: string;
-  constructor(logger: Logger) {
+  constructor() {
+    const logger = inject(Logger);
     logger.log('Hello from logger provided with Logger class');
     this.log = logger.logs[0];
   }
@@ -32,7 +32,6 @@ export class Provider1Component {
 //////////////////////////////////////////
 
 @Component({
-  standalone: true,
   selector: 'provider-3',
   template,
   providers:
@@ -42,7 +41,8 @@ export class Provider1Component {
 })
 export class Provider3Component {
   log: string;
-  constructor(logger: Logger) {
+  constructor() {
+    const logger = inject(Logger);
     logger.log('Hello from logger provided with useClass:Logger');
     this.log = logger.logs[0];
   }
@@ -52,7 +52,6 @@ export class Provider3Component {
 export class BetterLogger extends Logger {}
 
 @Component({
-  standalone: true,
   selector: 'provider-4',
   template,
   providers:
@@ -62,7 +61,8 @@ export class BetterLogger extends Logger {}
 })
 export class Provider4Component {
   log: string;
-  constructor(logger: Logger) {
+  constructor() {
+    const logger = inject(Logger);
     logger.log('Hello from logger provided with useClass:BetterLogger');
     this.log = logger.logs[0];
   }
@@ -73,9 +73,7 @@ export class Provider4Component {
 // #docregion EvenBetterLogger
 @Injectable()
 export class EvenBetterLogger extends Logger {
-  constructor(private userService: UserService) {
-    super();
-  }
+  private userService = inject(UserService);
 
   override log(message: string) {
     const name = this.userService.user.name;
@@ -85,7 +83,6 @@ export class EvenBetterLogger extends Logger {
 // #enddocregion EvenBetterLogger
 
 @Component({
-  standalone: true,
   selector: 'provider-5',
   template,
   providers:
@@ -95,7 +92,8 @@ export class EvenBetterLogger extends Logger {
 })
 export class Provider5Component {
   log: string;
-  constructor(logger: Logger) {
+  constructor() {
+    const logger = inject(Logger);
     logger.log('Hello from EvenBetterlogger');
     this.log = logger.logs[0];
   }
@@ -113,7 +111,6 @@ export class OldLogger {
 }
 
 @Component({
-  standalone: true,
   selector: 'provider-6a',
   template,
   providers: [
@@ -124,7 +121,9 @@ export class OldLogger {
 })
 export class Provider6aComponent {
   log: string;
-  constructor(newLogger: NewLogger, oldLogger: OldLogger) {
+  constructor() {
+    const newLogger = inject(NewLogger);
+    const oldLogger = inject(OldLogger);
     if (newLogger === oldLogger) {
       throw new Error('expected the two loggers to be different instances');
     }
@@ -136,7 +135,6 @@ export class Provider6aComponent {
 }
 
 @Component({
-  standalone: true,
   selector: 'provider-6b',
   template,
   providers:
@@ -150,7 +148,9 @@ export class Provider6aComponent {
 })
 export class Provider6bComponent {
   log: string;
-  constructor(newLogger: NewLogger, oldLogger: OldLogger) {
+  constructor() {
+    const newLogger = inject(NewLogger);
+    const oldLogger = inject(OldLogger);
     if (newLogger !== oldLogger) {
       throw new Error('expected the two loggers to be the same instance');
     }
@@ -170,14 +170,14 @@ export const SilentLogger = {
 };
 
 @Component({
-  standalone: true,
   selector: 'provider-7',
   template,
   providers: [{provide: Logger, useValue: SilentLogger}],
 })
 export class Provider7Component {
   log: string;
-  constructor(logger: Logger) {
+  constructor() {
+    const logger = inject(Logger);
     logger.log('Hello from logger provided with useValue');
     this.log = logger.logs[0];
   }
@@ -186,7 +186,6 @@ export class Provider7Component {
 /////////////////
 
 @Component({
-  standalone: true,
   selector: 'provider-8',
   template,
   providers: [heroServiceProvider, Logger, UserService],
@@ -195,13 +194,12 @@ export class Provider8Component {
   // must be true else this component would have blown up at runtime
   log = 'Hero service injected successfully via heroServiceProvider';
 
-  constructor(heroService: HeroService) {}
+  heroService = inject(HeroService);
 }
 
 /////////////////
 
 @Component({
-  standalone: true,
   selector: 'provider-9',
   template,
   /*
@@ -214,7 +212,7 @@ export class Provider8Component {
   providers: [{provide: APP_CONFIG, useValue: HERO_DI_CONFIG}],
   // #enddocregion providers-9
 })
-export class Provider9Component implements OnInit {
+export class Provider9Component {
   log = '';
   /*
    // #docregion provider-9-ctor-interface
@@ -222,9 +220,9 @@ export class Provider9Component implements OnInit {
    constructor(private config: AppConfig){ }
    // #enddocregion provider-9-ctor-interface
    */
-  constructor(@Inject(APP_CONFIG) private config: AppConfig) {}
+  private config = inject(APP_CONFIG);
 
-  ngOnInit() {
+  constructor() {
     this.log = 'APP_CONFIG Application title is ' + this.config.title;
   }
 }
@@ -237,14 +235,15 @@ import {Optional} from '@angular/core';
 const someMessage = 'Hello from the injected logger';
 
 @Component({
-  standalone: true,
   selector: 'provider-10',
   template,
   providers: [{provide: Logger, useValue: null}],
 })
 export class Provider10Component implements OnInit {
   log = '';
-  constructor(@Optional() private logger?: Logger) {
+  private logger = inject(Logger, {optional: true});
+
+  constructor() {
     if (this.logger) {
       this.logger.log(someMessage);
     }
@@ -258,7 +257,6 @@ export class Provider10Component implements OnInit {
 /////////////////
 
 @Component({
-  standalone: true,
   selector: 'app-providers',
   template: `
   <h2>Provider variations</h2>

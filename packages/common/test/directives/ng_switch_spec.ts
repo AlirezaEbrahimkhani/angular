@@ -3,13 +3,13 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {CommonModule, NgSwitch, NgSwitchCase, NgSwitchDefault} from '@angular/common';
+import {CommonModule, NgSwitch, NgSwitchCase, NgSwitchDefault} from '../../index';
 import {Attribute, Component, Directive, TemplateRef, ViewChild} from '@angular/core';
 import {ComponentFixture, TestBed, waitForAsync} from '@angular/core/testing';
-import {expect} from '@angular/platform-browser/testing/src/matchers';
+import {expect} from '@angular/private/testing/matchers';
 
 describe('NgSwitch', () => {
   let fixture: ComponentFixture<any>;
@@ -19,6 +19,7 @@ describe('NgSwitch', () => {
   }
 
   function detectChangesAndExpectText(text: string): void {
+    fixture.changeDetectorRef.markForCheck();
     fixture.detectChanges();
     expect(fixture.nativeElement).toHaveText(text);
   }
@@ -150,7 +151,6 @@ describe('NgSwitch', () => {
         '<li *ngSwitchCase="\'a\'">when a</li>' +
         '<li *ngSwitchDefault>when default</li>' +
         '</ul>',
-      standalone: true,
     })
     class TestComponent {
       switchValue = 'a';
@@ -161,10 +161,12 @@ describe('NgSwitch', () => {
     expect(fixture.nativeElement).toHaveText('when a');
 
     fixture.componentInstance.switchValue = 'b';
+    fixture.changeDetectorRef.markForCheck();
     fixture.detectChanges();
     expect(fixture.nativeElement).toHaveText('when default');
 
     fixture.componentInstance.switchValue = 'c';
+    fixture.changeDetectorRef.markForCheck();
     fixture.detectChanges();
     expect(fixture.nativeElement).toHaveText('when default');
   });
@@ -173,7 +175,10 @@ describe('NgSwitch', () => {
     it('should not create the default case if another case matches', () => {
       const log: string[] = [];
 
-      @Directive({selector: '[test]'})
+      @Directive({
+        selector: '[test]',
+        standalone: false,
+      })
       class TestDirective {
         constructor(@Attribute('test') test: string) {
           log.push(test);
@@ -259,7 +264,11 @@ describe('NgSwitch', () => {
   });
 });
 
-@Component({selector: 'test-cmp', template: ''})
+@Component({
+  selector: 'test-cmp',
+  template: '',
+  standalone: false,
+})
 class TestComponent {
   switchValue: any = null;
   when1: any = null;
@@ -291,6 +300,7 @@ class TestComponent {
       <span>Bar</span>
     </ng-template>
   `,
+  standalone: false,
 })
 class ComplexComponent {
   @ViewChild('foo', {static: true}) foo!: TemplateRef<any>;

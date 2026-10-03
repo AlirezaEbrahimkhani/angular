@@ -3,30 +3,24 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 import {resolveForwardRef} from '../../di';
 import {RuntimeError, RuntimeErrorCode} from '../../errors';
-import {Type} from '../../interface/type';
 import {assertEqual} from '../../util/assert';
 import {EMPTY_OBJ} from '../../util/empty';
-import {getComponentDef, getDirectiveDef} from '../definition';
-import {
+import {getComponentDef, getDirectiveDef} from '../def_getters';
+import {isComponentDef} from '../interfaces/type_checks';
+import type {
   DirectiveDef,
   DirectiveDefFeature,
   HostDirectiveBindingMap,
+  HostDirectiveConfig,
   HostDirectiveDef,
   HostDirectiveDefs,
+  HostDirectiveRanges,
+  HostDirectiveResolution,
 } from '../interfaces/definition';
-
-/** Values that can be used to define a host directive through the `HostDirectivesFeature`. */
-type HostDirectiveConfig =
-  | Type<unknown>
-  | {
-      directive: Type<unknown>;
-      inputs?: string[];
-      outputs?: string[];
-    };
 
 /**
  * This feature adds the host directives behavior to a directive definition by patching a
@@ -52,26 +46,74 @@ export function ɵɵHostDirectivesFeature(
   rawHostDirectives: HostDirectiveConfig[] | (() => HostDirectiveConfig[]),
 ) {
   const feature: DirectiveDefFeature = (definition: DirectiveDef<unknown>) => {
-    const resolved = (
-      Array.isArray(rawHostDirectives) ? rawHostDirectives : rawHostDirectives()
-    ).map((dir) => {
-      return typeof dir === 'function'
-        ? {directive: resolveForwardRef(dir), inputs: EMPTY_OBJ, outputs: EMPTY_OBJ}
-        : {
-            directive: resolveForwardRef(dir.directive),
-            inputs: bindingArrayToMap(dir.inputs),
-            outputs: bindingArrayToMap(dir.outputs),
-          };
-    });
+    const isEager = Array.isArray(rawHostDirectives);
+
     if (definition.hostDirectives === null) {
-      definition.findHostDirectiveDefs = findHostDirectiveDefs;
-      definition.hostDirectives = resolved;
+      definition.resolveHostDirectives = resolveHostDirectives;
+      definition.hostDirectives = isEager
+        ? rawHostDirectives.map(createHostDirectiveDef)
+        : [rawHostDirectives];
+    } else if (isEager) {
+      definition.hostDirectives.unshift(...rawHostDirectives.map(createHostDirectiveDef));
     } else {
-      definition.hostDirectives.unshift(...resolved);
+      definition.hostDirectives.unshift(rawHostDirectives);
     }
   };
   feature.ngInherit = true;
   return feature;
+}
+
+/**
+ * Function that will be patched onto a definition to enable host directives. It is intended to
+ * be called once during directive matching and is the same for all definitions.
+ * @param matches Directives resolved through selector matching.
+ */
+function resolveHostDirectives(matches: DirectiveDef<unknown>[]): HostDirectiveResolution {
+  const allDirectiveDefs: DirectiveDef<unknown>[] = [];
+  let hasComponent = false;
+  let hostDirectiveDefs: HostDirectiveDefs | null = null;
+  let hostDirectiveRanges: HostDirectiveRanges | null = null;
+
+  // Components are inserted at the front of the matches array so that their lifecycle
+  // hooks run before any directive lifecycle hooks. This appears to be for ViewEngine
+  // compatibility. This logic doesn't make sense with host directives, because it
+  // would allow the host directives to undo any overrides the host may have made.
+  // To handle this case, the host directives of components are inserted at the beginning
+  // of the array, followed by the component. As such, the insertion order is as follows:
+  // 1. Host directives belonging to the selector-matched component.
+  // 2. Selector-matched component.
+  // 3. Host directives belonging to selector-matched directives.
+  // 4. Selector-matched dir
+  for (let i = 0; i < matches.length; i++) {
+    const def = matches[i];
+
+    if (def.hostDirectives !== null) {
+      const start = allDirectiveDefs.length;
+
+      hostDirectiveDefs ??= new Map();
+      hostDirectiveRanges ??= new Map();
+
+      // TODO(pk): probably could return matches instead of taking in an array to fill in?
+      findHostDirectiveDefs(def, allDirectiveDefs, hostDirectiveDefs);
+
+      // Note that these indexes are within the offset by `directiveStart`. We can't do the
+      // offsetting here, because `directiveStart` hasn't been initialized on the TNode yet.
+      hostDirectiveRanges.set(def, [start, allDirectiveDefs.length - 1]);
+    }
+
+    // Component definition is always first and needs to be
+    // pushed early to maintain the correct ordering.
+    if (i === 0 && isComponentDef(def)) {
+      hasComponent = true;
+      allDirectiveDefs.push(def);
+    }
+  }
+
+  for (let i = hasComponent ? 1 : 0; i < matches.length; i++) {
+    allDirectiveDefs.push(matches[i]);
+  }
+
+  return [allDirectiveDefs, hostDirectiveDefs, hostDirectiveRanges];
 }
 
 function findHostDirectiveDefs(
@@ -80,23 +122,50 @@ function findHostDirectiveDefs(
   hostDirectiveDefs: HostDirectiveDefs,
 ): void {
   if (currentDef.hostDirectives !== null) {
-    for (const hostDirectiveConfig of currentDef.hostDirectives) {
-      const hostDirectiveDef = getDirectiveDef(hostDirectiveConfig.directive)!;
-
-      if (typeof ngDevMode === 'undefined' || ngDevMode) {
-        validateHostDirective(hostDirectiveConfig, hostDirectiveDef);
+    for (const configOrFn of currentDef.hostDirectives) {
+      if (typeof configOrFn === 'function') {
+        const resolved = configOrFn();
+        for (const config of resolved) {
+          trackHostDirectiveDef(createHostDirectiveDef(config), matchedDefs, hostDirectiveDefs);
+        }
+      } else {
+        trackHostDirectiveDef(configOrFn, matchedDefs, hostDirectiveDefs);
       }
-
-      // We need to patch the `declaredInputs` so that
-      // `ngOnChanges` can map the properties correctly.
-      patchDeclaredInputs(hostDirectiveDef.declaredInputs, hostDirectiveConfig.inputs);
-
-      // Host directives execute before the host so that its host bindings can be overwritten.
-      findHostDirectiveDefs(hostDirectiveDef, matchedDefs, hostDirectiveDefs);
-      hostDirectiveDefs.set(hostDirectiveDef, hostDirectiveConfig);
-      matchedDefs.push(hostDirectiveDef);
     }
   }
+}
+
+/** Tracks a single host directive during directive matching. */
+function trackHostDirectiveDef(
+  def: HostDirectiveDef,
+  matchedDefs: DirectiveDef<unknown>[],
+  hostDirectiveDefs: HostDirectiveDefs,
+) {
+  const hostDirectiveDef = getDirectiveDef(def.directive)!;
+
+  if (typeof ngDevMode === 'undefined' || ngDevMode) {
+    validateHostDirective(def, hostDirectiveDef);
+  }
+
+  // We need to patch the `declaredInputs` so that
+  // `ngOnChanges` can map the properties correctly.
+  patchDeclaredInputs(hostDirectiveDef.declaredInputs, def.inputs);
+
+  // Host directives execute before the host so that its host bindings can be overwritten.
+  findHostDirectiveDefs(hostDirectiveDef, matchedDefs, hostDirectiveDefs);
+  hostDirectiveDefs.set(hostDirectiveDef, def);
+  matchedDefs.push(hostDirectiveDef);
+}
+
+/** Creates a `HostDirectiveDef` from a used-defined host directive configuration. */
+function createHostDirectiveDef(config: HostDirectiveConfig): HostDirectiveDef {
+  return typeof config === 'function'
+    ? {directive: resolveForwardRef(config), inputs: EMPTY_OBJ, outputs: EMPTY_OBJ}
+    : {
+        directive: resolveForwardRef(config.directive),
+        inputs: bindingArrayToMap(config.inputs),
+        outputs: bindingArrayToMap(config.outputs),
+      };
 }
 
 /**

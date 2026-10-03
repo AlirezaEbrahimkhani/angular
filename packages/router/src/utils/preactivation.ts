@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {Injector, ProviderToken, ɵisInjectable as isInjectable} from '@angular/core';
@@ -42,7 +42,7 @@ export function getAllRouteGuards(
   future: RouterStateSnapshot,
   curr: RouterStateSnapshot,
   parentContexts: ChildrenOutletContexts,
-) {
+): Checks {
   const futureRoot = future._root;
   const currRoot = curr ? curr._root : null;
 

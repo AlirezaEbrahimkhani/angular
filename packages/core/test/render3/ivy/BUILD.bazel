@@ -1,26 +1,20 @@
-load("//tools:defaults.bzl", "jasmine_node_test", "ts_library")
+load("//tools:defaults.bzl", "angular_jasmine_test", "ts_project")
 
 package(default_visibility = ["//visibility:public"])
 
-ts_library(
+ts_project(
     name = "ivy_lib",
     testonly = True,
     srcs = glob(["**/*.ts"]),
     deps = [
-        "//packages:types",
         "//packages/core",
         "//packages/core/src/di/interface",
     ],
 )
 
-jasmine_node_test(
+angular_jasmine_test(
     name = "ivy",
-    bootstrap = [
-        "//packages/core/test/render3:domino",
-        "//tools/testing:node",
-    ],
-    deps = [
+    data = [
         ":ivy_lib",
-        "//packages/zone.js/lib",
     ],
 )

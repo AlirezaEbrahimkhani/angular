@@ -3,11 +3,11 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 /**
- * Defines the CSS styles encapsulation policies for the {@link Component} decorator's
+ * Defines the CSS styles encapsulation policies for the {@link /api/core/Component Component} decorator's
  * `encapsulation` option.
  *
  * See {@link Component#encapsulation encapsulation}.
@@ -47,4 +47,10 @@ export enum ViewEncapsulation {
    * all the Component's styling.
    */
   ShadowDom = 3,
+  /**
+   * Similar to `ShadowDom`, but prevents any external styles from leaking into the
+   * component's ShadowRoot. This is useful when you want to ensure that the component's
+   * styles are completely isolated from the rest of the application, including global styles.
+   */
+  IsolatedShadowDom = 4,
 }

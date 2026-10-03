@@ -3,13 +3,13 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {runfiles} from '@bazel/runfiles';
+import {resolve, dirname} from 'path';
 import cldrjs, {type CldrStatic} from 'cldrjs';
 import fs from 'fs';
-import glob from 'fast-glob';
+import {globSync} from 'tinyglobby';
 
 /**
  * Globs that match CLDR JSON data files that should be fetched. We limit these intentionally
@@ -60,7 +60,9 @@ export type CldrLocaleAliasReason =
  */
 export class CldrData {
   /** Path to the CLDR JSON data Bazel repository. i.e. `@cldr_json_data//`. */
-  readonly cldrDataDir = runfiles.resolve('cldr_json_data');
+  readonly cldrDataDir = dirname(
+    resolve(process.env['RUNFILES']!, process.env['CLDR_JSON_DATA_RUNFILES_PATH']!),
+  );
 
   /** List of all available locales CLDR provides data for. */
   readonly availableLocales: readonly CldrLocaleData[];
@@ -134,9 +136,7 @@ export class CldrData {
    * @returns a list of read JSON objects representing the CLDR data.
    */
   private _readCldrDataFromRepository(): object[] {
-    const jsonFiles = CLDR_DATA_GLOBS.map((pattern) =>
-      glob.sync(pattern, {cwd: this.cldrDataDir, absolute: true}),
-    ).reduce((acc, dataFiles) => [...acc, ...dataFiles], []);
+    const jsonFiles = globSync(CLDR_DATA_GLOBS, {cwd: this.cldrDataDir, absolute: true});
 
     // Read the JSON for all determined CLDR json files.
     return jsonFiles.map((filePath) => {

@@ -3,14 +3,20 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {CollectionViewer, DataSource, SelectionChange} from '@angular/cdk/collections';
 import {FlatTreeControl} from '@angular/cdk/tree';
 import {DefaultIterableDiffer, TrackByFunction} from '@angular/core';
 import {MatTreeFlattener} from '@angular/material/tree';
-import {Descriptor, DirectivePosition, Events, MessageBus, Properties} from 'protocol';
+import {
+  Descriptor,
+  DirectivePosition,
+  Events,
+  MessageBus,
+  Properties,
+} from '../../../../../../protocol';
 import {BehaviorSubject, merge, Observable, Subscription} from 'rxjs';
 import {map} from 'rxjs/operators';
 

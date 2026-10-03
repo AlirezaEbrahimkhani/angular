@@ -1,5 +1,4 @@
-load("//devtools/tools:ng_module.bzl", "ng_module")
-load("@io_bazel_rules_sass//:defs.bzl", "sass_binary", "sass_library")
+load("//devtools/tools:defaults.bzl", "ng_project", "npm_sass_library", "sass_binary")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -21,11 +20,11 @@ _STYLE_LABELS = [
     for label, src in zip(_STYLE_LABELS, _STYLE_SRCS)
 ]
 
-sass_library(
+npm_sass_library(
     name = "todo_mvc",
-    srcs = [
-        "@npm//:node_modules/todomvc-app-css/index.css",
-        "@npm//:node_modules/todomvc-common/base.css",
+    deps = [
+        "//:node_modules/todomvc-app-css",
+        "//:node_modules/todomvc-common",
     ],
 )
 
@@ -37,11 +36,12 @@ sass_binary(
     ],
 )
 
-ng_module(
+ng_project(
     name = "demo-app",
     srcs = [
+        "cookies.component.ts",
         "demo-app.component.ts",
-        "demo-app.module.ts",
+        "demo-app.routes.ts",
         "heavy.component.ts",
         "sample.service.ts",
         "sample-properties.component.ts",
@@ -54,11 +54,11 @@ ng_module(
         ":demo_app_component_styles",
     ] + _STYLE_LABELS,
     deps = [
+        "//:node_modules/@angular/core",
+        "//:node_modules/@angular/elements",
+        "//:node_modules/@angular/router",
         "//devtools/projects/ng-devtools-backend",
         "//devtools/src:zone-unaware-iframe_message_bus",
         "//devtools/src/app/demo-app/todo",
-        "//packages/core",
-        "//packages/elements",
-        "//packages/router",
     ],
 )

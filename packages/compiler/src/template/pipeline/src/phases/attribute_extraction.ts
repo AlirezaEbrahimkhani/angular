@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {SecurityContext} from '../../../../core';
@@ -24,7 +24,10 @@ export function extractAttributes(job: CompilationJob): void {
           extractAttributeOp(unit, op, elements);
           break;
         case ir.OpKind.Property:
-          if (!op.isAnimationTrigger) {
+          if (
+            op.bindingKind !== ir.BindingKind.LegacyAnimation &&
+            op.bindingKind !== ir.BindingKind.Animation
+          ) {
             let bindingKind: ir.BindingKind;
             if (op.i18nMessage !== null && op.templateKind === null) {
               // If the binding has an i18n context, it is an i18n attribute, and should have that
@@ -94,7 +97,7 @@ export function extractAttributes(job: CompilationJob): void {
           }
           break;
         case ir.OpKind.Listener:
-          if (!op.isAnimationListener) {
+          if (!op.isLegacyAnimationListener) {
             const extractedAttributeOp = ir.createExtractedAttributeOp(
               op.target,
               ir.BindingKind.Property,

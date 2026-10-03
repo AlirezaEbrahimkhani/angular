@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {
@@ -16,8 +16,7 @@ import {
   Output,
   ViewEncapsulation,
 } from '@angular/core';
-import {BrowserModule} from '@angular/platform-browser';
-import {platformBrowserDynamic} from '@angular/platform-browser-dynamic';
+import {BrowserModule, platformBrowser} from '@angular/platform-browser';
 
 import {createCustomElement, NgElement} from '../src/create-custom-element';
 
@@ -28,7 +27,7 @@ describe('slots', () => {
     testContainer = document.createElement('div');
     document.body.appendChild(testContainer);
     destroyPlatform();
-    platformBrowserDynamic()
+    platformBrowser()
       .bootstrapModule(TestModule)
       .then((ref) => {
         const injector = ref.injector;
@@ -108,6 +107,7 @@ describe('slots', () => {
   selector: 'default-slot-el',
   template: '<div class="slotparent"><slot></slot></div>',
   encapsulation: ViewEncapsulation.ShadowDom,
+  standalone: false,
 })
 class DefaultSlotComponent {
   constructor() {}
@@ -117,6 +117,7 @@ class DefaultSlotComponent {
   selector: 'named-slot-el',
   template: '<div class="slotparent"><slot name="header"></slot></div>',
   encapsulation: ViewEncapsulation.ShadowDom,
+  standalone: false,
 })
 class NamedSlotComponent {
   constructor() {}
@@ -126,6 +127,7 @@ class NamedSlotComponent {
   selector: 'named-slots-el',
   template: '<div class="slotparent"><slot name="header"></slot><slot name="body"></slot></div>',
   encapsulation: ViewEncapsulation.ShadowDom,
+  standalone: false,
 })
 class NamedSlotsComponent {
   constructor() {}
@@ -135,6 +137,7 @@ class NamedSlotsComponent {
   selector: 'slot-events-el',
   template: '<slot (slotchange)="onSlotChange($event)"></slot>',
   encapsulation: ViewEncapsulation.ShadowDom,
+  standalone: false,
 })
 class SlotEventsComponent {
   @Input() slotEvents: Event[] = [];

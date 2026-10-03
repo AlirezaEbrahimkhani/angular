@@ -3,11 +3,17 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {computed, signal} from '@angular/core';
-import {ReactiveNode, setPostSignalSetFn, SIGNAL} from '@angular/core/primitives/signals';
+import {computed, signal} from '../../src/core';
+import {
+  ReactiveHookFn,
+  ReactiveNode,
+  setPostProducerCreatedFn,
+  setPostSignalSetFn,
+  SIGNAL,
+} from '../../primitives/signals';
 
 describe('signals', () => {
   it('should be a getter which reflects the set value', () => {
@@ -127,6 +133,11 @@ describe('signals', () => {
     expect(state + '').toBe('[Signal: false]');
   });
 
+  it('should set debugName when a debugName is provided', () => {
+    const node = signal(false, {debugName: 'falseSignal'})[SIGNAL] as ReactiveNode;
+    expect(node.debugName).toBe('falseSignal');
+  });
+
   describe('optimizations', () => {
     it('should not repeatedly poll status of a non-live node if no signals have changed', () => {
       const unrelated = signal(0);
@@ -161,7 +172,7 @@ describe('signals', () => {
   });
 
   describe('post-signal-set functions', () => {
-    let prevPostSignalSetFn: (() => void) | null = null;
+    let prevPostSignalSetFn: ReactiveHookFn | null = null;
     let log: number;
     beforeEach(() => {
       log = 0;
@@ -192,5 +203,25 @@ describe('signals', () => {
       counter.set(0);
       expect(log).toBe(0);
     });
+
+    it('should pass post-signal-set fn the node that was updated', () => {
+      const counter = signal(0, {debugName: 'test-signal'});
+      let node: ReactiveNode | null = null;
+      setPostSignalSetFn((n: ReactiveNode) => {
+        node = n;
+      });
+
+      counter.set(1);
+      expect(node!.debugName).toBe('test-signal');
+    });
+  });
+
+  it('should call the post-producer-created fn when signal is called', () => {
+    const producerKindsCreated: string[] = [];
+    const prev = setPostProducerCreatedFn((node) => producerKindsCreated.push(node.kind));
+    signal(0);
+
+    expect(producerKindsCreated).toEqual(['signal']);
+    setPostProducerCreatedFn(prev);
   });
 });

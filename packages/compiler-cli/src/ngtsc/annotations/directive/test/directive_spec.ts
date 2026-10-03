@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 import {
   CssSelector,
@@ -18,7 +18,13 @@ import ts from 'typescript';
 import {absoluteFrom} from '../../../file_system';
 import {runInEachFileSystem} from '../../../file_system/testing';
 import {ImportedSymbolsTracker, ReferenceEmitter} from '../../../imports';
-import {CompoundMetadataReader, DtsMetadataReader, LocalMetadataRegistry} from '../../../metadata';
+import {
+  CompoundMetadataReader,
+  DtsMetadataReader,
+  HostDirectivesResolver,
+  LocalMetadataRegistry,
+  ResourceRegistry,
+} from '../../../metadata';
 import {PartialEvaluator} from '../../../partial_evaluator';
 import {NOOP_PERF_RECORDER} from '../../../perf';
 import {
@@ -26,10 +32,18 @@ import {
   isNamedClassDeclaration,
   TypeScriptReflectionHost,
 } from '../../../reflection';
-import {LocalModuleScopeRegistry, MetadataDtsModuleScopeResolver} from '../../../scope';
+import {
+  LocalModuleScopeRegistry,
+  MetadataDtsModuleScopeResolver,
+  TypeCheckScopeRegistry,
+} from '../../../scope';
 import {getDeclaration, makeProgram} from '../../../testing';
 import {CompilationMode} from '../../../transform';
-import {InjectableClassRegistry, NoopReferencesRegistry} from '../../common';
+import {
+  InjectableClassRegistry,
+  JitDeclarationRegistry,
+  NoopReferencesRegistry,
+} from '../../common';
 import {DirectiveDecoratorHandler} from '../index';
 
 runInEachFileSystem(() => {
@@ -190,6 +204,15 @@ runInEachFileSystem(() => {
     );
     const injectableRegistry = new InjectableClassRegistry(reflectionHost, /* isCore */ false);
     const importTracker = new ImportedSymbolsTracker();
+    const jitDeclarationRegistry = new JitDeclarationRegistry();
+    const resourceRegistry = new ResourceRegistry();
+    const hostDirectivesResolver = new HostDirectivesResolver(metaReader);
+    const typeCheckScopeRegistry = new TypeCheckScopeRegistry(
+      scopeRegistry,
+      metaReader,
+      hostDirectivesResolver,
+    );
+
     const handler = new DirectiveDecoratorHandler(
       reflectionHost,
       evaluator,
@@ -206,8 +229,15 @@ runInEachFileSystem(() => {
       NOOP_PERF_RECORDER,
       importTracker,
       /*includeClassMetadata*/ true,
+      typeCheckScopeRegistry,
       /*compilationMode */ CompilationMode.FULL,
-      /*generateExtraImportsInLocalMode*/ false,
+      jitDeclarationRegistry,
+      resourceRegistry,
+      /* strictStandalone */ false,
+      /* implicitStandaloneValue */ true,
+      /* usePoisonedData */ false,
+      /* typeCheckHostBindings */ true,
+      /* emitDeclarationOnly */ false,
     );
 
     const DirNode = getDeclaration(program, _('/entry.ts'), dirName, isNamedClassDeclaration);

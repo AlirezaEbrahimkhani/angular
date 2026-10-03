@@ -65,7 +65,7 @@ export function loggingInterceptor(req: HttpRequest<unknown>, next: HttpHandlerF
 }
 </docs-code>
 
-Tip: Interceptors naturally associate responses with their outgoing requests, because they transform the response stream in a closure that captures the request object.
+TIP: Interceptors naturally associate responses with their outgoing requests, because they transform the response stream in a closure that captures the request object.
 
 ## Modifying requests
 
@@ -95,9 +95,9 @@ export function authInterceptor(req: HttpRequest<unknown>, next: HttpHandlerFn) 
   const authToken = inject(AuthService).getAuthToken();
 
   // Clone the request to add the authentication header.
-  const newReq = req.clone({headers: {
-    req.headers.append('X-Authentication-Token', authToken),
-  }});
+  const newReq = req.clone({
+    headers: req.headers.append('X-Authentication-Token', authToken),
+  });
   return next(newReq);
 }
 </docs-code>
@@ -162,6 +162,76 @@ Constructing a response is possible using the `HttpResponse` constructor:
 const resp = new HttpResponse({
   body: 'response body',
 });
+</docs-code>
+
+## Working with redirect information
+
+When using `HttpClient` with the `withFetch` provider, responses include a `redirected` property that indicates whether the response was the result of a redirect. This property aligns with the native Fetch API specification and can be useful in interceptors for handling redirect scenarios.
+
+An interceptor can access and act upon the redirect information:
+
+<docs-code language="ts">
+export function redirectTrackingInterceptor(req: HttpRequest<unknown>, next: HttpHandlerFn): Observable<HttpEvent<unknown>> {
+  return next(req).pipe(tap(event => {
+    if (event.type === HttpEventType.Response && event.redirected) {
+      console.log('Request to', req.url, 'was redirected to', event.url);
+      // Handle redirect logic - maybe update analytics, security checks, etc.
+    }
+  }));
+}
+</docs-code>
+
+You can also use the redirect information to implement conditional logic in your interceptors:
+
+<docs-code language="ts">
+export function authRedirectInterceptor(req: HttpRequest<unknown>, next: HttpHandlerFn): Observable<HttpEvent<unknown>> {
+  return next(req).pipe(tap(event => {
+    if (event.type === HttpEventType.Response && event.redirected) {
+      // Check if we were redirected to a login page
+      if (event.url?.includes('/login')) {
+        // Handle authentication redirect
+        handleAuthRedirect();
+      }
+    }
+  }));
+}
+</docs-code>
+
+## Working with response types
+
+When using `HttpClient` with the `withFetch` provider, responses include a `type` property that indicates how the browser handled the response based on CORS policies and request mode. This property aligns with the native Fetch API specification and provides valuable insights for debugging CORS issues and understanding response accessibility.
+
+The response `type` property can have the following values:
+- `'basic'` - Same-origin response with all headers accessible
+- `'cors'` - Cross-origin response with CORS headers properly configured  
+- `'opaque'` - Cross-origin response without CORS, headers and body may be limited
+- `'opaqueredirect'` - Response from a redirected request in no-cors mode
+- `'error'` - Network error occurred
+
+An interceptor can use response type information for CORS debugging and error handling:
+
+<docs-code language="ts">
+export function responseTypeInterceptor(req: HttpRequest<unknown>, next: HttpHandlerFn): Observable<HttpEvent<unknown>> {
+  return next(req).pipe(map(event => {
+    if (event.type === HttpEventType.Response) {
+      // Handle different response types appropriately
+      switch (event.responseType) {
+        case 'opaque':
+          // Limited access to response data
+          console.warn('Limited response data due to CORS policy');
+          break;
+        case 'cors':
+        case 'basic':
+          // Full access to response data
+          break;
+        case 'error':
+          // Handle network errors
+          console.error('Network error in response');
+          break;
+      }
+    }
+  }));
+}
 </docs-code>
 
 ## DI-based interceptors

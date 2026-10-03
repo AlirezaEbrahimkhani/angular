@@ -3,11 +3,11 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {ParseLocation, ParseSourceFile, ParseSourceSpan} from '@angular/compiler';
-import {EmitterVisitorContext} from '@angular/compiler/src/output/abstract_emitter';
+import {ParseLocation, ParseSourceFile, ParseSourceSpan} from '../..';
+import {EmitterVisitorContext} from '../../src/output/abstract_emitter';
 
 import {originalPositionFor} from './source_map_util';
 

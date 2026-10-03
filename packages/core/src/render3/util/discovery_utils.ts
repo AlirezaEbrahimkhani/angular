@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {ChangeDetectionStrategy} from '../../change_detection/constants';
@@ -17,11 +17,12 @@ import {
   getLContext,
   readPatchedLView,
 } from '../context_discovery';
-import {getComponentDef, getDirectiveDef} from '../definition';
+import {getComponentDef, getDirectiveDef} from '../def_getters';
 import {NodeInjector} from '../di';
 import {DirectiveDef} from '../interfaces/definition';
 import {TElementNode, TNode, TNodeProviderIndexes} from '../interfaces/node';
-import {CLEANUP, CONTEXT, FLAGS, LView, LViewFlags, TVIEW, TViewType} from '../interfaces/view';
+import {isRootView} from '../interfaces/type_checks';
+import {CLEANUP, CONTEXT, LView, TVIEW, TViewType} from '../interfaces/view';
 
 import {getRootContext} from './view_traversal_utils';
 import {getLViewParent, unwrapRNode} from './view_utils';
@@ -51,7 +52,6 @@ import {getLViewParent, unwrapRNode} from './view_utils';
  *    is no component associated with it.
  *
  * @publicApi
- * @globalApi ng
  */
 export function getComponent<T>(element: Element): T | null {
   ngDevMode && assertDomElement(element);
@@ -79,7 +79,6 @@ export function getComponent<T>(element: Element): T | null {
  *    inside any component.
  *
  * @publicApi
- * @globalApi ng
  */
 export function getContext<T extends {}>(element: Element): T | null {
   assertDomElement(element);
@@ -101,7 +100,6 @@ export function getContext<T extends {}>(element: Element): T | null {
  *    part of a component view.
  *
  * @publicApi
- * @globalApi ng
  */
 export function getOwningComponent<T>(elementOrDir: Element | {}): T | null {
   const context = getLContext(elementOrDir)!;
@@ -112,7 +110,7 @@ export function getOwningComponent<T>(elementOrDir: Element | {}): T | null {
   while (lView[TVIEW].type === TViewType.Embedded && (parent = getLViewParent(lView)!)) {
     lView = parent;
   }
-  return lView[FLAGS] & LViewFlags.IsRoot ? null : (lView[CONTEXT] as unknown as T);
+  return isRootView(lView) ? null : (lView[CONTEXT] as unknown as T);
 }
 
 /**
@@ -124,7 +122,6 @@ export function getOwningComponent<T>(elementOrDir: Element | {}): T | null {
  * @returns Root components associated with the target object.
  *
  * @publicApi
- * @globalApi ng
  */
 export function getRootComponents(elementOrDir: Element | {}): {}[] {
   const lView = readPatchedLView<{}>(elementOrDir);
@@ -139,7 +136,6 @@ export function getRootComponents(elementOrDir: Element | {}): {}[] {
  * @returns Injector associated with the element, component or directive instance.
  *
  * @publicApi
- * @globalApi ng
  */
 export function getInjector(elementOrDir: Element | {}): Injector {
   const context = getLContext(elementOrDir)!;
@@ -201,7 +197,6 @@ export function getInjectionTokens(element: Element): any[] {
  * @returns Array of directives associated with the node.
  *
  * @publicApi
- * @globalApi ng
  */
 export function getDirectives(node: Node): {}[] {
   // Skip text nodes because we can't have directives associated with them.
@@ -229,33 +224,78 @@ export function getDirectives(node: Node): {}[] {
   return context.directives === null ? [] : [...context.directives];
 }
 
+/** The framework used to author a particular application or component. */
+export enum Framework {
+  Angular = 'angular',
+  ACX = 'acx',
+  Wiz = 'wiz',
+}
+
+/** Metadata common to directives from all frameworks.  */
+export interface BaseDirectiveDebugMetadata {
+  name?: string;
+  framework?: Framework;
+}
+
 /**
- * Partial metadata for a given directive instance.
- * This information might be useful for debugging purposes or tooling.
- * Currently only `inputs` and `outputs` metadata is available.
+ * Partial metadata for a given Angular directive instance.
  *
  * @publicApi
  */
-export interface DirectiveDebugMetadata {
+export interface AngularDirectiveDebugMetadata extends BaseDirectiveDebugMetadata {
+  framework?: Framework.Angular; // Optional for backwards compatibility.
   inputs: Record<string, string>;
   outputs: Record<string, string>;
 }
 
 /**
- * Partial metadata for a given component instance.
- * This information might be useful for debugging purposes or tooling.
- * Currently the following fields are available:
- *  - inputs
- *  - outputs
- *  - encapsulation
- *  - changeDetection
+ * Partial metadata for a given Angular component instance.
  *
  * @publicApi
  */
-export interface ComponentDebugMetadata extends DirectiveDebugMetadata {
+export interface AngularComponentDebugMetadata extends AngularDirectiveDebugMetadata {
   encapsulation: ViewEncapsulation;
   changeDetection: ChangeDetectionStrategy;
 }
+
+/** ACX change detection strategies. */
+export enum AcxChangeDetectionStrategy {
+  Default = 0,
+  OnPush = 1,
+}
+
+/** ACX view encapsulation modes. */
+export enum AcxViewEncapsulation {
+  Emulated = 0,
+  None = 1,
+}
+
+/** Partial metadata for a given ACX directive instance. */
+export interface AcxDirectiveDebugMetadata extends BaseDirectiveDebugMetadata {
+  framework: Framework.ACX;
+  inputs: Record<string, string>;
+  outputs: Record<string, string>;
+}
+
+/** Partial metadata for a given ACX component instance. */
+export interface AcxComponentDebugMetadata extends AcxDirectiveDebugMetadata {
+  changeDetection: AcxChangeDetectionStrategy;
+  encapsulation: AcxViewEncapsulation;
+}
+
+/** Partial metadata for a given Wiz component instance. */
+export interface WizComponentDebugMetadata extends BaseDirectiveDebugMetadata {
+  framework: Framework.Wiz;
+  props: Record<string, string>;
+}
+
+/** All potential debug metadata types across all frameworks. */
+export type DirectiveDebugMetadata =
+  | AngularDirectiveDebugMetadata
+  | AcxDirectiveDebugMetadata
+  | AngularComponentDebugMetadata
+  | AcxComponentDebugMetadata
+  | WizComponentDebugMetadata;
 
 /**
  * Returns the debug (partial) metadata for a particular directive or component instance.
@@ -266,11 +306,10 @@ export interface ComponentDebugMetadata extends DirectiveDebugMetadata {
  * @returns metadata of the passed directive or component
  *
  * @publicApi
- * @globalApi ng
  */
 export function getDirectiveMetadata(
   directiveOrComponentInstance: any,
-): ComponentDebugMetadata | DirectiveDebugMetadata | null {
+): AngularComponentDebugMetadata | AngularDirectiveDebugMetadata | null {
   const {constructor} = directiveOrComponentInstance;
   if (!constructor) {
     throw new Error('Unable to find the instance constructor');
@@ -329,7 +368,6 @@ export function getLocalRefs(target: {}): {[key: string]: any} {
  * @returns Host element of the target.
  *
  * @publicApi
- * @globalApi ng
  */
 export function getHostElement(componentOrDirective: {}): Element {
   return getLContext(componentOrDirective)!.native as unknown as Element;
@@ -398,7 +436,6 @@ export interface Listener {
  * @returns Array of event listeners on the DOM element.
  *
  * @publicApi
- * @globalApi ng
  */
 export function getListeners(element: Element): Listener[] {
   ngDevMode && assertDomElement(element);
@@ -449,7 +486,7 @@ function isDirectiveDefHack(obj: any): obj is DirectiveDef<any> {
   return (
     obj.type !== undefined &&
     obj.declaredInputs !== undefined &&
-    obj.findHostDirectiveDefs !== undefined
+    obj.resolveHostDirectives !== undefined
   );
 }
 
@@ -486,29 +523,16 @@ function assertDomElement(value: any) {
  * mappings for backwards compatibility.
  */
 function extractInputDebugMetadata<T>(inputs: DirectiveDef<T>['inputs']) {
-  const res: DirectiveDebugMetadata['inputs'] = {};
+  const res: AngularDirectiveDebugMetadata['inputs'] = {};
 
   for (const key in inputs) {
-    if (!inputs.hasOwnProperty(key)) {
-      continue;
+    if (inputs.hasOwnProperty(key)) {
+      const value = inputs[key];
+
+      if (value !== undefined) {
+        res[key] = value[0];
+      }
     }
-
-    const value = inputs[key];
-    if (value === undefined) {
-      continue;
-    }
-
-    let minifiedName: string;
-
-    if (Array.isArray(value)) {
-      minifiedName = value[0];
-      // flags are not used for now.
-      // TODO: Consider exposing flag information in discovery.
-    } else {
-      minifiedName = value;
-    }
-
-    res[key] = minifiedName;
   }
 
   return res;

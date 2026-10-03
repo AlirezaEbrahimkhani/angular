@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import ts from 'typescript';
@@ -49,7 +49,7 @@ export function getImportOfIdentifier(
  * Gets a top-level import specifier with a specific name that is imported from a particular module.
  * E.g. given a file that looks like:
  *
- * ```
+ * ```ts
  * import { Component, Directive } from '@angular/core';
  * import { Foo } from './foo';
  * ```
@@ -67,28 +67,44 @@ export function getImportSpecifier(
   moduleName: string | RegExp,
   specifierName: string,
 ): ts.ImportSpecifier | null {
-  return getImportSpecifiers(sourceFile, moduleName, [specifierName])[0] ?? null;
+  return getImportSpecifiers(sourceFile, moduleName, specifierName)[0] ?? null;
 }
 
+/**
+ * Note: returns only matching imports specifiers,
+ * Unmatched imports will be ignored (you won't get undefined), but a shorter array.
+ */
 export function getImportSpecifiers(
   sourceFile: ts.SourceFile,
   moduleName: string | RegExp,
-  specifierNames: string[],
+  specifierOrSpecifiers: string | string[],
 ): ts.ImportSpecifier[] {
   const matches: ts.ImportSpecifier[] = [];
   for (const node of sourceFile.statements) {
-    if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier)) {
-      const isMatch =
-        typeof moduleName === 'string'
-          ? node.moduleSpecifier.text === moduleName
-          : moduleName.test(node.moduleSpecifier.text);
-      const namedBindings = node.importClause?.namedBindings;
-      if (isMatch && namedBindings && ts.isNamedImports(namedBindings)) {
-        for (const specifierName of specifierNames) {
-          const match = findImportSpecifier(namedBindings.elements, specifierName);
-          if (match) {
-            matches.push(match);
-          }
+    if (!ts.isImportDeclaration(node) || !ts.isStringLiteral(node.moduleSpecifier)) {
+      continue;
+    }
+
+    const namedBindings = node.importClause?.namedBindings;
+    const isMatch =
+      typeof moduleName === 'string'
+        ? node.moduleSpecifier.text === moduleName
+        : moduleName.test(node.moduleSpecifier.text);
+
+    if (!isMatch || !namedBindings || !ts.isNamedImports(namedBindings)) {
+      continue;
+    }
+
+    if (typeof specifierOrSpecifiers === 'string') {
+      const match = findImportSpecifier(namedBindings.elements, specifierOrSpecifiers);
+      if (match) {
+        matches.push(match);
+      }
+    } else {
+      for (const specifierName of specifierOrSpecifiers) {
+        const match = findImportSpecifier(namedBindings.elements, specifierName);
+        if (match) {
+          matches.push(match);
         }
       }
     }
@@ -174,4 +190,27 @@ export function findImportSpecifier(
     const {name, propertyName} = element;
     return propertyName ? propertyName.text === specifierName : name.text === specifierName;
   });
+}
+
+/**
+ * Gets the relative path between two files.
+ * @param from Path of the file that is importing from another file.
+ * @param to Path of the file that is being imported.
+ */
+export function getRelativePath(from: string, to: string): string {
+  const fromParts = from.split('/').slice(0, -1);
+  const toParts = to.split('/');
+  while (fromParts.length > 0 && toParts.length > 0 && fromParts[0] === toParts[0]) {
+    fromParts.shift();
+    toParts.shift();
+  }
+  let relativePath =
+    fromParts.map(() => '..').join('/') + (fromParts.length > 0 ? '/' : '') + toParts.join('/');
+  if (relativePath.endsWith('.ts')) {
+    relativePath = relativePath.slice(0, -3);
+  }
+  if (!relativePath.startsWith('.')) {
+    relativePath = './' + relativePath;
+  }
+  return relativePath;
 }

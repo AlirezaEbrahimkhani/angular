@@ -3,14 +3,14 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {Location} from '@angular/common';
 import {$locationShim, UrlCodec} from '@angular/common/upgrade';
 import {fakeAsync, flush, TestBed} from '@angular/core/testing';
-import {Router, RouterModule} from '@angular/router';
-import {setUpLocationSync} from '@angular/router/upgrade';
+import {Router, RouterModule} from '../../index';
+import {setUpLocationSync} from '../../upgrade';
 import {UpgradeModule} from '@angular/upgrade/static';
 
 import {LocationUpgradeTestModule} from './upgrade_location_test_module';

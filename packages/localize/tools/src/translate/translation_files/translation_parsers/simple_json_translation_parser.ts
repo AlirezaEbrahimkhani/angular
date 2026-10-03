@@ -3,9 +3,9 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
-import {MessageId, ɵParsedTranslation, ɵparseTranslation} from '@angular/localize';
+import {MessageId, ɵParsedTranslation, ɵparseTranslation} from '../../../../../index';
 import {extname} from 'path';
 
 import {Diagnostics} from '../../../diagnostics';
@@ -20,7 +20,7 @@ interface SimpleJsonFile {
 /**
  * A translation parser that can parse JSON that has the form:
  *
- * ```
+ * ```json
  * {
  *   "locale": "...",
  *   "translations": {

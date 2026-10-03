@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 import {
   ModuleWithProviders,
@@ -11,13 +11,15 @@ import {
   Provider,
   ɵperformanceMarkFeature as performanceMarkFeature,
 } from '@angular/core';
-import {BrowserModule} from '@angular/platform-browser';
+import {BrowserModule} from '../../index';
 
 import {BROWSER_ANIMATIONS_PROVIDERS, BROWSER_NOOP_ANIMATIONS_PROVIDERS} from './providers';
 
 /**
  * Object used to configure the behavior of {@link BrowserAnimationsModule}
  * @publicApi
+ *
+ * @deprecated 20.2 Use `animate.enter` or `animate.leave` instead. Intent to remove in v23
  */
 export interface BrowserAnimationsModuleConfig {
   /**
@@ -31,6 +33,8 @@ export interface BrowserAnimationsModuleConfig {
  * Exports `BrowserModule` with additional dependency-injection providers
  * for use with animations. See [Animations](guide/animations).
  * @publicApi
+ *
+ * @deprecated 20.2 Use `animate.enter` or `animate.leave` instead. Intent to remove in v23
  */
 @NgModule({
   exports: [BrowserModule],
@@ -46,7 +50,7 @@ export class BrowserAnimationsModule {
    * @usageNotes
    * When registering the `BrowserAnimationsModule`, you can use the `withConfig`
    * function as follows:
-   * ```
+   * ```ts
    * @NgModule({
    *   imports: [BrowserAnimationsModule.withConfig(config)]
    * })
@@ -77,7 +81,7 @@ export class BrowserAnimationsModule {
  * is no need to import the `BrowserAnimationsModule` NgModule at all, just add
  * providers returned by this function to the `providers` list as show below.
  *
- * ```typescript
+ * ```ts
  * bootstrapApplication(RootComponent, {
  *   providers: [
  *     provideAnimations()
@@ -86,6 +90,9 @@ export class BrowserAnimationsModule {
  * ```
  *
  * @publicApi
+ *
+ * @deprecated 20.2 Use `animate.enter` or `animate.leave` instead. Intent to remove in v23
+ *
  */
 export function provideAnimations(): Provider[] {
   performanceMarkFeature('NgEagerAnimations');
@@ -97,6 +104,8 @@ export function provideAnimations(): Provider[] {
 /**
  * A null player that must be imported to allow disabling of animations.
  * @publicApi
+ *
+ * @deprecated 20.2 Use `animate.enter` or `animate.leave` instead. Intent to remove in v23
  */
 @NgModule({
   exports: [BrowserModule],
@@ -115,7 +124,7 @@ export class NoopAnimationsModule {}
  * the `bootstrapApplication` function, but you need to disable animations
  * (for example, when running tests).
  *
- * ```typescript
+ * ```ts
  * bootstrapApplication(RootComponent, {
  *   providers: [
  *     provideNoopAnimations()
@@ -124,6 +133,8 @@ export class NoopAnimationsModule {}
  * ```
  *
  * @publicApi
+ *
+ * @deprecated 20.2 Use `animate.enter` or `animate.leave` instead. Intent to remove in v23
  */
 export function provideNoopAnimations(): Provider[] {
   // Return a copy to prevent changes to the original array in case any in-place

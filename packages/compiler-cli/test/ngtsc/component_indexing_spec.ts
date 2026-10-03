@@ -3,21 +3,17 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
-import {
-  AbsoluteFsPath,
-  getFileSystem,
-  PathManipulation,
-} from '@angular/compiler-cli/src/ngtsc/file_system';
-import {runInEachFileSystem} from '@angular/compiler-cli/src/ngtsc/file_system/testing';
+import {AbsoluteFsPath, getFileSystem, PathManipulation} from '../../src/ngtsc/file_system';
+import {runInEachFileSystem} from '../../src/ngtsc/file_system/testing';
 import {
   AbsoluteSourceSpan,
   IdentifierKind,
   IndexedComponent,
   TopLevelIdentifier,
-} from '@angular/compiler-cli/src/ngtsc/indexer';
-import {ParseSourceFile} from '@angular/compiler/src/compiler';
+} from '../../src/ngtsc/indexer';
+import {ParseSourceFile} from '@angular/compiler';
 
 import {NgtscTestEnvironment} from './env';
 
@@ -172,6 +168,7 @@ runInEachFileSystem(() => {
         @Component({
           selector: 'test-cmp',
           templateUrl: './test.html',
+          standalone: false,
         })
         export class TestCmp {}
       `,
@@ -185,6 +182,7 @@ runInEachFileSystem(() => {
 
         @Component({
           templateUrl: './test_import.html',
+          standalone: false,
         })
         export class TestImportCmp {}
 

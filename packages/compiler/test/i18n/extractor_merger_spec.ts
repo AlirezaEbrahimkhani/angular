@@ -3,10 +3,10 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {DEFAULT_INTERPOLATION_CONFIG, HtmlParser} from '@angular/compiler';
+import {HtmlParser} from '../../index';
 import {MissingTranslationStrategy} from '@angular/core';
 
 import {digest, serializeNodes as serializeI18nNodes} from '../../src/i18n/digest';
@@ -98,6 +98,10 @@ describe('Extractor', () => {
 
     it('should not create a message for empty elements', () => {
       expect(extract('<div i18n="m|d"></div>')).toEqual([]);
+    });
+
+    it('should not create a message for placeholder-only elements', () => {
+      expect(extract('<div i18n="m|d">{{ foo }}</div>')).toEqual([]);
     });
 
     it('should ignore implicit elements in translatable elements', () => {
@@ -406,6 +410,10 @@ describe('Extractor', () => {
     it('should not create a message for empty attributes', () => {
       expect(extract('<div i18n-title="m|d" title></div>')).toEqual([]);
     });
+
+    it('should not create a message for placeholder-only attributes', () => {
+      expect(extract('<div i18n-title="m|d" title="{{ foo }}"></div>')).toEqual([]);
+    });
   });
 
   describe('implicit elements', () => {
@@ -522,9 +530,9 @@ describe('Merger', () => {
       const htmlNodes: html.Node[] = parseHtml(HTML);
       const messages: i18n.Message[] = extractMessages(
         htmlNodes,
-        DEFAULT_INTERPOLATION_CONFIG,
         [],
         {},
+        /* preserveSignificantWhitespace */ true,
       ).messages;
 
       expect(messages.length).toEqual(1);
@@ -532,13 +540,7 @@ describe('Merger', () => {
       i18nMsgMap[digest(messages[0])] = [];
       const translations = new TranslationBundle(i18nMsgMap, null, digest);
 
-      const output = mergeTranslations(
-        htmlNodes,
-        translations,
-        DEFAULT_INTERPOLATION_CONFIG,
-        [],
-        {},
-      );
+      const output = mergeTranslations(htmlNodes, translations, [], {});
       expect(output.errors).toEqual([]);
 
       expect(serializeHtmlNodes(output.rootNodes).join('')).toEqual(`<div></div>`);
@@ -598,9 +600,9 @@ describe('Merger', () => {
       const htmlNodes: html.Node[] = parseHtml(HTML);
       const messages: i18n.Message[] = extractMessages(
         htmlNodes,
-        DEFAULT_INTERPOLATION_CONFIG,
         [],
         {},
+        /* preserveSignificantWhitespace */ true,
       ).messages;
 
       expect(messages.length).toEqual(1);
@@ -608,13 +610,7 @@ describe('Merger', () => {
       i18nMsgMap[digest(messages[0])] = [];
       const translations = new TranslationBundle(i18nMsgMap, null, digest);
 
-      const output = mergeTranslations(
-        htmlNodes,
-        translations,
-        DEFAULT_INTERPOLATION_CONFIG,
-        [],
-        {},
-      );
+      const output = mergeTranslations(htmlNodes, translations, [], {});
       expect(output.errors).toEqual([]);
 
       expect(serializeHtmlNodes(output.rootNodes).join('')).toEqual(
@@ -665,9 +661,9 @@ function fakeTranslate(
   const htmlNodes: html.Node[] = parseHtml(content);
   const messages: i18n.Message[] = extractMessages(
     htmlNodes,
-    DEFAULT_INTERPOLATION_CONFIG,
     implicitTags,
     implicitAttrs,
+    /* preserveSignificantWhitespace */ true,
   ).messages;
 
   const i18nMsgMap: {[id: string]: i18n.Node[]} = {};
@@ -679,13 +675,7 @@ function fakeTranslate(
   });
 
   const translationBundle = new TranslationBundle(i18nMsgMap, null, digest);
-  const output = mergeTranslations(
-    htmlNodes,
-    translationBundle,
-    DEFAULT_INTERPOLATION_CONFIG,
-    implicitTags,
-    implicitAttrs,
-  );
+  const output = mergeTranslations(htmlNodes, translationBundle, implicitTags, implicitAttrs);
   expect(output.errors).toEqual([]);
 
   return serializeHtmlNodes(output.rootNodes).join('');
@@ -705,13 +695,7 @@ function fakeNoTranslate(
     MissingTranslationStrategy.Ignore,
     console,
   );
-  const output = mergeTranslations(
-    htmlNodes,
-    translationBundle,
-    DEFAULT_INTERPOLATION_CONFIG,
-    implicitTags,
-    implicitAttrs,
-  );
+  const output = mergeTranslations(htmlNodes, translationBundle, implicitTags, implicitAttrs);
   expect(output.errors).toEqual([]);
 
   return serializeHtmlNodes(output.rootNodes).join('');
@@ -724,9 +708,9 @@ function extract(
 ): [string[], string, string, string][] {
   const result = extractMessages(
     parseHtml(html),
-    DEFAULT_INTERPOLATION_CONFIG,
     implicitTags,
     implicitAttrs,
+    /* preserveSignificantWhitespace */ true,
   );
 
   if (result.errors.length > 0) {
@@ -748,9 +732,9 @@ function extractErrors(
 ): any[] {
   const errors = extractMessages(
     parseHtml(html),
-    DEFAULT_INTERPOLATION_CONFIG,
     implicitTags,
     implicitAttrs,
+    /* preserveSignificantWhitespace */ true,
   ).errors;
 
   return errors.map((e): [string, string] => [e.msg, e.span.toString()]);

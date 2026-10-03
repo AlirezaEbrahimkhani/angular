@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {MessageBus} from './message-bus';
@@ -53,12 +53,14 @@ export class PriorityAwareMessageBus extends MessageBus<Events> {
 
   constructor(
     private _bus: MessageBus<Events>,
-    private _setTimeout: typeof setTimeout = setTimeout,
+    // Binding is necessary to ensure that `setTimeout` is called in the global context.
+    // an doesn't throw "Illegal invocation" error.
+    private _setTimeout: typeof setTimeout = setTimeout.bind(globalThis),
   ) {
     super();
   }
 
-  override on<E extends Topic>(topic: E, cb: Events[E]): void {
+  override on<E extends Topic>(topic: E, cb: Events[E]): () => void {
     return this._bus.on(topic, (...args: any) => {
       (cb as any)(...args);
       this._afterMessage(topic);
@@ -83,7 +85,6 @@ export class PriorityAwareMessageBus extends MessageBus<Events> {
     if (blockedBy) {
       // The source code here is safe.
       // TypeScript type inference ignores the null check here.
-      // tslint:disable-next-line: no-non-null-assertion
       for (const blocker of blockedBy!) {
         if (this._inProgress[blocker]) {
           return false;

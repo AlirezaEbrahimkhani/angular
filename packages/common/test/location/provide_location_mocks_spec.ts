@@ -3,11 +3,11 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {Location, LocationStrategy} from '@angular/common';
-import {MockLocationStrategy, provideLocationMocks, SpyLocation} from '@angular/common/testing';
+import {Location, LocationStrategy} from '../../index';
+import {MockLocationStrategy, provideLocationMocks, SpyLocation} from '../../testing';
 import {TestBed} from '@angular/core/testing';
 
 describe('provideLocationMocks() function', () => {

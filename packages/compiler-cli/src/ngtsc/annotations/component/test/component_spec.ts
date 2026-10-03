@@ -3,10 +3,10 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {ConstantPool} from '@angular/compiler';
+import {ConstantPool, ViewEncapsulation} from '@angular/compiler';
 import ts from 'typescript';
 
 import {CycleAnalyzer, CycleHandlingStrategy, ImportGraph} from '../../../cycles';
@@ -39,6 +39,7 @@ import {getDeclaration, makeProgram} from '../../../testing';
 import {CompilationMode} from '../../../transform';
 import {
   InjectableClassRegistry,
+  JitDeclarationRegistry,
   NoopReferencesRegistry,
   ResourceLoader,
   ResourceLoaderContext,
@@ -66,11 +67,17 @@ function setup(
   program: ts.Program,
   options: ts.CompilerOptions,
   host: ts.CompilerHost,
-  opts: {compilationMode: CompilationMode; usePoisonedData?: boolean} = {
-    compilationMode: CompilationMode.FULL,
-  },
+  opts: {
+    compilationMode?: CompilationMode;
+    usePoisonedData?: boolean;
+    externalRuntimeStyles?: boolean;
+  } = {},
 ) {
-  const {compilationMode, usePoisonedData} = opts;
+  const {
+    compilationMode = CompilationMode.FULL,
+    usePoisonedData,
+    externalRuntimeStyles = false,
+  } = opts;
   const checker = program.getTypeChecker();
   const reflectionHost = new TypeScriptReflectionHost(checker);
   const evaluator = new PartialEvaluator(reflectionHost, checker, /* dependencyTracker */ null);
@@ -105,6 +112,7 @@ function setup(
   );
   const resourceLoader = new StubResourceLoader();
   const importTracker = new ImportedSymbolsTracker();
+  const jitDeclarationRegistry = new JitDeclarationRegistry();
 
   const handler = new ComponentDecoratorHandler(
     reflectionHost,
@@ -112,7 +120,9 @@ function setup(
     metaRegistry,
     metaReader,
     scopeRegistry,
-    dtsResolver,
+    {
+      getCanonicalFileName: (fileName) => fileName,
+    },
     scopeRegistry,
     typeCheckScopeRegistry,
     resourceRegistry,
@@ -143,7 +153,16 @@ function setup(
     /* forbidOrphanRenderering */ false,
     /* enableBlockSyntax */ true,
     /* enableLetSyntax */ true,
+    externalRuntimeStyles,
     /* localCompilationExtraImportsTracker */ null,
+    jitDeclarationRegistry,
+    /* i18nPreserveSignificantWhitespace */ true,
+    /* strictStandalone */ false,
+    /* enableHmr */ false,
+    /* implicitStandaloneValue */ true,
+    /* typeCheckHostBindings */ true,
+    /* enableSelectorless */ false,
+    /* emitDeclarationOnly */ false,
   );
   return {reflectionHost, handler, resourceLoader, metaRegistry};
 }
@@ -214,8 +233,8 @@ runInEachFileSystem(() => {
         return fail('Failed to recognize @Component');
       }
       const {analysis} = handler.analyze(TestCmp, detected.metadata);
-      expect(analysis?.resources.template.path).toBeNull();
-      expect(analysis?.resources.template.expression.getText()).toEqual(`'${template}'`);
+      expect(analysis?.resources.template?.path).toBeNull();
+      expect(analysis?.resources.template?.node.getText()).toEqual(`'${template}'`);
     });
 
     it('should keep track of external template', () => {
@@ -247,8 +266,8 @@ runInEachFileSystem(() => {
         return fail('Failed to recognize @Component');
       }
       const {analysis} = handler.analyze(TestCmp, detected.metadata);
-      expect(analysis?.resources.template.path).toContain(templateUrl);
-      expect(analysis?.resources.template.expression.getText()).toContain(`'${templateUrl}'`);
+      expect(analysis?.resources.template?.path).toContain(templateUrl);
+      expect(analysis?.resources.template?.node.getText()).toContain(`'${templateUrl}'`);
     });
 
     it('should keep track of internal and external styles', () => {
@@ -284,7 +303,7 @@ runInEachFileSystem(() => {
         return fail('Failed to recognize @Component');
       }
       const {analysis} = handler.analyze(TestCmp, detected.metadata);
-      expect(analysis?.resources.styles.size).toBe(3);
+      expect(analysis?.resources.styles?.size).toBe(3);
     });
 
     it('should use an empty source map URL for an indirect template', () => {
@@ -354,6 +373,303 @@ runInEachFileSystem(() => {
       expect(compileResult).toEqual([]);
     });
 
+    it('should populate externalStyles from styleUrl when externalRuntimeStyles is enabled', () => {
+      const {program, options, host} = makeProgram([
+        {
+          name: _('/node_modules/@angular/core/index.d.ts'),
+          contents: 'export const Component: any;',
+        },
+        {
+          name: _('/myStyle.css'),
+          contents: '<div>hello world</div>',
+        },
+        {
+          name: _('/entry.ts'),
+          contents: `
+          import {Component} from '@angular/core';
+
+          @Component({
+            template: '',
+            styleUrl: '/myStyle.css',
+            styles: ['a { color: red; }', 'b { color: blue; }'],
+          }) class TestCmp {}
+      `,
+        },
+      ]);
+      const {reflectionHost, handler} = setup(program, options, host, {
+        externalRuntimeStyles: true,
+      });
+      const TestCmp = getDeclaration(program, _('/entry.ts'), 'TestCmp', isNamedClassDeclaration);
+      const detected = handler.detect(TestCmp, reflectionHost.getDecoratorsOfDeclaration(TestCmp));
+      if (detected === undefined) {
+        return fail('Failed to recognize @Component');
+      }
+      const {analysis} = handler.analyze(TestCmp, detected.metadata);
+      expect(analysis?.resources.styles?.size).toBe(2);
+      expect(analysis?.meta.externalStyles).toEqual(['/myStyle.css']);
+    });
+
+    it('should populate externalStyles from styleUrls when externalRuntimeStyles is enabled', () => {
+      const {program, options, host} = makeProgram([
+        {
+          name: _('/node_modules/@angular/core/index.d.ts'),
+          contents: 'export const Component: any;',
+        },
+        {
+          name: _('/myStyle.css'),
+          contents: '<div>hello world</div>',
+        },
+        {
+          name: _('/entry.ts'),
+          contents: `
+          import {Component} from '@angular/core';
+
+          @Component({
+            template: '',
+            styleUrls: ['/myStyle.css', '/myOtherStyle.css'],
+            styles: ['a { color: red; }', 'b { color: blue; }'],
+          }) class TestCmp {}
+      `,
+        },
+      ]);
+      const {reflectionHost, handler} = setup(program, options, host, {
+        externalRuntimeStyles: true,
+      });
+      const TestCmp = getDeclaration(program, _('/entry.ts'), 'TestCmp', isNamedClassDeclaration);
+      const detected = handler.detect(TestCmp, reflectionHost.getDecoratorsOfDeclaration(TestCmp));
+      if (detected === undefined) {
+        return fail('Failed to recognize @Component');
+      }
+      const {analysis} = handler.analyze(TestCmp, detected.metadata);
+      expect(analysis?.resources.styles?.size).toBe(2);
+      expect(analysis?.meta.externalStyles).toEqual(['/myStyle.css', '/myOtherStyle.css']);
+    });
+
+    it('should keep default emulated view encapsulation with styleUrls when externalRuntimeStyles is enabled', () => {
+      const {program, options, host} = makeProgram([
+        {
+          name: _('/node_modules/@angular/core/index.d.ts'),
+          contents: 'export const Component: any;',
+        },
+        {
+          name: _('/myStyle.css'),
+          contents: '<div>hello world</div>',
+        },
+        {
+          name: _('/entry.ts'),
+          contents: `
+          import {Component} from '@angular/core';
+
+          @Component({
+            template: '',
+            styleUrls: ['/myStyle.css', '/myOtherStyle.css'],
+          }) class TestCmp {}
+      `,
+        },
+      ]);
+      const {reflectionHost, handler} = setup(program, options, host, {
+        externalRuntimeStyles: true,
+      });
+      const TestCmp = getDeclaration(program, _('/entry.ts'), 'TestCmp', isNamedClassDeclaration);
+      const detected = handler.detect(TestCmp, reflectionHost.getDecoratorsOfDeclaration(TestCmp));
+      if (detected === undefined) {
+        return fail('Failed to recognize @Component');
+      }
+      const {analysis} = handler.analyze(TestCmp, detected.metadata);
+      expect(analysis?.meta.encapsulation).toBe(ViewEncapsulation.Emulated);
+    });
+
+    it('should populate externalStyles from template link element when externalRuntimeStyles is enabled', () => {
+      const {program, options, host} = makeProgram([
+        {
+          name: _('/node_modules/@angular/core/index.d.ts'),
+          contents: 'export const Component: any;',
+        },
+        {
+          name: _('/myStyle.css'),
+          contents: '<div>hello world</div>',
+        },
+        {
+          name: _('/entry.ts'),
+          contents: `
+          import {Component} from '@angular/core';
+
+          @Component({
+            template: '<link rel="stylesheet" href="myTemplateStyle.css" />',
+            styles: ['a { color: red; }', 'b { color: blue; }'],
+          }) class TestCmp {}
+      `,
+        },
+      ]);
+      const {reflectionHost, handler} = setup(program, options, host, {
+        externalRuntimeStyles: true,
+      });
+      const TestCmp = getDeclaration(program, _('/entry.ts'), 'TestCmp', isNamedClassDeclaration);
+      const detected = handler.detect(TestCmp, reflectionHost.getDecoratorsOfDeclaration(TestCmp));
+      if (detected === undefined) {
+        return fail('Failed to recognize @Component');
+      }
+      const {analysis} = handler.analyze(TestCmp, detected.metadata);
+      expect(analysis?.resources.styles?.size).toBe(2);
+      expect(analysis?.meta.externalStyles).toEqual(['myTemplateStyle.css']);
+    });
+
+    it('should populate externalStyles with resolve return values when externalRuntimeStyles is enabled', () => {
+      const {program, options, host} = makeProgram([
+        {
+          name: _('/node_modules/@angular/core/index.d.ts'),
+          contents: 'export const Component: any;',
+        },
+        {
+          name: _('/myStyle.css'),
+          contents: '<div>hello world</div>',
+        },
+        {
+          name: _('/entry.ts'),
+          contents: `
+          import {Component} from '@angular/core';
+
+          @Component({
+            template: '<link rel="stylesheet" href="myTemplateStyle.css" />',
+            styleUrl: '/myStyle.css',
+            styles: ['a { color: red; }', 'b { color: blue; }'],
+          }) class TestCmp {}
+      `,
+        },
+      ]);
+      const {reflectionHost, handler, resourceLoader} = setup(program, options, host, {
+        externalRuntimeStyles: true,
+      });
+      resourceLoader.resolve = (v) => 'abc/' + v;
+      const TestCmp = getDeclaration(program, _('/entry.ts'), 'TestCmp', isNamedClassDeclaration);
+      const detected = handler.detect(TestCmp, reflectionHost.getDecoratorsOfDeclaration(TestCmp));
+      if (detected === undefined) {
+        return fail('Failed to recognize @Component');
+      }
+      const {analysis} = handler.analyze(TestCmp, detected.metadata);
+      expect(analysis?.resources.styles?.size).toBe(2);
+      expect(analysis?.meta.externalStyles).toEqual([
+        'abc//myStyle.css',
+        'abc/myTemplateStyle.css',
+      ]);
+    });
+
+    it('should populate externalStyles from inline style transform when externalRuntimeStyles is enabled', async () => {
+      const {program, options, host} = makeProgram([
+        {
+          name: _('/node_modules/@angular/core/index.d.ts'),
+          contents: 'export const Component: any;',
+        },
+        {
+          name: _('/entry.ts'),
+          contents: `
+          import {Component} from '@angular/core';
+
+          @Component({
+            template: '',
+            styles: ['.abc {}']
+          }) class TestCmp {}
+      `,
+        },
+      ]);
+      const {reflectionHost, handler, resourceLoader} = setup(program, options, host, {
+        externalRuntimeStyles: true,
+      });
+      resourceLoader.canPreload = true;
+      resourceLoader.canPreprocess = true;
+      resourceLoader.preprocessInline = async function (data, context) {
+        expect(data).toBe('.abc {}');
+        expect(context.containingFile).toBe(_('/entry.ts').toLowerCase());
+        expect(context.type).toBe('style');
+        expect(context.order).toBe(0);
+
+        return 'abc/myInlineStyle.css';
+      };
+
+      const TestCmp = getDeclaration(program, _('/entry.ts'), 'TestCmp', isNamedClassDeclaration);
+      const detected = handler.detect(TestCmp, reflectionHost.getDecoratorsOfDeclaration(TestCmp));
+      if (detected === undefined) {
+        return fail('Failed to recognize @Component');
+      }
+
+      await handler.preanalyze(TestCmp, detected.metadata);
+
+      const {analysis} = handler.analyze(TestCmp, detected.metadata);
+      expect(analysis?.resources.styles?.size).toBe(1);
+      expect(analysis?.meta.externalStyles).toEqual(['abc/myInlineStyle.css']);
+      expect(analysis?.meta.styles).toEqual([]);
+    });
+
+    it('should not populate externalStyles from inline style when externalRuntimeStyles is enabled and no transform', async () => {
+      const {program, options, host} = makeProgram([
+        {
+          name: _('/node_modules/@angular/core/index.d.ts'),
+          contents: 'export const Component: any;',
+        },
+        {
+          name: _('/entry.ts'),
+          contents: `
+          import {Component} from '@angular/core';
+
+          @Component({
+            template: '',
+            styles: ['.abc {}']
+          }) class TestCmp {}
+      `,
+        },
+      ]);
+      const {reflectionHost, handler} = setup(program, options, host, {
+        externalRuntimeStyles: true,
+      });
+
+      const TestCmp = getDeclaration(program, _('/entry.ts'), 'TestCmp', isNamedClassDeclaration);
+      const detected = handler.detect(TestCmp, reflectionHost.getDecoratorsOfDeclaration(TestCmp));
+      if (detected === undefined) {
+        return fail('Failed to recognize @Component');
+      }
+
+      await handler.preanalyze(TestCmp, detected.metadata);
+
+      const {analysis} = handler.analyze(TestCmp, detected.metadata);
+      expect(analysis?.resources.styles?.size).toBe(1);
+      expect(analysis?.meta.externalStyles).toEqual([]);
+      expect(analysis?.meta.styles).toEqual(['.abc {}']);
+    });
+
+    it('should not populate externalStyles from inline style when externalRuntimeStyles is enabled and no preanalyze', async () => {
+      const {program, options, host} = makeProgram([
+        {
+          name: _('/node_modules/@angular/core/index.d.ts'),
+          contents: 'export const Component: any;',
+        },
+        {
+          name: _('/entry.ts'),
+          contents: `
+          import {Component} from '@angular/core';
+
+          @Component({
+            template: '',
+            styles: ['.abc {}']
+          }) class TestCmp {}
+      `,
+        },
+      ]);
+      const {reflectionHost, handler} = setup(program, options, host, {
+        externalRuntimeStyles: true,
+      });
+
+      const TestCmp = getDeclaration(program, _('/entry.ts'), 'TestCmp', isNamedClassDeclaration);
+      const detected = handler.detect(TestCmp, reflectionHost.getDecoratorsOfDeclaration(TestCmp));
+      if (detected === undefined) {
+        return fail('Failed to recognize @Component');
+      }
+
+      const {analysis} = handler.analyze(TestCmp, detected.metadata);
+      expect(analysis?.resources.styles?.size).toBe(1);
+      expect(analysis?.meta.externalStyles).toEqual([]);
+      expect(analysis?.meta.styles).toEqual(['.abc {}']);
+    });
+
     it('should replace inline style content with transformed content', async () => {
       const {program, options, host} = makeProgram([
         {
@@ -378,6 +694,97 @@ runInEachFileSystem(() => {
       resourceLoader.preprocessInline = async function (data, context) {
         expect(data).toBe('.abc {}');
         expect(context.containingFile).toBe(_('/entry.ts').toLowerCase());
+        expect(context.type).toBe('style');
+
+        return '.xyz {}';
+      };
+
+      const TestCmp = getDeclaration(program, _('/entry.ts'), 'TestCmp', isNamedClassDeclaration);
+      const detected = handler.detect(TestCmp, reflectionHost.getDecoratorsOfDeclaration(TestCmp));
+      if (detected === undefined) {
+        return fail('Failed to recognize @Component');
+      }
+
+      await handler.preanalyze(TestCmp, detected.metadata);
+
+      const {analysis} = handler.analyze(TestCmp, detected.metadata);
+      expect(analysis?.inlineStyles).toEqual(jasmine.arrayWithExactContents(['.xyz {}']));
+    });
+
+    it('should replace template style element content for inline template with transformed content', async () => {
+      const {program, options, host} = makeProgram([
+        {
+          name: _('/node_modules/@angular/core/index.d.ts'),
+          contents: 'export const Component: any;',
+        },
+        {
+          name: _('/entry.ts'),
+          contents: `
+          import {Component} from '@angular/core';
+
+          @Component({
+            template: '<style>.abc {}</style>',
+          }) class TestCmp {}
+      `,
+        },
+      ]);
+      const {reflectionHost, handler, resourceLoader} = setup(program, options, host);
+      resourceLoader.canPreload = true;
+      resourceLoader.canPreprocess = true;
+      resourceLoader.preprocessInline = async function (data, context) {
+        expect(data).toBe('.abc {}');
+        expect(context.containingFile).toBe(_('/entry.ts').toLowerCase());
+        expect(context.type).toBe('style');
+
+        return '.xyz {}';
+      };
+
+      const TestCmp = getDeclaration(program, _('/entry.ts'), 'TestCmp', isNamedClassDeclaration);
+      const detected = handler.detect(TestCmp, reflectionHost.getDecoratorsOfDeclaration(TestCmp));
+      if (detected === undefined) {
+        return fail('Failed to recognize @Component');
+      }
+
+      await handler.preanalyze(TestCmp, detected.metadata);
+
+      const {analysis} = handler.analyze(TestCmp, detected.metadata);
+      expect(analysis?.inlineStyles).toEqual(jasmine.arrayWithExactContents(['.xyz {}']));
+    });
+
+    it('should replace template style element content for external template with transformed content', async () => {
+      const {program, options, host} = makeProgram([
+        {
+          name: _('/node_modules/@angular/core/index.d.ts'),
+          contents: 'export const Component: any;',
+        },
+        {
+          name: _('/component.ng.html'),
+          contents: '<style>.abc {}</style>',
+        },
+        {
+          name: _('/entry.ts'),
+          contents: `
+          import {Component} from '@angular/core';
+
+          @Component({
+            templateUrl: '/component.ng.html',
+          }) class TestCmp {}
+      `,
+        },
+      ]);
+      const {reflectionHost, handler, resourceLoader} = setup(program, options, host);
+      resourceLoader.canPreload = true;
+      resourceLoader.canPreprocess = true;
+      resourceLoader.resolve = function (v) {
+        return _(v).toLowerCase();
+      };
+      resourceLoader.load = function (v) {
+        return host.readFile(v) ?? '';
+      };
+      resourceLoader.preload = () => Promise.resolve();
+      resourceLoader.preprocessInline = async function (data, context) {
+        expect(data).toBe('.abc {}');
+        expect(context.containingFile).toBe(_('/component.ng.html').toLowerCase());
         expect(context.type).toBe('style');
 
         return '.xyz {}';
@@ -607,7 +1014,6 @@ runInEachFileSystem(() => {
             import {SomeModule} from './some_where';
 
             @Component({
-              standalone: true,
               selector: 'main',
               template: '<span>Hi!</span>',
               imports: [SomeModule],
@@ -653,6 +1059,7 @@ runInEachFileSystem(() => {
               selector: 'main',
               template: '<span>Hi!</span>',
               imports: [SomeModule],
+              standalone: false,
             }) class TestCmp {}
         `,
             },
@@ -697,7 +1104,6 @@ runInEachFileSystem(() => {
             import {SomeModule} from './some_where';
 
             @Component({
-              standalone: true,
               selector: 'main',
               template: '<span>Hi!</span>',
               schemas: [CUSTOM_ELEMENTS_SCHEMA],
@@ -742,6 +1148,7 @@ runInEachFileSystem(() => {
 
             @Component({
               selector: 'main',
+              standalone: false,
               template: '<span>Hi!</span>',
               schemas: [CUSTOM_ELEMENTS_SCHEMA],
             }) class TestCmp {}

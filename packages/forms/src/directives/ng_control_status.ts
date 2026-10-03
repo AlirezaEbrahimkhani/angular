@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {Directive, Optional, Self, ɵWritable as Writable} from '@angular/core';
@@ -109,7 +109,11 @@ export const ngGroupStatusHost = {
  * @ngModule FormsModule
  * @publicApi
  */
-@Directive({selector: '[formControlName],[ngModel],[formControl]', host: ngControlStatusHost})
+@Directive({
+  selector: '[formControlName],[ngModel],[formControl]',
+  host: ngControlStatusHost,
+  standalone: false,
+})
 export class NgControlStatus extends AbstractControlStatus {
   constructor(@Self() cd: NgControl) {
     super(cd);
@@ -130,8 +134,9 @@ export class NgControlStatus extends AbstractControlStatus {
  */
 @Directive({
   selector:
-    '[formGroupName],[formArrayName],[ngModelGroup],[formGroup],form:not([ngNoForm]),[ngForm]',
+    '[formGroupName],[formArrayName],[ngModelGroup],[formGroup],[formArray],form:not([ngNoForm]),[ngForm]',
   host: ngGroupStatusHost,
+  standalone: false,
 })
 export class NgControlStatusGroup extends AbstractControlStatus {
   constructor(@Optional() @Self() cd: ControlContainer) {

@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 /*
@@ -27,10 +27,10 @@
  */
 export * from '../../defer/instructions';
 export * from './advance';
+export * from './aria_property';
 export * from './attribute';
-export * from './attribute_interpolation';
+export * from './animation';
 export * from './change_detection';
-export * from './class_map_interpolation';
 export * from './component_instance';
 export * from './control_flow';
 export * from './di';
@@ -44,22 +44,21 @@ export {
   ɵsetUnknownPropertyStrictMode,
 } from './element_validation';
 export * from './get_current_view';
-export * from './host_property';
+export * from './dom_property';
 export * from './i18n';
 export * from './listener';
 export * from './namespace';
 export * from './next_context';
 export * from './projection';
 export * from './property';
-export * from './property_interpolation';
 export * from './queries';
 export * from './queries_signals';
 export * from './storage';
-export * from './style_map_interpolation';
-export * from './style_prop_interpolation';
 export * from './styling';
 export * from './template';
 export * from './text';
 export * from './text_interpolation';
 export * from './two_way';
 export * from './let_declaration';
+export * from './attach_source_locations';
+export * from './value_interpolation';

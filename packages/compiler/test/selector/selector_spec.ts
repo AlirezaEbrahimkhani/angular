@@ -3,11 +3,11 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {CssSelector, SelectorMatcher} from '@angular/compiler/src/selector';
-import {el} from '@angular/platform-browser/testing/src/browser_util';
+import {CssSelector, SelectorMatcher} from '../../src/directive_matching';
+import {el} from '@angular/private/testing';
 
 describe('SelectorMatcher', () => {
   let matcher: SelectorMatcher;

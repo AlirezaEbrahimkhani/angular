@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {fakeAsync, tick} from '@angular/core/testing';
@@ -14,8 +14,8 @@ import {
   FormGroup,
   ValidationErrors,
   ValidatorFn,
-} from '@angular/forms';
-import {Validators} from '@angular/forms/src/validators';
+} from '../index';
+import {Validators} from '../src/validators';
 import {of} from 'rxjs';
 
 import {asyncValidator} from './util';
@@ -39,6 +39,12 @@ import {asyncValidator} from './util';
         a.push(c1);
         expect(a.length).toEqual(1);
         expect(a.controls).toEqual([c1]);
+      });
+
+      it('should support pushing an array', () => {
+        a.push([c1, c2]);
+        expect(a.length).toEqual(2);
+        expect(a.controls).toEqual([c1, c2]);
       });
 
       it('should support removing', () => {
@@ -195,6 +201,59 @@ import {asyncValidator} from './util';
         (a.at(1) as FormArray).at(1).disable();
 
         expect(a.getRawValue()).toEqual([{'c2': 'v2', 'c3': 'v3'}, ['v4', 'v5']]);
+      });
+    });
+
+    describe('markAllAsDirty', () => {
+      it('should mark all descendants as dirty', () => {
+        const formArray: FormArray = new FormArray([
+          new FormControl('v1') as AbstractControl,
+          new FormControl('v2'),
+          new FormGroup({'c1': new FormControl('v1')}),
+          new FormArray([new FormGroup({'c2': new FormControl('v2')})]),
+        ]);
+
+        expect(formArray.dirty).toBe(false);
+
+        const control1 = formArray.at(0) as FormControl;
+
+        expect(control1.dirty).toBe(false);
+
+        const group1 = formArray.at(2) as FormGroup;
+
+        expect(group1.dirty).toBe(false);
+
+        const group1Control1 = group1.get('c1') as FormControl;
+
+        expect(group1Control1.dirty).toBe(false);
+
+        const innerFormArray = formArray.at(3) as FormArray;
+
+        expect(innerFormArray.dirty).toBe(false);
+
+        const innerFormArrayGroup = innerFormArray.at(0) as FormGroup;
+
+        expect(innerFormArrayGroup.dirty).toBe(false);
+
+        const innerFormArrayGroupControl1 = innerFormArrayGroup.get('c2') as FormControl;
+
+        expect(innerFormArrayGroupControl1.dirty).toBe(false);
+
+        formArray.markAllAsDirty();
+
+        expect(formArray.dirty).toBe(true);
+
+        expect(control1.dirty).toBe(true);
+
+        expect(group1.dirty).toBe(true);
+
+        expect(group1Control1.dirty).toBe(true);
+
+        expect(innerFormArray.dirty).toBe(true);
+
+        expect(innerFormArrayGroup.dirty).toBe(true);
+
+        expect(innerFormArrayGroupControl1.dirty).toBe(true);
       });
     });
 
@@ -918,6 +977,18 @@ import {asyncValidator} from './util';
 
         a.push(c2);
       });
+
+      it('should fire an event once when calling `FormArray.push` with an array of controls', (done) => {
+        a = new FormArray<any>([]);
+        a.valueChanges.subscribe({
+          next: (value: any) => {
+            expect(value).toEqual(['old1', 'old2']);
+            done();
+          },
+        });
+
+        a.push([c1, c2]);
+      });
     });
 
     describe('get', () => {
@@ -1538,7 +1609,7 @@ import {asyncValidator} from './util';
         describe('can be extended', () => {
           it('by a simple strongly-typed array', () => {
             abstract class StringFormArray extends FormArray {
-              override value!: string[];
+              override value: string[] = [];
             }
           });
 
@@ -1546,8 +1617,8 @@ import {asyncValidator} from './util';
             abstract class OtherTypedFormArray<
               TControls extends Array<AbstractControl<unknown>>,
             > extends FormArray {
-              override controls!: TControls;
-              override value!: never[];
+              override controls: TControls = {} as TControls;
+              override value: string[] = [];
             }
           });
         });

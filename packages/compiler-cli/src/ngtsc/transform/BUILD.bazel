@@ -1,13 +1,14 @@
-load("//tools:defaults.bzl", "ts_library")
+load("//tools:defaults.bzl", "ts_project")
 
 package(default_visibility = ["//visibility:public"])
 
-ts_library(
+ts_project(
     name = "transform",
     srcs = ["index.ts"] + glob([
         "src/**/*.ts",
     ]),
     deps = [
+        "//:node_modules/typescript",
         "//packages/compiler",
         "//packages/compiler-cli/src/ngtsc/core:api",
         "//packages/compiler-cli/src/ngtsc/diagnostics",
@@ -17,13 +18,11 @@ ts_library(
         "//packages/compiler-cli/src/ngtsc/indexer",
         "//packages/compiler-cli/src/ngtsc/perf",
         "//packages/compiler-cli/src/ngtsc/reflection",
-        "//packages/compiler-cli/src/ngtsc/shims",
         "//packages/compiler-cli/src/ngtsc/translator",
         "//packages/compiler-cli/src/ngtsc/typecheck/api",
         "//packages/compiler-cli/src/ngtsc/typecheck/extended/api",
         "//packages/compiler-cli/src/ngtsc/typecheck/template_semantics/api",
         "//packages/compiler-cli/src/ngtsc/util",
         "//packages/compiler-cli/src/ngtsc/xi18n",
-        "@npm//typescript",
     ],
 )

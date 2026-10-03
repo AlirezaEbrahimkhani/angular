@@ -3,15 +3,15 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {getSystemPath, normalize, virtualFs} from '@angular-devkit/core';
 import {TempScopedNodeJsSyncHost} from '@angular-devkit/core/node/testing';
 import {HostTree} from '@angular-devkit/schematics';
-import {SchematicTestRunner, UnitTestTree} from '@angular-devkit/schematics/testing';
-import {runfiles} from '@bazel/runfiles';
-import shx from 'shelljs';
+import {SchematicTestRunner, UnitTestTree} from '@angular-devkit/schematics/testing/index.js';
+import {resolve} from 'node:path';
+import {rmSync} from 'node:fs';
 
 describe('standalone migration', () => {
   let runner: SchematicTestRunner;
@@ -32,8 +32,9 @@ describe('standalone migration', () => {
     return content.replace(/\s+/g, '');
   }
 
+  const collectionJsonPath = resolve('../collection.json');
   beforeEach(() => {
-    runner = new SchematicTestRunner('test', runfiles.resolvePackageRelative('../collection.json'));
+    runner = new SchematicTestRunner('test', collectionJsonPath);
     host = new TempScopedNodeJsSyncHost();
     tree = new UnitTestTree(new HostTree(host));
 
@@ -170,24 +171,28 @@ describe('standalone migration', () => {
     `,
     );
 
+    const fakeCatalyst = `export declare function setupModule(config: any);`;
+    writeFile('/node_modules/some_internal_path/angular/testing/catalyst/index.d.ts', fakeCatalyst);
     writeFile(
-      '/node_modules/some_internal_path/angular/testing/catalyst/index.d.ts',
-      `
-      export declare function setupModule(config: any);
-    `,
+      '/node_modules/some_internal_path/angular/testing/catalyst/fake_async/index.d.ts',
+      fakeCatalyst,
+    );
+    writeFile(
+      '/node_modules/some_internal_path/angular/testing/catalyst/async/index.d.ts',
+      fakeCatalyst,
     );
 
-    previousWorkingDir = shx.pwd();
+    previousWorkingDir = process.cwd();
     tmpDirPath = getSystemPath(host.root);
 
     // Switch into the temporary directory path. This allows us to run
     // the schematic against our custom unit test tree.
-    shx.cd(tmpDirPath);
+    process.chdir(tmpDirPath);
   });
 
   afterEach(() => {
-    shx.cd(previousWorkingDir);
-    shx.rm('-r', tmpDirPath);
+    process.chdir(previousWorkingDir);
+    rmSync(tmpDirPath, {recursive: true});
   });
 
   it('should throw an error if no files match the passed-in path', async () => {
@@ -428,7 +433,7 @@ describe('standalone migration', () => {
       `
       import {NgModule, Directive} from '@angular/core';
 
-      @Directive({selector: '[dir]'})
+      @Directive({selector: '[dir]', standalone: false})
       export class MyDir {}
 
       @NgModule({declarations: [MyDir], exports: [MyDir]})
@@ -440,9 +445,7 @@ describe('standalone migration', () => {
 
     const result = tree.readContent('module.ts');
 
-    expect(stripWhitespace(result)).toContain(
-      stripWhitespace(`@Directive({selector: '[dir]', standalone: true})`),
-    );
+    expect(stripWhitespace(result)).toContain(stripWhitespace(`@Directive({selector: '[dir]'})`));
     expect(stripWhitespace(result)).toContain(
       stripWhitespace(`@NgModule({imports: [MyDir], exports: [MyDir]})`),
     );
@@ -454,7 +457,7 @@ describe('standalone migration', () => {
       `
       import {NgModule, Pipe} from '@angular/core';
 
-      @Pipe({name: 'myPipe'})
+      @Pipe({name: 'myPipe', standalone: false})
       export class MyPipe {}
 
       @NgModule({declarations: [MyPipe], exports: [MyPipe]})
@@ -466,9 +469,7 @@ describe('standalone migration', () => {
 
     const result = tree.readContent('module.ts');
 
-    expect(stripWhitespace(result)).toContain(
-      stripWhitespace(`@Pipe({name: 'myPipe', standalone: true})`),
-    );
+    expect(stripWhitespace(result)).toContain(stripWhitespace(`@Pipe({name: 'myPipe'})`));
     expect(stripWhitespace(result)).toContain(
       stripWhitespace(`@NgModule({imports: [MyPipe], exports: [MyPipe]})`),
     );
@@ -478,7 +479,7 @@ describe('standalone migration', () => {
     const content = `
       import {NgModule, Directive} from '@angular/core';
 
-      @Directive({selector: '[dir]'})
+      @Directive({selector: '[dir]', standalone: false})
       export class MyDir {}
 
       @NgModule({declarations: [MyDir], exports: [MyDir]})
@@ -490,8 +491,8 @@ describe('standalone migration', () => {
 
     await runMigration('convert-to-standalone', './apps/app-2');
 
-    expect(tree.readContent('./apps/app-1/module.ts')).not.toContain('standalone');
-    expect(tree.readContent('./apps/app-2/module.ts')).toContain('standalone: true');
+    expect(tree.readContent('./apps/app-1/module.ts')).toContain('standalone: false');
+    expect(tree.readContent('./apps/app-2/module.ts')).toContain(`@Directive({ selector: '[dir]'`);
   });
 
   it('should convert a directive in a different file from its module to standalone', async () => {
@@ -511,7 +512,7 @@ describe('standalone migration', () => {
       `
       import {Directive} from '@angular/core';
 
-      @Directive({selector: '[dir]'})
+      @Directive({selector: '[dir]', standalone: false})
       export class MyDir {}
     `,
     );
@@ -522,7 +523,7 @@ describe('standalone migration', () => {
       stripWhitespace(`@NgModule({imports: [MyDir], exports: [MyDir]})`),
     );
     expect(stripWhitespace(tree.readContent('dir.ts'))).toContain(
-      stripWhitespace(`@Directive({selector: '[dir]', standalone: true})`),
+      stripWhitespace(`@Directive({selector: '[dir]'})`),
     );
   });
 
@@ -543,7 +544,7 @@ describe('standalone migration', () => {
       `
       import {Component} from '@angular/core';
 
-      @Component({selector: 'my-comp', template: '<h1>Hello</h1>'})
+      @Component({selector: 'my-comp', template: '<h1>Hello</h1>', standalone: false})
       export class MyComp {}
     `,
     );
@@ -557,8 +558,7 @@ describe('standalone migration', () => {
       stripWhitespace(`
         @Component({
           selector: 'my-comp',
-          template: '<h1>Hello</h1>',
-          standalone: true
+          template: '<h1>Hello</h1>'
         })
       `),
     );
@@ -583,7 +583,7 @@ describe('standalone migration', () => {
       `
       import {Component} from '@angular/core';
 
-      @Component({selector: 'my-comp', template: '<my-button tooltip="Click me">Hello</my-button>'})
+      @Component({selector: 'my-comp', template: '<my-button tooltip="Click me">Hello</my-button>', standalone: false})
       export class MyComp {}
     `,
     );
@@ -593,7 +593,7 @@ describe('standalone migration', () => {
       `
       import {Component} from '@angular/core';
 
-      @Component({selector: 'my-button', template: '<ng-content></ng-content>'})
+      @Component({selector: 'my-button', template: '<ng-content></ng-content>', standalone: false})
       export class MyButton {}
     `,
     );
@@ -603,7 +603,7 @@ describe('standalone migration', () => {
       `
       import {Directive} from '@angular/core';
 
-      @Directive({selector: '[tooltip]'})
+      @Directive({selector: '[tooltip]', standalone: false})
       export class MyTooltip {}
     `,
     );
@@ -619,7 +619,6 @@ describe('standalone migration', () => {
       @Component({
         selector: 'my-comp',
         template: '<my-button tooltip="Click me">Hello</my-button>',
-        standalone: true,
         imports: [MyButton, MyTooltip]
       })
     `),
@@ -628,12 +627,10 @@ describe('standalone migration', () => {
       stripWhitespace(`@NgModule({imports: [MyComp, MyButton, MyTooltip], exports: [MyComp]})`),
     );
     expect(stripWhitespace(tree.readContent('button.ts'))).toContain(
-      stripWhitespace(
-        `@Component({selector: 'my-button', template: '<ng-content></ng-content>', standalone: true})`,
-      ),
+      stripWhitespace(`@Component({selector: 'my-button', template: '<ng-content></ng-content>'})`),
     );
     expect(stripWhitespace(tree.readContent('tooltip.ts'))).toContain(
-      stripWhitespace(`@Directive({selector: '[tooltip]', standalone: true})`),
+      stripWhitespace(`@Directive({selector: '[tooltip]'})`),
     );
   });
 
@@ -658,7 +655,7 @@ describe('standalone migration', () => {
 
       helper();
 
-      @Component({selector: 'my-comp', template: '<my-button>Hello</my-button>'})
+      @Component({selector: 'my-comp', template: '<my-button>Hello</my-button>', standalone: false})
       export class MyComp {}
     `,
     );
@@ -668,7 +665,7 @@ describe('standalone migration', () => {
       `
       import {Component} from '@angular/core';
 
-      @Component({selector: 'my-button', template: '<ng-content></ng-content>'})
+      @Component({selector: 'my-button', template: '<ng-content></ng-content>', standalone: false})
       export class MyButton {}
 
       export function helper() {}
@@ -685,7 +682,6 @@ describe('standalone migration', () => {
       @Component({
         selector: 'my-comp',
         template: '<my-button>Hello</my-button>',
-        standalone: true,
         imports: [MyButton]
       })
     `),
@@ -710,7 +706,7 @@ describe('standalone migration', () => {
       `
         import {Component} from '@angular/core';
 
-        @Component({selector: 'my-comp', template: '<my-button>Hello</my-button>'})
+        @Component({selector: 'my-comp', template: '<my-button>Hello</my-button>', standalone: false})
         export class MyComp {}
       `,
     );
@@ -735,7 +731,6 @@ describe('standalone migration', () => {
          @Component({
            selector: 'my-comp',
            template: '<my-button>Hello</my-button>',
-           standalone: true,
            imports: [MyButton]
          })
        `),
@@ -774,7 +769,7 @@ describe('standalone migration', () => {
       `
       import {Component} from '@angular/core';
 
-      @Component({selector: 'my-comp', template: '<my-button>Hello</my-button>'})
+      @Component({selector: 'my-comp', template: '<my-button>Hello</my-button>', standalone: false})
       export class MyComp {}
     `,
     );
@@ -784,7 +779,7 @@ describe('standalone migration', () => {
       `
       import {Component} from '@angular/core';
 
-      @Component({selector: 'my-button', template: '<ng-content></ng-content>'})
+      @Component({selector: 'my-button', template: '<ng-content></ng-content>', standalone: false})
       export class MyButton {}
     `,
     );
@@ -799,7 +794,6 @@ describe('standalone migration', () => {
       @Component({
         selector: 'my-comp',
         template: '<my-button>Hello</my-button>',
-        standalone: true,
         imports: [MyButton]
       })
     `),
@@ -808,8 +802,7 @@ describe('standalone migration', () => {
       stripWhitespace(`
       @Component({
         selector: 'my-button',
-        template: '<ng-content></ng-content>',
-        standalone: true
+        template: '<ng-content></ng-content>'
       })
     `),
     );
@@ -854,7 +847,7 @@ describe('standalone migration', () => {
       `
         import {Component} from '@angular/core';
 
-        @Component({selector: 'my-comp', template: '<my-button>Hello</my-button>'})
+        @Component({selector: 'my-comp', template: '<my-button>Hello</my-button>', standalone: false})
         export class MyComp {}
       `,
     );
@@ -864,7 +857,7 @@ describe('standalone migration', () => {
       `
         import {Component} from '@angular/core';
 
-        @Component({selector: 'my-button', template: '<ng-content></ng-content>'})
+        @Component({selector: 'my-button', template: '<ng-content></ng-content>', standalone: false})
         export class MyButton {}
       `,
     );
@@ -881,7 +874,6 @@ describe('standalone migration', () => {
         @Component({
           selector: 'my-comp',
           template: '<my-button>Hello</my-button>',
-          standalone: true,
           imports: [ButtonModule]
         })
       `),
@@ -889,7 +881,7 @@ describe('standalone migration', () => {
     expect(stripWhitespace(tree.readContent('./should-migrate/module.ts'))).toContain(
       stripWhitespace(`@NgModule({imports: [ButtonModule, MyComp], exports: [MyComp]})`),
     );
-    expect(tree.readContent('./do-not-migrate/button.ts')).not.toContain('standalone');
+    expect(tree.readContent('./do-not-migrate/button.ts')).toContain('standalone: false');
     expect(stripWhitespace(tree.readContent('./do-not-migrate/button.module.ts'))).toContain(
       stripWhitespace(`@NgModule({declarations: [MyButton], exports: [MyButton]})`),
     );
@@ -914,7 +906,7 @@ describe('standalone migration', () => {
       `
         import {Component} from '@angular/core';
 
-        @Component({selector: 'my-comp', template: '<my-button tooltip="Click me">Hello</my-button>'})
+        @Component({selector: 'my-comp', template: '<my-button tooltip="Click me">Hello</my-button>', standalone: false})
         export class MyComp {}
       `,
     );
@@ -924,7 +916,7 @@ describe('standalone migration', () => {
       `
         import {Component} from '@angular/core';
 
-        @Component({selector: 'my-button', template: '<ng-content></ng-content>'})
+        @Component({selector: 'my-button', template: '<ng-content></ng-content>', standalone: false})
         export class MyButton {}
       `,
     );
@@ -934,7 +926,7 @@ describe('standalone migration', () => {
       `
         import {Directive} from '@angular/core';
 
-        @Directive({selector: '[tooltip]'})
+        @Directive({selector: '[tooltip]', standalone: false})
         export class MyTooltip {}
       `,
     );
@@ -950,7 +942,6 @@ describe('standalone migration', () => {
         @Component({
           selector: 'my-comp',
           template: '<my-button tooltip="Click me">Hello</my-button>',
-          standalone: true,
           imports: [MyButton, MyTooltip]
         })
       `),
@@ -959,12 +950,10 @@ describe('standalone migration', () => {
       stripWhitespace(`@NgModule({imports: [MyComp, MyButton, MyTooltip], exports: [MyComp]})`),
     );
     expect(stripWhitespace(tree.readContent('button.ts'))).toContain(
-      stripWhitespace(
-        `@Component({selector: 'my-button', template: '<ng-content></ng-content>', standalone: true})`,
-      ),
+      stripWhitespace(`@Component({selector: 'my-button', template: '<ng-content></ng-content>'})`),
     );
     expect(stripWhitespace(tree.readContent('tooltip.ts'))).toContain(
-      stripWhitespace(`@Directive({selector: '[tooltip]', standalone: true})`),
+      stripWhitespace(`@Directive({selector: '[tooltip]'})`),
     );
   });
 
@@ -992,7 +981,8 @@ describe('standalone migration', () => {
           <div *ngFor="let message of messages">
             <span *ngIf="message">{{message}}</span>
           </div>
-        \`
+        \`,
+        standalone: false
       })
       export class MyComp {
         messages = ['hello', 'hi'];
@@ -1000,7 +990,8 @@ describe('standalone migration', () => {
 
       @Component({
         selector: 'my-other-comp',
-        template: '<div *ngIf="isShown"></div>'
+        template: '<div *ngIf="isShown"></div>',
+        standalone: false
       })
       export class MyOtherComp {
         isShown = true;
@@ -1022,7 +1013,6 @@ describe('standalone migration', () => {
             <span *ngIf="message">{{message}}</span>
           </div>
         \`,
-        standalone: true,
         imports: [NgFor, NgIf]
       })
     `),
@@ -1032,7 +1022,6 @@ describe('standalone migration', () => {
       @Component({
         selector: 'my-other-comp',
         template: '<div *ngIf="isShown"></div>',
-        standalone: true,
         imports: [NgIf]
       })
     `),
@@ -1062,7 +1051,7 @@ describe('standalone migration', () => {
       `
       import {Component} from '@angular/core';
 
-      @Component({selector: 'my-comp', template: '{{"hello" | myPipe}}'})
+      @Component({selector: 'my-comp', template: '{{"hello" | myPipe}}', standalone: false})
       export class MyComp {}
     `,
     );
@@ -1072,7 +1061,7 @@ describe('standalone migration', () => {
       `
       import {Pipe} from '@angular/core';
 
-      @Pipe({name: 'myPipe'})
+      @Pipe({name: 'myPipe', standalone: false})
       export class MyPipe {
         transform() {}
       }
@@ -1089,7 +1078,6 @@ describe('standalone migration', () => {
       @Component({
         selector: 'my-comp',
         template: '{{"hello" | myPipe}}',
-        standalone: true,
         imports: [MyPipe]
       })
     `),
@@ -1098,7 +1086,7 @@ describe('standalone migration', () => {
       stripWhitespace(`@NgModule({imports: [MyComp, MyPipe], exports: [MyComp]})`),
     );
     expect(stripWhitespace(tree.readContent('pipe.ts'))).toContain(
-      stripWhitespace(`@Pipe({name: 'myPipe', standalone: true})`),
+      stripWhitespace(`@Pipe({name: 'myPipe'})`),
     );
   });
 
@@ -1111,10 +1099,10 @@ describe('standalone migration', () => {
 
       describe('bootstrapping an app', () => {
         it('should work', () => {
-          @Component({selector: 'hello', template: 'Hello'})
+          @Component({selector: 'hello', template: 'Hello', standalone: false})
           class Hello {}
 
-          @Component({template: '<hello></hello>'})
+          @Component({template: '<hello></hello>', standalone: false})
           class App {}
 
           @NgModule({declarations: [App, Hello], exports: [App, Hello]})
@@ -1134,14 +1122,14 @@ describe('standalone migration', () => {
 
     expect(content).toContain(
       stripWhitespace(`
-      @Component({selector: 'hello', template: 'Hello', standalone: true})
+      @Component({selector: 'hello', template: 'Hello'})
       class Hello {}
     `),
     );
 
     expect(content).toContain(
       stripWhitespace(`
-      @Component({template: '<hello></hello>', standalone: true, imports: [Hello]})
+      @Component({template: '<hello></hello>', imports: [Hello]})
       class App {}
     `),
     );
@@ -1215,7 +1203,7 @@ describe('standalone migration', () => {
       `
       import {Component} from '@angular/core';
 
-      @Component({selector: 'my-comp', template: '<my-button>Hello</my-button>'})
+      @Component({selector: 'my-comp', template: '<my-button>Hello</my-button>', standalone: false})
       export class MyComp {}
     `,
     );
@@ -1242,7 +1230,7 @@ describe('standalone migration', () => {
       `
       import {Component} from '@angular/core';
 
-      @Component({selector: 'my-button', template: '<ng-content></ng-content>'})
+      @Component({selector: 'my-button', template: '<ng-content></ng-content>', standalone: false})
       export class MyButton {}
     `,
     );
@@ -1274,7 +1262,7 @@ describe('standalone migration', () => {
       `
       import {Component} from '@angular/core';
 
-      @Component({selector: 'my-comp', template: '<my-button>Hello</my-button>'})
+      @Component({selector: 'my-comp', template: '<my-button>Hello</my-button>', standalone: false})
       export class MyComp {}
     `,
     );
@@ -1301,7 +1289,7 @@ describe('standalone migration', () => {
       `
       import {Component} from '@angular/core';
 
-      @Component({selector: 'my-button', template: '<ng-content></ng-content>'})
+      @Component({selector: 'my-button', template: '<ng-content></ng-content>', standalone: false})
       export class MyButton {}
     `,
     );
@@ -1341,10 +1329,10 @@ describe('standalone migration', () => {
         });
       });
 
-      @Component({selector: 'hello', template: 'Hello'})
+      @Component({selector: 'hello', template: 'Hello', standalone: false})
       class Hello {}
 
-      @Component({template: '<hello></hello>'})
+      @Component({template: '<hello></hello>', standalone: false})
       class App {}
     `,
     );
@@ -1358,7 +1346,6 @@ describe('standalone migration', () => {
       @Component({
         selector: 'hello',
         template: 'Hello',
-        standalone: true,
         imports: [ButtonModule, MatCardModule]
       })
       class Hello {}
@@ -1369,7 +1356,6 @@ describe('standalone migration', () => {
       stripWhitespace(`
       @Component({
         template: '<hello></hello>',
-        standalone: true,
         imports: [ButtonModule, MatCardModule]
       })
       class App {}
@@ -1418,7 +1404,7 @@ describe('standalone migration', () => {
         });
       });
 
-      @Component({template: 'hello'})
+      @Component({template: 'hello', standalone: false})
       class App {}
     `,
     );
@@ -1429,7 +1415,7 @@ describe('standalone migration', () => {
 
     expect(content).toContain(
       stripWhitespace(`
-      @Component({template: 'hello', standalone: true})
+      @Component({template: 'hello'})
       class App {}
     `),
     );
@@ -1464,7 +1450,7 @@ describe('standalone migration', () => {
         });
       });
 
-      @Component({template: 'hello'})
+      @Component({template: 'hello', standalone: false})
       class App {}
     `;
 
@@ -1475,88 +1461,92 @@ describe('standalone migration', () => {
     expect(tree.readContent('app.spec.ts')).toBe(initialContent);
   });
 
-  it('should migrate tests with a component declared through Catalyst', async () => {
-    writeFile(
-      'app.spec.ts',
-      `
-      import {NgModule, Component} from '@angular/core';
-      import {bootstrap, setupModule} from 'some_internal_path/angular/testing/catalyst';
-      import {ButtonModule} from './button.module';
-      import {MatCardModule} from '@angular/material/card';
+  [
+    {name: 'plain', path: 'some_internal_path/angular/testing/catalyst'},
+    {name: 'fakeAsync', path: 'some_internal_path/angular/testing/catalyst/fake_async'},
+    {name: 'async', path: 'some_internal_path/angular/testing/catalyst/async'},
+  ].forEach(({name, path}) => {
+    it(`[${name}] should migrate tests with a component declared through Catalyst`, async () => {
+      writeFile(
+        'app.spec.ts',
+        `
+        import {NgModule, Component} from '@angular/core';
+        import {bootstrapTemplate, setupModule} from '${path}';
+        import {ButtonModule} from './button.module';
+        import {MatCardModule} from '@angular/material/card';
 
-      describe('bootstrapping an app', () => {
+        describe('bootstrapping an app', () => {
+          it('should work', () => {
+            setupModule({
+              declarations: [App, Hello],
+              imports: [ButtonModule, MatCardModule]
+            });
+            const fixture = bootstrapTemplate(App);
+            expect(fixture.nativeElement.innerHTML).toBe('<hello>Hello</hello>');
+          });
+
+          it('should work in a different way', () => {
+            setupModule({declarations: [App, Hello], imports: [MatCardModule]});
+            const fixture = bootstrapTemplate(App);
+            expect(fixture.nativeElement.innerHTML).toBe('<hello>Hello</hello>');
+          });
+        });
+
+        @Component({selector: 'hello', template: 'Hello', standalone: false})
+        class Hello {}
+
+        @Component({template: '<hello></hello>', standalone: false})
+        class App {}
+      `,
+      );
+
+      await runMigration('convert-to-standalone');
+
+      const content = stripWhitespace(tree.readContent('app.spec.ts'));
+
+      expect(content).toContain(
+        stripWhitespace(`
+        @Component({
+          selector: 'hello',
+          template: 'Hello',
+          imports: [ButtonModule, MatCardModule]
+        })
+        class Hello {}
+      `),
+      );
+
+      expect(content).toContain(
+        stripWhitespace(`
+        @Component({
+          template: '<hello></hello>',
+          imports: [ButtonModule, MatCardModule]
+        })
+        class App {}
+      `),
+      );
+
+      expect(content).toContain(
+        stripWhitespace(`
         it('should work', () => {
           setupModule({
-            declarations: [App, Hello],
-            imports: [ButtonModule, MatCardModule]
+            imports: [ButtonModule, MatCardModule, App, Hello]
           });
-          const fixture = bootstrap(App);
+          const fixture = bootstrapTemplate(App);
           expect(fixture.nativeElement.innerHTML).toBe('<hello>Hello</hello>');
         });
+      `),
+      );
 
+      expect(content).toContain(
+        stripWhitespace(`
         it('should work in a different way', () => {
-          setupModule({declarations: [App, Hello], imports: [MatCardModule]});
-          const fixture = bootstrap(App);
+          setupModule({imports: [MatCardModule, App, Hello]});
+          const fixture = bootstrapTemplate(App);
           expect(fixture.nativeElement.innerHTML).toBe('<hello>Hello</hello>');
         });
-      });
-
-      @Component({selector: 'hello', template: 'Hello'})
-      class Hello {}
-
-      @Component({template: '<hello></hello>'})
-      class App {}
-    `,
-    );
-
-    await runMigration('convert-to-standalone');
-
-    const content = stripWhitespace(tree.readContent('app.spec.ts'));
-
-    expect(content).toContain(
-      stripWhitespace(`
-      @Component({
-        selector: 'hello',
-        template: 'Hello',
-        standalone: true,
-        imports: [ButtonModule, MatCardModule]
-      })
-      class Hello {}
-    `),
-    );
-
-    expect(content).toContain(
-      stripWhitespace(`
-      @Component({
-        template: '<hello></hello>',
-        standalone: true,
-        imports: [ButtonModule, MatCardModule]
-      })
-      class App {}
-    `),
-    );
-
-    expect(content).toContain(
-      stripWhitespace(`
-      it('should work', () => {
-        setupModule({
-          imports: [ButtonModule, MatCardModule, App, Hello]
-        });
-        const fixture = bootstrap(App);
-        expect(fixture.nativeElement.innerHTML).toBe('<hello>Hello</hello>');
-      });
-    `),
-    );
-
-    expect(content).toContain(
-      stripWhitespace(`
-      it('should work in a different way', () => {
-        setupModule({imports: [MatCardModule, App, Hello]});
-        const fixture = bootstrap(App);
-        expect(fixture.nativeElement.innerHTML).toBe('<hello>Hello</hello>');
-      });
-    `),
-    );
+      `),
+      );
+    });
   });
 
   it('should not copy over the NoopAnimationsModule into the imports of a test component', async () => {
@@ -1597,7 +1587,7 @@ describe('standalone migration', () => {
     );
     expect(content).toContain(
       stripWhitespace(`
-          @Component({template: 'hello', standalone: true, imports: [MatCardModule]})
+          @Component({template: 'hello', imports: [MatCardModule]})
           class App {}
         `),
     );
@@ -1623,7 +1613,7 @@ describe('standalone migration', () => {
             });
           });
 
-          @Component({template: 'hello'})
+          @Component({template: 'hello', standalone: false})
           class App {}
         `,
     );
@@ -1641,7 +1631,7 @@ describe('standalone migration', () => {
     );
     expect(content).toContain(
       stripWhitespace(`
-          @Component({template: 'hello', standalone: true, imports: [MatCardModule]})
+          @Component({template: 'hello', imports: [MatCardModule]})
           class App {}
         `),
     );
@@ -1651,7 +1641,7 @@ describe('standalone migration', () => {
     const appComponentContent = `
         import {Component} from '@angular/core';
 
-        @Component({selector: 'app', template: ''})
+        @Component({selector: 'app', template: '', standalone: false})
         export class AppComponent {}
       `;
 
@@ -1686,7 +1676,7 @@ describe('standalone migration', () => {
           });
         });
 
-        @Component({template: ''})
+        @Component({template: '', standalone: false})
         class TestComp {}
       `,
     );
@@ -1713,7 +1703,6 @@ describe('standalone migration', () => {
       stripWhitespace(`
         @Component({
           template: '',
-          standalone: true,
           imports: [ButtonModule, MatCardModule]
         })
         class TestComp {}
@@ -1786,7 +1775,7 @@ describe('standalone migration', () => {
       `
       import {NgModule, Component} from '@angular/core';
 
-      @Component({selector: 'root-comp', template: 'hello'})
+      @Component({selector: 'root-comp', template: 'hello', standalone: false})
       export class RootComp {}
 
       @NgModule({declarations: [RootComp], bootstrap: []})
@@ -1800,7 +1789,7 @@ describe('standalone migration', () => {
       stripWhitespace(`
       import {NgModule, Component} from '@angular/core';
 
-      @Component({selector: 'root-comp', template: 'hello', standalone: true})
+      @Component({selector: 'root-comp', template: 'hello'})
       export class RootComp {}
 
       @NgModule({imports: [RootComp], bootstrap: []})
@@ -1815,7 +1804,7 @@ describe('standalone migration', () => {
       `
       import {Directive} from '@angular/core';
 
-      @Directive({selector: '[foo]'})
+      @Directive({selector: '[foo]', standalone: false})
       export class MyDir {}
     `,
     );
@@ -1826,7 +1815,7 @@ describe('standalone migration', () => {
       import {NgModule, Component} from '@angular/core';
       import {MyDir} from './dir';
 
-      @Component({selector: 'root-comp', template: 'hello'})
+      @Component({selector: 'root-comp', template: 'hello', standalone: false})
       export class RootComp {}
 
       @NgModule({declarations: [RootComp, MyDir], bootstrap: [RootComp]})
@@ -1840,7 +1829,7 @@ describe('standalone migration', () => {
       stripWhitespace(`
       import {Directive} from '@angular/core';
 
-      @Directive({selector: '[foo]', standalone: true})
+      @Directive({selector: '[foo]'})
       export class MyDir {}
     `),
     );
@@ -1850,7 +1839,7 @@ describe('standalone migration', () => {
       import {NgModule, Component} from '@angular/core';
       import {MyDir} from './dir';
 
-      @Component({selector: 'root-comp', template: 'hello'})
+      @Component({selector: 'root-comp', template: 'hello', standalone: false})
       export class RootComp {}
 
       @NgModule({imports: [MyDir], declarations: [RootComp], bootstrap: [RootComp]})
@@ -1867,11 +1856,12 @@ describe('standalone migration', () => {
 
       @Component({
         selector: 'comp',
-        template: '<div my-dir></div>'
+        template: '<div my-dir></div>',
+        standalone: false
       })
       export class MyComp {}
 
-      @Directive({selector: '[my-dir]'})
+      @Directive({selector: '[my-dir]', standalone: false})
       export class MyDir {}
     `,
     );
@@ -1896,12 +1886,11 @@ describe('standalone migration', () => {
       @Component({
         selector: 'comp',
         template: '<div my-dir></div>',
-        standalone: true,
         imports: [forwardRef(() => MyDir)]
       })
       export class MyComp {}
 
-      @Directive({selector: '[my-dir]', standalone: true})
+      @Directive({selector: '[my-dir]'})
       export class MyDir {}
     `),
     );
@@ -1915,7 +1904,8 @@ describe('standalone migration', () => {
 
       @Component({
         selector: 'comp',
-        template: '<comp/>'
+        template: '<comp/>',
+        standalone: false,
       })
       export class MyComp {}
     `,
@@ -1941,7 +1931,6 @@ describe('standalone migration', () => {
       @Component({
         selector: 'comp',
         template: '<comp/>',
-        standalone: true
       })
       export class MyComp {}
     `),
@@ -1957,7 +1946,8 @@ describe('standalone migration', () => {
 
       @Component({
         selector: 'comp',
-        template: '<div routerLink="/"></div>'
+        template: '<div routerLink="/"></div>',
+        standalone: false
       })
       export class MyComp {}
 
@@ -1976,7 +1966,6 @@ describe('standalone migration', () => {
       @Component({
         selector: 'comp',
         template: '<div routerLink="/"></div>',
-        standalone: true,
         imports: [RouterModule]
       })
       export class MyComp {}
@@ -1994,7 +1983,7 @@ describe('standalone migration', () => {
       import {NgModule, Directive} from '@angular/core';
 
       /** Directive used for testing. */
-      @Directive({selector: '[dir]'})
+      @Directive({selector: '[dir]', standalone: false})
       export class MyDir {}
 
       /** Module used for testing. */
@@ -2010,7 +1999,7 @@ describe('standalone migration', () => {
       import {NgModule, Directive} from '@angular/core';
 
       /** Directive used for testing. */
-      @Directive({selector: '[dir]', standalone: true})
+      @Directive({selector: '[dir]'})
       export class MyDir {}
 
       /** Module used for testing. */
@@ -2041,7 +2030,7 @@ describe('standalone migration', () => {
 
       MyButton.sayHello();
 
-      @Component({selector: 'my-comp', template: '<my-button>Hello</my-button>'})
+      @Component({selector: 'my-comp', template: '<my-button>Hello</my-button>', standalone: false})
       export class MyComp {}
     `,
     );
@@ -2051,7 +2040,7 @@ describe('standalone migration', () => {
       `
       import {Component} from '@angular/core';
 
-      @Component({selector: 'my-button', template: '<ng-content></ng-content>'})
+      @Component({selector: 'my-button', template: '<ng-content></ng-content>', standalone: false})
       export class MyButton {}
     `,
     );
@@ -2068,7 +2057,6 @@ describe('standalone migration', () => {
 
       @Component({
         selector: 'my-comp', template: '<my-button>Hello</my-button>',
-        standalone: true,
         imports: [MyButton_1]
       })
       export class MyComp {}
@@ -2082,7 +2070,7 @@ describe('standalone migration', () => {
       `
       import {NgModule, Directive} from '@angular/core';
 
-      @Directive({selector: '[dir]'})
+      @Directive({selector: '[dir]', standalone: false})
       export class MyDir {}
 
       @NgModule({
@@ -2113,7 +2101,7 @@ describe('standalone migration', () => {
       import {CommonModule} from '@angular/common';
       import {RouterModule} from '@angular/router';
 
-      @Directive({selector: '[dir]'})
+      @Directive({selector: '[dir]', standalone: false})
       export class MyDir {}
 
       @NgModule({
@@ -2153,6 +2141,7 @@ describe('standalone migration', () => {
       @Directive({
         selector: '[dir]',
         exportAs: 'dir',
+        standalone: false,
       })
       export class MyDir {}
 
@@ -2168,7 +2157,6 @@ describe('standalone migration', () => {
       @Directive({
         selector: '[dir]',
         exportAs: 'dir',
-        standalone: true,
       })
     `),
     );
@@ -2180,18 +2168,19 @@ describe('standalone migration', () => {
       `
       import {NgModule, Directive, Component} from '@angular/core';
 
-      @Directive({selector: '[dir-one]'})
+      @Directive({selector: '[dir-one]', standalone: false})
       export class DirOne {}
 
-      @Directive({selector: '[dir-two]'})
+      @Directive({selector: '[dir-two]', standalone: false})
       export class DirTwo {}
 
-      @Directive({selector: '[dir-three]'})
+      @Directive({selector: '[dir-three]', standalone: false})
       export class DirThree {}
 
       @Component({
         selector: 'my-comp',
         template: '<div dir-one dir-two dir-three></div>',
+        standalone: false,
       })
       export class MyComp {}
 
@@ -2207,7 +2196,6 @@ describe('standalone migration', () => {
       @Component({
         selector: 'my-comp',
         template: '<div dir-one dir-two dir-three></div>',
-        standalone: true,
         imports: [
           DirOne,
           DirTwo,
@@ -2215,6 +2203,30 @@ describe('standalone migration', () => {
         ],
       })
     `),
+    );
+  });
+
+  it('should handle a directive that is explicitly standalone: false', async () => {
+    writeFile(
+      'module.ts',
+      `
+      import {NgModule, Directive} from '@angular/core';
+
+      @Directive({selector: '[dir]', standalone: false})
+      export class MyDir {}
+
+      @NgModule({declarations: [MyDir], exports: [MyDir]})
+      export class Mod {}
+    `,
+    );
+
+    await runMigration('convert-to-standalone');
+
+    const result = tree.readContent('module.ts');
+
+    expect(stripWhitespace(result)).toContain(stripWhitespace(`@Directive({selector: '[dir]'})`));
+    expect(stripWhitespace(result)).toContain(
+      stripWhitespace(`@NgModule({imports: [MyDir], exports: [MyDir]})`),
     );
   });
 
@@ -2247,7 +2259,7 @@ describe('standalone migration', () => {
       `
       import {Component} from '@angular/core';
 
-      @Component({selector: 'my-comp', template: '<my-button>Hello</my-button>'})
+      @Component({selector: 'my-comp', template: '<my-button>Hello</my-button>', standalone: false})
       export class MyComp {}
     `,
     );
@@ -2292,7 +2304,7 @@ describe('standalone migration', () => {
       `
       import {Component} from '@angular/core';
 
-      @Component({selector: 'my-comp', template: 'Hello'})
+      @Component({selector: 'my-comp', template: 'Hello', standalone: false})
       export class MyComp {}
     `,
     );
@@ -2318,7 +2330,7 @@ describe('standalone migration', () => {
       `
       import {Component} from '@angular/core';
 
-      @Component({selector: 'my-comp', template: 'Hello'})
+      @Component({selector: 'my-comp', template: 'Hello', standalone: false})
       export class MyComp {}
     `,
     );
@@ -3173,6 +3185,269 @@ describe('standalone migration', () => {
     );
   });
 
+  it('should replace any leftover NgModule classes in imports arrays with the exports used in the template', async () => {
+    writeFile(
+      'button.module.ts',
+      `
+      import {NgModule, Directive} from '@angular/core';
+      import {MyDir, MyButton} from './used';
+      import {Unused} from './unused';
+
+      @NgModule({imports: [MyButton, MyDir, Unused], exports: [MyButton, MyDir, Unused]})
+      export class ButtonModule {}
+    `,
+    );
+
+    // Declared in the module, but not used.
+    writeFile(
+      'unused.ts',
+      `
+        import {Directive} from '@angular/core';
+
+        @Directive({selector: '[unused]', standalone: true})
+        export class Unused {}
+      `,
+    );
+
+    writeFile(
+      'used.ts',
+      `
+        import {Directive, Component} from '@angular/core';
+
+        @Directive({selector: '[my-dir]', standalone: true})
+        export class MyDir {}
+
+        @Component({selector: 'my-button', template: '<ng-content/>', standalone: true})
+        export class MyButton {}
+      `,
+    );
+
+    writeFile(
+      'unrelated.ts',
+      `
+        import {Directive} from '@angular/core';
+
+        @Directive({selector: '[unrelated]', standalone: true})
+        export class Unrelated {}
+      `,
+    );
+
+    writeFile(
+      'comp.ts',
+      `
+      import {Component} from '@angular/core';
+      import {ButtonModule} from './button.module';
+      import {Unrelated} from './unrelated';
+
+      @Component({
+        selector: 'my-comp',
+        template: '<my-button my-dir unrelated>Hello</my-button>',
+        imports: [ButtonModule, Unrelated],
+        standalone: true,
+      })
+      export class MyComp {}
+    `,
+    );
+
+    await runMigration('prune-ng-modules');
+
+    expect(tree.exists('button.module.ts')).toBe(false);
+    expect(stripWhitespace(tree.readContent('comp.ts'))).toBe(
+      stripWhitespace(`
+      import {Component} from '@angular/core';
+      import {Unrelated} from './unrelated';
+      import {MyButton, MyDir} from './used';
+
+      @Component({
+        selector: 'my-comp',
+        template: '<my-button my-dir unrelated>Hello</my-button>',
+        imports: [MyButton, MyDir, Unrelated],
+        standalone: true,
+      })
+      export class MyComp {}
+    `),
+    );
+  });
+
+  it('should replace any leftover NgModule classes in testing module imports arrays with the module exports', async () => {
+    writeFile(
+      'button.module.ts',
+      `
+      import {NgModule, Directive} from '@angular/core';
+      import {MyDir, MyButton} from './decls';
+
+      @NgModule({imports: [MyButton, MyDir], exports: [MyButton, MyDir]})
+      export class ButtonModule {}
+    `,
+    );
+
+    writeFile(
+      'decls.ts',
+      `
+        import {Directive, Component} from '@angular/core';
+
+        @Directive({selector: '[my-dir]', standalone: true})
+        export class MyDir {}
+
+        @Component({selector: 'my-button', template: '<ng-content/>', standalone: true})
+        export class MyButton {}
+      `,
+    );
+
+    writeFile(
+      'test.ts',
+      `
+      import {bootstrapTemplate, setupModule} from 'some_internal_path/angular/testing/catalyst/fake_async';
+      import {ButtonModule} from './button.module';
+
+      describe('bootstrapping an app', () => {
+        beforeEach(() => {
+          setupModule({
+            imports: [ButtonModule]
+          });
+        });
+
+        it('should work', () => {
+          bootstrapTemplate('<my-button my-dir/>');
+        });
+      });
+    `,
+    );
+
+    await runMigration('prune-ng-modules');
+
+    expect(tree.exists('button.module.ts')).toBe(false);
+    expect(stripWhitespace(tree.readContent('test.ts'))).toBe(
+      stripWhitespace(`
+        import {bootstrapTemplate, setupModule} from 'some_internal_path/angular/testing/catalyst/fake_async';
+        import {MyButton, MyDir} from './decls';
+
+        describe('bootstrapping an app', () => {
+          beforeEach(() => {
+            setupModule({
+              imports: [MyButton, MyDir]
+            });
+          });
+
+          it('should work', () => {
+            bootstrapTemplate('<my-button my-dir/>');
+          });
+        });
+    `),
+    );
+  });
+
+  it('should remove leftover NgModule that does not have any exports', async () => {
+    writeFile(
+      'button.module.ts',
+      `
+      import {NgModule, Directive} from '@angular/core';
+
+      @NgModule({imports: [], exports: []})
+      export class ButtonModule {}
+    `,
+    );
+
+    writeFile(
+      'test.ts',
+      `
+      import {bootstrap, setupModule} from 'some_internal_path/angular/testing/catalyst/fake_async';
+      import {ButtonModule} from './button.module';
+
+      describe('bootstrapping an app', () => {
+        beforeEach(() => {
+          setupModule({
+            imports: [ButtonModule]
+          });
+        });
+      });
+    `,
+    );
+
+    await runMigration('prune-ng-modules');
+
+    expect(tree.exists('button.module.ts')).toBe(false);
+    expect(stripWhitespace(tree.readContent('test.ts'))).toBe(
+      stripWhitespace(`
+        import {bootstrap, setupModule} from 'some_internal_path/angular/testing/catalyst/fake_async';
+
+        describe('bootstrapping an app', () => {
+          beforeEach(() => {
+            setupModule({
+              imports: []
+            });
+          });
+        });
+    `),
+    );
+  });
+
+  it('should not duplicate imports when replacing leftover module with its imports', async () => {
+    writeFile(
+      'button.module.ts',
+      `
+      import {NgModule, Directive} from '@angular/core';
+      import {MyButton} from './decls';
+
+      @NgModule({exports: [MyButton]})
+      export class ButtonModule {}
+    `,
+    );
+
+    writeFile(
+      'decls.ts',
+      `
+        import {Directive, Component} from '@angular/core';
+
+        @Component({selector: 'my-button', template: '<ng-content/>', standalone: true})
+        export class MyButton {}
+      `,
+    );
+
+    writeFile(
+      'test.ts',
+      `
+      import {bootstrapTemplate, setupModule} from 'some_internal_path/angular/testing/catalyst/fake_async';
+      import {ButtonModule} from './button.module';
+      import {MyButton} from './decls';
+
+      describe('bootstrapping an app', () => {
+        beforeEach(() => {
+          setupModule({
+            imports: [ButtonModule, MyButton]
+          });
+        });
+
+        it('should work', () => {
+          bootstrapTemplate('<my-button/>');
+        });
+      });
+    `,
+    );
+
+    await runMigration('prune-ng-modules');
+
+    expect(tree.exists('button.module.ts')).toBe(false);
+    expect(stripWhitespace(tree.readContent('test.ts'))).toBe(
+      stripWhitespace(`
+        import {bootstrapTemplate, setupModule} from 'some_internal_path/angular/testing/catalyst/fake_async';
+        import {MyButton} from './decls';
+
+        describe('bootstrapping an app', () => {
+          beforeEach(() => {
+            setupModule({
+              imports: [MyButton]
+            });
+          });
+
+          it('should work', () => {
+            bootstrapTemplate('<my-button/>');
+          });
+        });
+    `),
+    );
+  });
+
   it('should switch a platformBrowser().bootstrapModule call to bootstrapApplication', async () => {
     writeFile(
       'main.ts',
@@ -3189,7 +3464,7 @@ describe('standalone migration', () => {
       `
       import {NgModule, Component} from '@angular/core';
 
-      @Component({template: 'hello'})
+      @Component({template: 'hello', standalone: false})
       export class AppComponent {}
 
       @NgModule({declarations: [AppComponent], bootstrap: [AppComponent]})
@@ -3212,7 +3487,7 @@ describe('standalone migration', () => {
       stripWhitespace(`
       import {NgModule, Component} from '@angular/core';
 
-      @Component({template: 'hello', standalone: true})
+      @Component({template: 'hello'})
       export class AppComponent {}
     `),
     );
@@ -3234,7 +3509,7 @@ describe('standalone migration', () => {
       `
           import {NgModule, Component} from '@angular/core';
 
-          @Component({template: 'hello'})
+          @Component({template: 'hello', standalone: false})
           export class AppComponent {}
 
           @NgModule({declarations: [AppComponent], bootstrap: [AppComponent]})
@@ -3258,7 +3533,7 @@ describe('standalone migration', () => {
       stripWhitespace(`
           import {NgModule, Component} from '@angular/core';
 
-          @Component({template: 'hello', standalone: true})
+          @Component({template: 'hello'})
           export class AppComponent {}
         `),
     );
@@ -3282,7 +3557,7 @@ describe('standalone migration', () => {
       `
       import {NgModule, Component} from '@angular/core';
 
-      @Component({template: 'hello'})
+      @Component({template: 'hello', standalone: false})
       export class AppComponent {}
 
       @NgModule({declarations: [AppComponent], bootstrap: [AppComponent]})
@@ -3308,7 +3583,7 @@ describe('standalone migration', () => {
       stripWhitespace(`
       import {NgModule, Component} from '@angular/core';
 
-      @Component({template: 'hello', standalone: true})
+      @Component({template: 'hello'})
       export class AppComponent {}
     `),
     );
@@ -3330,7 +3605,7 @@ describe('standalone migration', () => {
       `
       import {Component} from '@angular/core';
 
-      @Component({template: '<div *ngIf="show" dir>hello</div>'})
+      @Component({template: '<div *ngIf="show" dir>hello</div>', standalone: false})
       export class AppComponent {
         show = true;
       }
@@ -3342,7 +3617,7 @@ describe('standalone migration', () => {
       `
       import {Directive} from '@angular/core';
 
-      @Directive({selector: '[dir]'})
+      @Directive({selector: '[dir]', standalone: false})
       export class Dir {}
     `,
     );
@@ -3370,9 +3645,9 @@ describe('standalone migration', () => {
     expect(stripWhitespace(tree.readContent('main.ts'))).toBe(
       stripWhitespace(`
       import {platformBrowser, bootstrapApplication} from '@angular/platform-browser';
-      import {importProvidersFrom} from '@angular/core';
-      import {AppComponent} from './app/app.component';
       import {CommonModule} from '@angular/common';
+      import {AppComponent} from './app/app.component';
+      import {importProvidersFrom} from '@angular/core';
 
       bootstrapApplication(AppComponent, {
         providers: [importProvidersFrom(CommonModule)]
@@ -3383,12 +3658,11 @@ describe('standalone migration', () => {
     expect(stripWhitespace(tree.readContent('./app/app.component.ts'))).toBe(
       stripWhitespace(`
       import {Component} from '@angular/core';
-      import {Dir} from './dir';
       import {NgIf} from '@angular/common';
+      import {Dir} from './dir';
 
       @Component({
         template: '<div *ngIf="show" dir>hello</div>',
-        standalone: true,
         imports: [NgIf, Dir]
       })
       export class AppComponent {
@@ -3401,7 +3675,7 @@ describe('standalone migration', () => {
       stripWhitespace(`
       import {Directive} from '@angular/core';
 
-      @Directive({selector: '[dir]', standalone: true})
+      @Directive({selector: '[dir]'})
       export class Dir {}
     `),
     );
@@ -3423,7 +3697,7 @@ describe('standalone migration', () => {
       `
       import {Component} from '@angular/core';
 
-      @Component({template: 'hello'})
+      @Component({template: 'hello', standalone: false})
       export class AppComponent {}
     `,
     );
@@ -3461,7 +3735,7 @@ describe('standalone migration', () => {
       stripWhitespace(`
       import {Component} from '@angular/core';
 
-      @Component({template: 'hello', standalone: true})
+      @Component({template: 'hello'})
       export class AppComponent {}
     `),
     );
@@ -3519,7 +3793,7 @@ describe('standalone migration', () => {
         {provide: exportedToken, useClass: ExportedClass}
       ];
 
-      @Component({template: 'hello'})
+      @Component({template: 'hello', standalone: false})
       export class AppComponent {}
 
       @NgModule({
@@ -3545,11 +3819,11 @@ describe('standalone migration', () => {
       stripWhitespace(`
       import {exportedToken, exportedExtraProviders, ExportedClass, exportedFactory, AppComponent} from './app/app.module';
       import {platformBrowser, bootstrapApplication} from '@angular/platform-browser';
-      import {ExternalInterface} from '@external/interfaces';
-      import {externalToken as aliasedExternalToken} from './app/externals/other-token';
-      import {externalToken} from './app/externals/token';
-      import {InternalInterface} from './app/interfaces/internal-interface';
       import {InjectionToken} from '@angular/core';
+      import {InternalInterface} from './app/interfaces/internal-interface';
+      import {externalToken} from './app/externals/token';
+      import {externalToken as aliasedExternalToken} from './app/externals/other-token';
+      import {ExternalInterface} from '@external/interfaces';
 
       const internalToken = new InjectionToken<string>('internalToken');
       const unexportedExtraProviders = [
@@ -3593,7 +3867,7 @@ describe('standalone migration', () => {
         {provide: exportedToken, useClass: ExportedClass}
       ];
 
-      @Component({template: 'hello', standalone: true})
+      @Component({template: 'hello'})
       export class AppComponent {}
     `),
     );
@@ -3619,7 +3893,7 @@ describe('standalone migration', () => {
 
       console.log(token);
 
-      @Component({template: 'hello'})
+      @Component({template: 'hello', standalone: false})
       export class AppComponent {}
 
       @NgModule({
@@ -3653,7 +3927,7 @@ describe('standalone migration', () => {
 
       console.log(token);
 
-      @Component({template: 'hello', standalone: true})
+      @Component({template: 'hello'})
       export class AppComponent {}
     `),
     );
@@ -3676,7 +3950,7 @@ describe('standalone migration', () => {
           import {NgModule, Component} from '@angular/core';
           import {ROUTES} from '@angular/router';
 
-          @Component({template: 'hello'})
+          @Component({template: 'hello', standalone: false})
           export class AppComponent {}
 
           @NgModule({
@@ -3774,10 +4048,10 @@ describe('standalone migration', () => {
       stripWhitespace(`
         import {SameFileModule, AppComponent} from './app/app.module';
         import {platformBrowser, bootstrapApplication} from '@angular/platform-browser';
-        import {token} from './token';
-        import {NgModule, importProvidersFrom} from '@angular/core';
-        import {InternalModule} from './modules/internal.module';
         import {CommonModule} from '@angular/common';
+        import {InternalModule} from './modules/internal.module';
+        import {NgModule, importProvidersFrom} from '@angular/core';
+        import {token} from './token';
 
         bootstrapApplication(AppComponent, {
           providers: [importProvidersFrom(CommonModule, InternalModule, SameFileModule)]
@@ -3803,7 +4077,7 @@ describe('standalone migration', () => {
       import {NgModule, Component} from '@angular/core';
       import {RouterModule} from '@angular/router';
 
-      @Component({template: 'hello'})
+      @Component({template: 'hello', standalone: false})
       export class AppComponent {}
 
       @NgModule({
@@ -3856,7 +4130,7 @@ describe('standalone migration', () => {
       import {RouterModule} from '@angular/router';
       import {APP_ROUTES} from './routes';
 
-      @Component({template: 'hello'})
+      @Component({template: 'hello', standalone: false})
       export class AppComponent {}
 
       @NgModule({
@@ -3874,8 +4148,8 @@ describe('standalone migration', () => {
       stripWhitespace(`
       import {AppComponent} from './app/app.module';
       import {platformBrowser, bootstrapApplication} from '@angular/platform-browser';
-      import {APP_ROUTES} from './app/routes';
       import {provideRouter} from '@angular/router';
+      import {APP_ROUTES} from './app/routes';
 
       bootstrapApplication(AppComponent, {
         providers: [provideRouter(APP_ROUTES)]
@@ -3902,7 +4176,7 @@ describe('standalone migration', () => {
       import {RouterModule} from '@angular/router';
       import {of} from 'rxjs';
 
-      @Component({template: 'hello'})
+      @Component({template: 'hello', standalone: false})
       export class AppComponent {}
 
       @NgModule({
@@ -3922,8 +4196,8 @@ describe('standalone migration', () => {
       stripWhitespace(`
       import {AppComponent} from './app/app.module';
       import {platformBrowser, bootstrapApplication} from '@angular/platform-browser';
-      import {of} from 'rxjs';
       import {withPreloading, provideRouter} from '@angular/router';
+      import {of} from 'rxjs';
 
       bootstrapApplication(AppComponent, {
         providers: [provideRouter([], withPreloading(() => of(true)))]
@@ -3949,7 +4223,7 @@ describe('standalone migration', () => {
       import {NgModule, Component} from '@angular/core';
       import {RouterModule} from '@angular/router';
 
-      @Component({template: 'hello'})
+      @Component({template: 'hello', standalone: false})
       export class AppComponent {}
 
       @NgModule({
@@ -3995,7 +4269,7 @@ describe('standalone migration', () => {
           import {NgModule, Component} from '@angular/core';
           import {RouterModule} from '@angular/router';
 
-          @Component({template: 'hello'})
+          @Component({template: 'hello', standalone: false})
           export class AppComponent {}
 
           @NgModule({
@@ -4041,7 +4315,7 @@ describe('standalone migration', () => {
           import {NgModule, Component} from '@angular/core';
           import {RouterModule} from '@angular/router';
 
-          @Component({template: 'hello'})
+          @Component({template: 'hello', standalone: false})
           export class AppComponent {}
 
           @NgModule({
@@ -4087,7 +4361,7 @@ describe('standalone migration', () => {
           import {NgModule, Component} from '@angular/core';
           import {RouterModule} from '@angular/router';
 
-          @Component({template: 'hello'})
+          @Component({template: 'hello', standalone: false})
           export class AppComponent {}
 
           @NgModule({
@@ -4133,7 +4407,7 @@ describe('standalone migration', () => {
       import {NgModule, Component} from '@angular/core';
       import {RouterModule} from '@angular/router';
 
-      @Component({template: 'hello'})
+      @Component({template: 'hello', standalone: false})
       export class AppComponent {}
 
       @NgModule({
@@ -4179,7 +4453,7 @@ describe('standalone migration', () => {
           import {NgModule, Component} from '@angular/core';
           import {RouterModule} from '@angular/router';
 
-          @Component({template: 'hello'})
+          @Component({template: 'hello', standalone: false})
           export class AppComponent {}
 
           @NgModule({
@@ -4225,7 +4499,7 @@ describe('standalone migration', () => {
           import {NgModule, Component} from '@angular/core';
           import {RouterModule} from '@angular/router';
 
-          @Component({template: 'hello'})
+          @Component({template: 'hello', standalone: false})
           export class AppComponent {}
 
           @NgModule({
@@ -4349,8 +4623,8 @@ describe('standalone migration', () => {
       stripWhitespace(`
         import {AppComponent} from './app/app.module';
         import {platformBrowser, bootstrapApplication} from '@angular/platform-browser';
-        import {importProvidersFrom} from '@angular/core';
         import {RouterModule} from '@angular/router';
+        import {importProvidersFrom} from '@angular/core';
 
         const extraOptions = {useHash: true};
 
@@ -4443,8 +4717,8 @@ describe('standalone migration', () => {
       stripWhitespace(`
       import {AppComponent} from './app/app.module';
       import {platformBrowser, bootstrapApplication} from '@angular/platform-browser';
-      import {importProvidersFrom} from '@angular/core';
       import {BrowserAnimationsModule} from '@angular/platform-browser/animations';
+      import {importProvidersFrom} from '@angular/core';
 
       bootstrapApplication(AppComponent, {
         providers: [importProvidersFrom(BrowserAnimationsModule.withConfig({disableAnimations: true}))]
@@ -4561,7 +4835,7 @@ describe('standalone migration', () => {
         @Directive({selector: '[dir]', standalone: true})
         export class Dir {}
 
-        @Component({template: '<span dir></span>'})
+        @Component({template: '<span dir></span>', standalone: false})
         export class AppComponent {}
 
         @NgModule({imports: [Dir, CommonModule], declarations: [AppComponent], bootstrap: [AppComponent]})
@@ -4575,8 +4849,8 @@ describe('standalone migration', () => {
       stripWhitespace(`
         import {AppComponent} from './app/app.module';
         import {platformBrowser, bootstrapApplication} from '@angular/platform-browser';
-        import {importProvidersFrom} from '@angular/core';
         import {CommonModule} from '@angular/common';
+        import {importProvidersFrom} from '@angular/core';
 
         bootstrapApplication(AppComponent, {
           providers: [importProvidersFrom(CommonModule)]
@@ -4586,7 +4860,7 @@ describe('standalone migration', () => {
 
     expect(stripWhitespace(tree.readContent('./app/app.module.ts'))).toContain(
       stripWhitespace(`
-        @Component({template: '<span dir></span>', standalone: true, imports: [Dir]})
+        @Component({template: '<span dir></span>', imports: [Dir]})
         export class AppComponent {}
       `),
     );
@@ -4596,44 +4870,44 @@ describe('standalone migration', () => {
     writeFile(
       'main.ts',
       `
-          import {AppModule} from './app/app.module';
-          import {platformBrowser} from '@angular/platform-browser';
+        import {AppModule} from './app/app.module';
+        import {platformBrowser} from '@angular/platform-browser';
 
-          platformBrowser().bootstrapModule(AppModule).catch(e => console.error(e));
-        `,
+        platformBrowser().bootstrapModule(AppModule).catch(e => console.error(e));
+      `,
     );
 
     writeFile(
       './app/root.module.ts',
       `
-          import {NgModule, Component, InjectionToken} from '@angular/core';
+        import {NgModule, Component, InjectionToken} from '@angular/core';
 
-          const token = new InjectionToken<string>('token');
+        const token = new InjectionToken<string>('token');
 
-          @Component({selector: 'root-comp', template: '', standalone: true})
-          export class Root {}
+        @Component({selector: 'root-comp', template: '', standalone: true})
+        export class Root {}
 
-          @NgModule({
-            imports: [Root],
-            exports: [Root],
-            providers: [{provide: token, useValue: 'hello'}]
-          })
-          export class RootModule {}
-        `,
+        @NgModule({
+          imports: [Root],
+          exports: [Root],
+          providers: [{provide: token, useValue: 'hello'}]
+        })
+        export class RootModule {}
+      `,
     );
 
     writeFile(
       './app/app.module.ts',
       `
-          import {NgModule, Component} from '@angular/core';
-          import {RootModule, Root} from './root.module';
+        import {NgModule, Component} from '@angular/core';
+        import {RootModule, Root} from './root.module';
 
-          @NgModule({
-            imports: [RootModule],
-            bootstrap: [Root]
-          })
-          export class AppModule {}
-        `,
+        @NgModule({
+          imports: [RootModule],
+          bootstrap: [Root]
+        })
+        export class AppModule {}
+      `,
     );
 
     await runMigration('standalone-bootstrap');
@@ -4641,14 +4915,14 @@ describe('standalone migration', () => {
     expect(tree.exists('./app/app.module.ts')).toBe(false);
     expect(stripWhitespace(tree.readContent('main.ts'))).toBe(
       stripWhitespace(`
-          import {platformBrowser, bootstrapApplication} from '@angular/platform-browser';
-          import {importProvidersFrom} from '@angular/core';
-          import {RootModule, Root} from './app/root.module';
+        import {platformBrowser, bootstrapApplication} from '@angular/platform-browser';
+        import {RootModule, Root} from './app/root.module';
+        import {importProvidersFrom} from '@angular/core';
 
-          bootstrapApplication(Root, {
-            providers: [importProvidersFrom(RootModule)]
-          }).catch(e => console.error(e));
-        `),
+        bootstrapApplication(Root, {
+          providers: [importProvidersFrom(RootModule)]
+        }).catch(e => console.error(e));
+      `),
     );
   });
 
@@ -4760,6 +5034,92 @@ describe('standalone migration', () => {
       bootstrapApplication(AppComponent, {
         providers: [provideProtractorTestingSupport()]
       }).catch(e => console.error(e));
+    `),
+    );
+  });
+
+  it('should add handle import aliases to the same module name', async () => {
+    writeFile(
+      './app/comp.ts',
+      `
+      import { Component, NgModule } from '@angular/core';
+      import { AnotherModule } from '../another/another';
+      import { AnotherModule as LegacyAnotherModule } from '../another/another-legacy';
+
+      @Component({
+        selector: 'my-comp',
+        template: '<another1 /> <another2 />',
+        standalone: false
+      })
+      export class MyComponent {}
+
+      @NgModule({
+        imports: [AnotherModule, LegacyAnotherModule],
+        declarations: [MyComponent],
+        exports: [MyComponent]
+      })
+      export class MyModule {}
+
+    `,
+    );
+
+    writeFile(
+      './another/another.ts',
+      `
+      import { Component, NgModule } from '@angular/core';
+
+      @Component({
+        selector: 'another1',
+        template: 'another1',
+        standalone: false
+      })
+      export class AnotherComponent {}
+
+      @NgModule({
+        declarations: [AnotherComponent],
+        exports: [AnotherComponent]
+      })
+      export class AnotherModule {}
+
+    `,
+    );
+
+    writeFile(
+      './another/another-legacy.ts',
+      `
+      import { Component, NgModule } from '@angular/core';
+
+      @Component({
+        selector: 'another2',
+        template: 'another2',
+        standalone: false
+      })
+      export class AnotherComponent {}
+
+      @NgModule({
+        declarations: [AnotherComponent],
+        exports: [AnotherComponent]
+      })
+      export class AnotherModule {}
+
+    `,
+    );
+
+    await runMigration('convert-to-standalone', './app/');
+
+    const myCompContent = tree.readContent('app/comp.ts');
+
+    expect(myCompContent).toContain(`import { AnotherModule } from '../another/another';`);
+    expect(myCompContent).toContain(
+      `import { AnotherModule as LegacyAnotherModule } from '../another/another-legacy';`,
+    );
+    expect(stripWhitespace(myCompContent)).toContain(
+      stripWhitespace(`
+      @Component({
+        selector: 'my-comp',
+        template: '<another1 /> <another2 />',
+        imports: [AnotherModule, LegacyAnotherModule]
+      })
     `),
     );
   });

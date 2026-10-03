@@ -6,26 +6,25 @@
  * found in the LICENSE file at https://angular.dev/license
  */
 
-import {NgIf, isPlatformBrowser} from '@angular/common';
+import {isPlatformBrowser} from '@angular/common';
 import {
-  AfterViewInit,
   ChangeDetectionStrategy,
-  ChangeDetectorRef,
   Component,
   DestroyRef,
   ElementRef,
-  OnDestroy,
-  OnInit,
   PLATFORM_ID,
-  ViewChild,
+  afterRenderEffect,
   computed,
   inject,
+  input,
+  linkedSignal,
   signal,
+  viewChild,
 } from '@angular/core';
-import {takeUntilDestroyed, toObservable} from '@angular/core/rxjs-interop';
-import {IconComponent} from '@angular/docs';
+import {toSignal} from '@angular/core/rxjs-interop';
+import {IconComponent, TutorialType} from '@angular/docs';
 import {MatTabGroup, MatTabsModule} from '@angular/material/tabs';
-import {distinctUntilChanged, map} from 'rxjs';
+import {map} from 'rxjs';
 
 import {MAX_RECOMMENDED_WEBCONTAINERS_INSTANCES} from './alert-manager.service';
 
@@ -47,39 +46,41 @@ export const LARGE_EDITOR_HEIGHT_BREAKPOINT = 550;
 @Component({
   selector: EMBEDDED_EDITOR_SELECTOR,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  standalone: true,
-  imports: [AngularSplitModule, CodeEditor, Preview, Terminal, NgIf, MatTabsModule, IconComponent],
+  imports: [AngularSplitModule, CodeEditor, Preview, Terminal, MatTabsModule, IconComponent],
   templateUrl: './embedded-editor.component.html',
   styleUrls: ['./embedded-editor.component.scss'],
   providers: [EditorUiState],
 })
-export class EmbeddedEditor implements OnInit, AfterViewInit, OnDestroy {
-  @ViewChild('editorContainer') editorContainer!: ElementRef<HTMLDivElement>;
-  @ViewChild(MatTabGroup) matTabGroup!: MatTabGroup;
+export class EmbeddedEditor {
+  // Prevents from adding, removing or renaming files
+  readonly restrictedMode = input<boolean>(false);
+
+  readonly editorContainer = viewChild<ElementRef<HTMLDivElement>>('editorContainer');
+  readonly matTabGroup = viewChild(MatTabGroup);
 
   private readonly platformId = inject(PLATFORM_ID);
-  private readonly changeDetector = inject(ChangeDetectorRef);
   private readonly destroyRef = inject(DestroyRef);
 
   private readonly diagnosticsState = inject(DiagnosticsState);
-  private readonly editorUiState = inject(EditorUiState);
+  readonly editorUiState = inject(EditorUiState);
   private readonly nodeRuntimeState = inject(NodeRuntimeState);
   private readonly nodeRuntimeSandbox = inject(NodeRuntimeSandbox);
 
-  private resizeObserver?: ResizeObserver;
-
-  protected splitDirection: 'horizontal' | 'vertical' = 'vertical';
+  protected readonly splitDirection = signal<'horizontal' | 'vertical'>('vertical');
 
   readonly MAX_RECOMMENDED_WEBCONTAINERS_INSTANCES = MAX_RECOMMENDED_WEBCONTAINERS_INSTANCES;
 
-  readonly TerminalType = TerminalType;
-  readonly displayOnlyTerminal = computed(
-    () => this.editorUiState.uiState().displayOnlyInteractiveTerminal,
+  protected readonly TerminalType = TerminalType;
+  protected readonly displayOnlyTerminal = computed(
+    () => this.editorUiState.tutorialType() === TutorialType.CLI,
   );
-  readonly errorsCount = signal<number>(0);
-  readonly displayPreviewInMatTabGroup = signal<boolean>(true);
+  protected readonly displayPreviewInMatTabGroup = signal<boolean>(true);
+  protected readonly selectedTabIndex = linkedSignal({
+    source: () => this.displayPreviewInMatTabGroup(),
+    computation: () => 0,
+  });
 
-  readonly shouldEnableReset = computed(
+  protected readonly shouldEnableReset = computed(
     () =>
       this.nodeRuntimeState.loadingStep() > LoadingStep.BOOT &&
       !this.nodeRuntimeState.isResetting(),
@@ -87,66 +88,47 @@ export class EmbeddedEditor implements OnInit, AfterViewInit, OnDestroy {
 
   private readonly errorsCount$ = this.diagnosticsState.diagnostics$.pipe(
     map((diagnosticsItem) => diagnosticsItem.filter((item) => item.severity === 'error').length),
-    distinctUntilChanged(),
-    takeUntilDestroyed(this.destroyRef),
   );
-  private readonly displayPreviewInMatTabGroup$ = toObservable(
-    this.displayPreviewInMatTabGroup,
-  ).pipe(distinctUntilChanged(), takeUntilDestroyed(this.destroyRef));
+  protected readonly errorsCount = toSignal(this.errorsCount$, {initialValue: 0});
 
-  ngOnInit(): void {
-    this.listenToErrorsCount();
-  }
-
-  ngAfterViewInit(): void {
-    if (isPlatformBrowser(this.platformId)) {
-      this.setFirstTabAsActiveAfterResize();
-
-      this.setResizeObserver();
+  constructor() {
+    if (!isPlatformBrowser(this.platformId)) {
+      return;
     }
+
+    const ref = afterRenderEffect({
+      read: () => {
+        const container = this.editorContainer()?.nativeElement;
+        if (!container) {
+          return;
+        }
+        this.setResizeObserver(container);
+        ref.destroy();
+      },
+    });
   }
 
-  ngOnDestroy(): void {
-    this.resizeObserver?.disconnect();
-  }
-
-  setVisibleEmbeddedEditorTabs(): void {
-    this.displayPreviewInMatTabGroup.set(!this.isLargeEmbeddedEditor());
-  }
-
-  async reset(): Promise<void> {
+  protected async reset(): Promise<void> {
     await this.nodeRuntimeSandbox.reset();
   }
 
-  private setFirstTabAsActiveAfterResize(): void {
-    this.displayPreviewInMatTabGroup$.subscribe(() => {
-      this.changeDetector.detectChanges();
-      this.matTabGroup.selectedIndex = 0;
-    });
-  }
-
-  private listenToErrorsCount(): void {
-    this.errorsCount$.subscribe((errorsCount) => {
-      this.errorsCount.set(errorsCount);
-    });
-  }
-
   // Listen to resizing of Embedded Editor and set proper list of the tabs for the current resolution.
-  private setResizeObserver() {
-    this.resizeObserver = new ResizeObserver((_) => {
-      this.setVisibleEmbeddedEditorTabs();
+  private setResizeObserver(container: HTMLDivElement) {
+    const resizeObserver = new ResizeObserver((_) => {
+      this.displayPreviewInMatTabGroup.set(!this.isLargeEmbeddedEditor(container));
 
-      this.splitDirection = this.isLargeEmbeddedEditor() ? 'horizontal' : 'vertical';
+      this.splitDirection.set(this.isLargeEmbeddedEditor(container) ? 'horizontal' : 'vertical');
     });
 
-    this.resizeObserver.observe(this.editorContainer.nativeElement);
+    resizeObserver.observe(container);
+    this.destroyRef.onDestroy(() => {
+      resizeObserver.disconnect();
+    });
   }
 
-  private isLargeEmbeddedEditor(): boolean {
-    const editorContainer = this.editorContainer.nativeElement;
-    const width = editorContainer.offsetWidth;
-    const height = editorContainer.offsetHeight;
-
-    return width > LARGE_EDITOR_WIDTH_BREAKPOINT && height > LARGE_EDITOR_HEIGHT_BREAKPOINT;
+  private isLargeEmbeddedEditor({offsetWidth, offsetHeight}: HTMLDivElement): boolean {
+    return (
+      offsetWidth > LARGE_EDITOR_WIDTH_BREAKPOINT && offsetHeight > LARGE_EDITOR_HEIGHT_BREAKPOINT
+    );
   }
 }

@@ -3,11 +3,11 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {initMockFileSystem} from '@angular/compiler-cli/src/ngtsc/file_system/testing';
-import {getText} from '@angular/language-service/testing/src/util';
+import {getText} from '../testing/src/util';
 
 import {LanguageServiceTestEnv, OpenBuffer} from '../testing';
 
@@ -129,6 +129,30 @@ describe('signature help', () => {
     expect(getText(main.contents, items.applicableSpan)).toEqual('"test", ');
     expect(items.argumentCount).toEqual(2);
     expect(items.argumentIndex).toEqual(1);
+    expect(items.items.length).toEqual(1);
+  });
+
+  it('should handle a single argument if the function is nested', () => {
+    const main = setup(`
+      import {Component} from '@angular/core';
+      @Component({
+        template: '{{ someObj.foo("test") }}',
+      })
+      export class MainCmp {
+        someObj = {
+          foo(alpha: string, beta: number): string {
+            return 'blah';
+          }
+        }
+      }
+    `);
+    main.moveCursorToText('foo("test"¦)');
+
+    const items = main.getSignatureHelpItems()!;
+    expect(items).toBeDefined();
+    expect(getText(main.contents, items.applicableSpan)).toEqual('"test"');
+    expect(items.argumentCount).toEqual(1);
+    expect(items.argumentIndex).toEqual(0);
     expect(items.items.length).toEqual(1);
   });
 });

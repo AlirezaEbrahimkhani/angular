@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {ɵWritable as Writable} from '@angular/core';
@@ -15,6 +15,7 @@ import {
   AbstractControlOptions,
   assertAllValuesPresent,
   assertControlPresent,
+  FormResetEvent,
   pickAsyncValidators,
   pickValidators,
   ɵRawValue,
@@ -65,7 +66,7 @@ export type ɵFormArrayRawValue<T extends AbstractControl<any>> = ɵTypedOrUntyp
  *
  * ### Create an array of form controls
  *
- * ```
+ * ```ts
  * const arr = new FormArray([
  *   new FormControl('Nancy', Validators.minLength(2)),
  *   new FormControl('Drew'),
@@ -84,7 +85,7 @@ export type ɵFormArrayRawValue<T extends AbstractControl<any>> = ɵTypedOrUntyp
  * The two types of validators are passed in separately as the second and third arg
  * respectively, or together as part of an options object.
  *
- * ```
+ * ```ts
  * const arr = new FormArray([
  *   new FormControl('Nancy'),
  *   new FormControl('Drew')
@@ -174,9 +175,16 @@ export class FormArray<TControl extends AbstractControl<any> = any> extends Abst
    * `valueChanges` observables emit events with the latest status and value when the control is
    * inserted. When false, no events are emitted.
    */
-  push(control: TControl, options: {emitEvent?: boolean} = {}): void {
-    this.controls.push(control);
-    this._registerControl(control);
+  push(control: TControl | Array<TControl>, options: {emitEvent?: boolean} = {}): void {
+    if (Array.isArray(control)) {
+      control.forEach((ctrl) => {
+        this.controls.push(ctrl);
+        this._registerControl(ctrl);
+      });
+    } else {
+      this.controls.push(control);
+      this._registerControl(control);
+    }
     this.updateValueAndValidity({emitEvent: options.emitEvent});
     this._onCollectionChange();
   }
@@ -273,7 +281,7 @@ export class FormArray<TControl extends AbstractControl<any> = any> extends Abst
    * @usageNotes
    * ### Set the values for the controls in the form array
    *
-   * ```
+   * ```ts
    * const arr = new FormArray([
    *   new FormControl(),
    *   new FormControl()
@@ -322,7 +330,7 @@ export class FormArray<TControl extends AbstractControl<any> = any> extends Abst
    * @usageNotes
    * ### Patch the values for controls in a form array
    *
-   * ```
+   * ```ts
    * const arr = new FormArray([
    *    new FormControl(),
    *    new FormControl()
@@ -388,7 +396,7 @@ export class FormArray<TControl extends AbstractControl<any> = any> extends Abst
    *
    * ### Reset the values in a form array and the disabled status for the first control
    *
-   * ```
+   * ```ts
    * arr.reset([
    *   {value: 'name', disabled: true},
    *   'last'
@@ -424,6 +432,9 @@ export class FormArray<TControl extends AbstractControl<any> = any> extends Abst
     this._updatePristine(options, this);
     this._updateTouched(options, this);
     this.updateValueAndValidity(options);
+    if (options?.emitEvent !== false) {
+      this._events.next(new FormResetEvent(this));
+    }
   }
 
   /**

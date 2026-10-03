@@ -3,10 +3,15 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {DirectiveMeta as T2DirectiveMeta, Expression, SchemaMetadata} from '@angular/compiler';
+import {
+  DirectiveMeta as T2DirectiveMeta,
+  Expression,
+  SchemaMetadata,
+  ExternalReference,
+} from '@angular/compiler';
 import ts from 'typescript';
 
 import {Reference} from '../../imports';
@@ -24,6 +29,12 @@ export interface NgModuleMeta {
   imports: Reference<ClassDeclaration>[];
   exports: Reference<ClassDeclaration>[];
   schemas: SchemaMetadata[];
+
+  /**
+   * Whether the module had some issue being analyzed.
+   * This means it likely does not have complete and reliable metadata.
+   */
+  isPoisoned: boolean;
 
   /**
    * The raw `ts.Expression` which gave rise to `declarations`, if one exists.
@@ -200,6 +211,12 @@ export interface DirectiveMeta extends T2DirectiveMeta, DirectiveTypeCheckMeta {
   inputs: ClassPropertyMapping<InputMapping>;
 
   /**
+   * List of input fields that were defined in the class decorator
+   * metadata. Null for directives extracted from `.d.ts`
+   */
+  inputFieldNamesFromMetadataArray: Set<string> | null;
+
+  /**
    * A mapping of output field names to the property names.
    */
   outputs: ClassPropertyMapping;
@@ -239,6 +256,11 @@ export interface DirectiveMeta extends T2DirectiveMeta, DirectiveTypeCheckMeta {
   imports: Reference<ClassDeclaration>[] | null;
 
   /**
+   * Node declaring the `imports` of a standalone component. Used to produce diagnostics.
+   */
+  rawImports: ts.Expression | null;
+
+  /**
    * For standalone components, the list of imported types that can be used
    * in `@defer` blocks (when only explicit dependencies are allowed).
    */
@@ -269,6 +291,14 @@ export interface DirectiveMeta extends T2DirectiveMeta, DirectiveTypeCheckMeta {
    * scope via `@Component.deferredImports` field.
    */
   isExplicitlyDeferred: boolean;
+
+  /** Whether selectorless is enabled for the specific component. */
+  selectorlessEnabled: boolean;
+
+  /**
+   * Names of the symbols within the source file that are referenced directly inside the template.
+   */
+  localReferencedSymbols: Set<string> | null;
 }
 
 /** Metadata collected about an additional directive that is being applied to a directive host. */
@@ -280,7 +310,7 @@ export interface HostDirectiveMeta {
    * which indicates the expression could not be resolved due to being imported from some external
    * file. In this case, the expression is the raw expression as appears in the decorator.
    */
-  directive: Reference<ClassDeclaration> | Expression;
+  directive: Reference<ClassDeclaration> | Expression | ExternalReference;
 
   /** Whether the reference to the host directive is a forward reference. */
   isForwardReference: boolean;
@@ -333,9 +363,10 @@ export interface TemplateGuardMeta {
 export interface PipeMeta {
   kind: MetaKind.Pipe;
   ref: Reference<ClassDeclaration>;
-  name: string;
+  name: string | null;
   nameExpr: ts.Expression | null;
   isStandalone: boolean;
+  isPure: boolean;
   decorator: ts.Decorator | null;
   isExplicitlyDeferred: boolean;
 }

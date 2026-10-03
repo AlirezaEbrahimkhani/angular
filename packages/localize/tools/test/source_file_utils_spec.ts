@@ -3,14 +3,14 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 import {
   absoluteFrom,
   getFileSystem,
   PathManipulation,
 } from '@angular/compiler-cli/src/ngtsc/file_system';
-import {ɵmakeTemplateObject} from '@angular/localize';
+import {ɵmakeTemplateObject} from '../../index';
 import babel, {NodePath, TransformOptions, template, types as t} from '@babel/core';
 import _generate from '@babel/generator';
 

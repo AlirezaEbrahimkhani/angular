@@ -7,54 +7,56 @@
  */
 
 import {
-  AfterViewInit,
   ChangeDetectionStrategy,
   Component,
-  DestroyRef,
   ElementRef,
-  Input,
-  ViewChild,
+  input,
   ViewEncapsulation,
+  afterNextRender,
   inject,
+  viewChild,
+  DestroyRef,
 } from '@angular/core';
-
-import {fromEvent} from 'rxjs/internal/observable/fromEvent';
-import {debounceTime} from 'rxjs/operators';
-import {TerminalHandler, TerminalType} from './terminal-handler.service';
+import {Subject} from 'rxjs';
 import {takeUntilDestroyed} from '@angular/core/rxjs-interop';
-import {WINDOW} from '@angular/docs';
-import {NgIf} from '@angular/common';
+import {debounceTime} from 'rxjs/operators';
+
+import {TerminalHandler, TerminalType} from './terminal-handler.service';
 
 @Component({
   selector: 'docs-tutorial-terminal',
-  standalone: true,
-  templateUrl: './terminal.component.html',
+  template: '<div #terminalOutput class="adev-terminal-output"></div>',
   styleUrls: ['./terminal.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [NgIf],
   // ViewEncapsulation is disabled to allow Xterm.js's styles to be applied
   // to the terminal element.
   encapsulation: ViewEncapsulation.None,
 })
-export class Terminal implements AfterViewInit {
-  @Input({required: true}) type!: TerminalType;
-  @ViewChild('terminalOutput') private terminalElementRef!: ElementRef<HTMLElement>;
+export class Terminal {
+  readonly type = input.required<TerminalType>();
+  private readonly terminalElementRef =
+    viewChild.required<ElementRef<HTMLElement>>('terminalOutput');
 
   private readonly destroyRef = inject(DestroyRef);
   private readonly terminalHandler = inject(TerminalHandler);
-  private readonly window = inject(WINDOW);
 
-  ngAfterViewInit() {
-    this.terminalHandler.registerTerminal(this.type, this.terminalElementRef.nativeElement);
-
-    fromEvent(this.window, 'resize')
-      .pipe(debounceTime(50), takeUntilDestroyed(this.destroyRef))
-      .subscribe(() => {
-        this.handleResize();
-      });
+  constructor() {
+    afterNextRender({
+      read: () => {
+        this.terminalHandler.registerTerminal(this.type(), this.terminalElementRef().nativeElement);
+        this.setResizeObserver();
+      },
+    });
   }
 
-  private handleResize(): void {
-    this.terminalHandler.resizeToFitParent(this.type);
+  private setResizeObserver(): void {
+    const resize = new Subject<void>();
+    resize
+      .pipe(debounceTime(50), takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => void this.terminalHandler.resizeToFitParent(this.type()));
+
+    const resizeObserver = new ResizeObserver(() => void resize.next());
+    resizeObserver.observe(this.terminalElementRef().nativeElement);
+    this.destroyRef.onDestroy(() => void resizeObserver.disconnect());
   }
 }

@@ -3,16 +3,18 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {Component} from '@angular/core';
 import {TestBed} from '@angular/core/testing';
-import {provideRouter, Router} from '@angular/router';
-import {RouterTestingHarness} from '@angular/router/testing';
+import {ActivatedRouteSnapshot, provideRouter, Router} from '../../index';
+import {RouterTestingHarness} from '../../testing';
 import {EMPTY, interval, NEVER, of} from 'rxjs';
+import {useAutoTick} from '../helpers';
 
 describe('resolveData operator', () => {
+  useAutoTick();
   it('should take only the first emitted value of every resolver', async () => {
     TestBed.configureTestingModule({
       providers: [provideRouter([{path: '**', children: [], resolve: {e1: () => interval()}}])],
@@ -121,7 +123,10 @@ describe('resolveData operator', () => {
   });
 
   it('should have correct data when parent resolver runs but data is not inherited', async () => {
-    @Component({template: ''})
+    @Component({
+      template: '',
+      standalone: false,
+    })
     class Empty {}
 
     TestBed.configureTestingModule({
@@ -150,7 +155,10 @@ describe('resolveData operator', () => {
   });
 
   it('should have static title when there is a resolver', async () => {
-    @Component({template: ''})
+    @Component({
+      template: '',
+      standalone: false,
+    })
     class Empty {}
 
     TestBed.configureTestingModule({
@@ -179,8 +187,43 @@ describe('resolveData operator', () => {
     expect(rootSnapshot.firstChild!.title).toBe('b title');
   });
 
+  it('can used parent data in child resolver', async () => {
+    @Component({
+      template: '',
+    })
+    class Empty {}
+
+    TestBed.configureTestingModule({
+      providers: [
+        provideRouter([
+          {
+            path: 'a',
+            resolve: {
+              aResolve: () => new Promise<string>((resolve) => setTimeout(() => resolve('a'), 5)),
+            },
+            children: [
+              {
+                path: 'b',
+                resolve: {
+                  bResolve: (route: ActivatedRouteSnapshot) => route.data['aResolve'] + 'b',
+                },
+                children: [{path: 'c', component: Empty}],
+              },
+            ],
+          },
+        ]),
+      ],
+    });
+    await RouterTestingHarness.create('/a/b/c');
+    const rootSnapshot = TestBed.inject(Router).routerState.root.firstChild!.snapshot;
+    expect(rootSnapshot.firstChild!.firstChild!.data).toEqual({bResolve: 'ab', aResolve: 'a'});
+  });
+
   it('should inherit resolved data from parent of parent route', async () => {
-    @Component({template: ''})
+    @Component({
+      template: '',
+      standalone: false,
+    })
     class Empty {}
 
     TestBed.configureTestingModule({

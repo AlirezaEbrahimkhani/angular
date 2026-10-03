@@ -37,14 +37,31 @@ The CLI project is now set up to use the Angular service worker.
 ## Service worker in action: a tour
 
 This section demonstrates a service worker in action,
-using an example application.
+using an example application. To enable service worker support during local development, use the production configuration with the following command:
+
+<docs-code language="shell">
+
+ng serve --configuration=production
+
+</docs-code>
+
+Alternatively, you can use the [`http-server package`](https://www.npmjs.com/package/http-server) from
+npm, which supports service worker applications. Run it without installation using:
+
+<docs-code language="shell">
+
+npx http-server -p 8080 -c-1 dist/<project-name>/browser
+
+</docs-code>
+
+This will serve your application with service worker support at http://localhost:8080.
 
 ### Initial load
 
 With the server running on port `8080`, point your browser at `http://localhost:8080`.
 Your application should load normally.
 
-Tip: When testing Angular service workers, it's a good idea to use an incognito or private window in your browser to ensure the service worker doesn't end up reading from a previous leftover state, which can cause unexpected behavior.
+TIP: When testing Angular service workers, it's a good idea to use an incognito or private window in your browser to ensure the service worker doesn't end up reading from a previous leftover state, which can cause unexpected behavior.
 
 HELPFUL: If you are not using HTTPS, the service worker will only be registered when accessing the application on `localhost`.
 
@@ -141,6 +158,159 @@ Now look at how the browser and service worker handle the updated application.
     <img alt="The text has changed to say Bienvenue à app!" src="assets/images/guide/service-worker/welcome-msg-fr.png">
 
     The service worker installed the updated version of your application _in the background_, and the next time the page is loaded or reloaded, the service worker switches to the latest version.
+
+## Service worker configuration
+
+Angular service workers support comprehensive configuration options through the `SwRegistrationOptions` interface, providing fine-grained control over registration behavior, caching, and script execution.
+
+### Enabling and disabling service workers
+
+The `enabled` option controls whether the service worker will be registered and related services will attempt to communicate with it.
+
+<docs-code language="typescript">
+
+import { ApplicationConfig, isDevMode } from '@angular/core';
+import { provideServiceWorker } from '@angular/service-worker';
+
+export const appConfig: ApplicationConfig = {
+  providers: [
+    provideServiceWorker('ngsw-worker.js', {
+      enabled: !isDevMode(), // Disable in development, enable in production
+    }),
+  ],
+};
+
+</docs-code>
+
+
+### Cache control with updateViaCache
+
+The `updateViaCache` option controls how the browser consults the HTTP cache during service worker updates. This provides fine-grained control over when the browser fetches updated service worker scripts and imported modules.
+
+<docs-code language="typescript">
+
+export const appConfig: ApplicationConfig = {
+  providers: [
+    provideServiceWorker('ngsw-worker.js', {
+      enabled: !isDevMode(),
+      updateViaCache: 'imports',
+    }),
+  ],
+};
+
+</docs-code>
+
+The `updateViaCache` option accepts the following values:
+
+* **`'imports'`** - The HTTP cache is consulted for the service worker script's imported scripts, but not for the service worker script itself
+* **`'all'`** - The HTTP cache is consulted for both the service worker script and its imported scripts  
+* **`'none'`** - The HTTP cache is not consulted for the service worker script or its imported scripts
+
+### ES Module support with type option
+
+The `type` option enables specifying the script type when registering service workers, providing support for ES module features in your service worker scripts.
+
+<docs-code language="typescript">
+
+export const appConfig: ApplicationConfig = {
+  providers: [
+    provideServiceWorker('ngsw-worker.js', {
+      enabled: !isDevMode(),
+      type: 'module', // Enable ES module features
+    }),
+  ],
+};
+
+</docs-code>
+
+The `type` option accepts the following values:
+
+* **`'classic'`** (default) - Traditional service worker script execution. ES module features such as `import` and `export` are NOT allowed in the script
+* **`'module'`** - Registers the script as an ES module. Allows use of `import`/`export` syntax and module features
+
+### Registration scope control
+
+The `scope` option defines the service worker's registration scope, determining what range of URLs it can control.
+
+<docs-code language="typescript">
+
+export const appConfig: ApplicationConfig = {
+  providers: [
+    provideServiceWorker('ngsw-worker.js', {
+      enabled: !isDevMode(),
+      scope: '/app/', // Service worker will only control URLs under /app/
+    }),
+  ],
+};
+
+</docs-code>
+
+* Controls which URLs the service worker can intercept and manage
+* By default, the scope is the directory containing the service worker script
+* Used when calling `ServiceWorkerContainer.register()`
+
+### Registration strategy configuration
+
+The `registrationStrategy` option defines when the service worker will be registered with the browser, providing control over the timing of registration.
+
+<docs-code language="typescript">
+
+export const appConfig: ApplicationConfig = {
+  providers: [
+    provideServiceWorker('ngsw-worker.js', {
+      enabled: !isDevMode(),
+      registrationStrategy: 'registerWhenStable:30000',
+    }),
+  ],
+};
+
+</docs-code>
+
+Available registration strategies:
+
+* **`'registerWhenStable:timeout'`** (default: `'registerWhenStable:30000'`) - Register as soon as the application stabilizes (no pending micro-/macro-tasks) but no later than the specified timeout in milliseconds
+* **`'registerImmediately'`** - Register the service worker immediately
+* **`'registerWithDelay:timeout'`** - Register with a delay of the specified timeout in milliseconds
+
+<docs-code language="typescript">
+
+// Register immediately
+export const immediateConfig: ApplicationConfig = {
+  providers: [
+    provideServiceWorker('ngsw-worker.js', {
+      enabled: !isDevMode(),
+      registrationStrategy: 'registerImmediately',
+    }),
+  ],
+};
+
+// Register with a 5-second delay
+export const delayedConfig: ApplicationConfig = {
+  providers: [
+    provideServiceWorker('ngsw-worker.js', {
+      enabled: !isDevMode(),
+      registrationStrategy: 'registerWithDelay:5000',
+    }),
+  ],
+};
+
+</docs-code>
+
+You can also provide an Observable factory function for custom registration timing:
+
+<docs-code language="typescript">
+import { timer } from 'rxjs';
+
+export const customConfig: ApplicationConfig = {
+  providers: [
+    provideServiceWorker('ngsw-worker.js', {
+      enabled: !isDevMode(),
+      registrationStrategy: () => timer(10_000), // Register after 10 seconds
+    }),
+  ],
+};
+
+</docs-code>
 
 ## More on Angular service workers
 

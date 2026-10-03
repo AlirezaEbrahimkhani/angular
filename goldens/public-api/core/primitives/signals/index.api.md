@@ -4,6 +4,27 @@
 
 ```ts
 
+// @public (undocumented)
+export const BASE_EFFECT_NODE: Omit<BaseEffectNode, 'fn' | 'destroy' | 'cleanup' | 'run'>;
+
+// @public (undocumented)
+export interface BaseEffectNode extends ReactiveNode {
+    // (undocumented)
+    cleanup(): void;
+    // (undocumented)
+    destroy(): void;
+    // (undocumented)
+    fn: () => void;
+    // (undocumented)
+    run(): void;
+}
+
+// @public (undocumented)
+export type ComputationFn<S, D> = (source: S, previous?: {
+    source: S;
+    value: D;
+}) => D;
+
 // @public
 export interface ComputedNode<T> extends ReactiveNode {
     computation: () => T;
@@ -29,16 +50,22 @@ export function consumerMarkDirty(node: ReactiveNode): void;
 export function consumerPollProducersForChange(node: ReactiveNode): boolean;
 
 // @public
-export function createComputed<T>(computation: () => T): ComputedGetter<T>;
+export function createComputed<T>(computation: () => T, equal?: ValueEqualityFn<T>): ComputedGetter<T>;
+
+// @public (undocumented)
+export function createLinkedSignal<S, D>(sourceFn: () => S, computationFn: ComputationFn<S, D>, equalityFn?: ValueEqualityFn<D>): LinkedSignalGetter<S, D>;
 
 // @public
-export function createSignal<T>(initialValue: T): SignalGetter<T>;
+export function createSignal<T>(initialValue: T, equal?: ValueEqualityFn<T>): [SignalGetter<T>, SignalSetter<T>, SignalUpdater<T>];
 
 // @public (undocumented)
 export function createWatch(fn: (onCleanup: WatchCleanupRegisterFn) => void, schedule: (watch: Watch) => void, allowSignalWrites: boolean): Watch;
 
 // @public
 export function defaultEquals<T>(a: T, b: T): boolean;
+
+// @public
+export function finalizeConsumerAfterComputation(node: ReactiveNode): void;
 
 // @public (undocumented)
 export function getActiveConsumer(): ReactiveNode | null;
@@ -49,11 +76,36 @@ export function isInNotificationPhase(): boolean;
 // @public (undocumented)
 export function isReactive(value: unknown): value is Reactive;
 
+// @public (undocumented)
+export type LinkedSignalGetter<S, D> = (() => D) & {
+    [SIGNAL]: LinkedSignalNode<S, D>;
+};
+
+// @public (undocumented)
+export interface LinkedSignalNode<S, D> extends ReactiveNode {
+    computation: ComputationFn<S, D>;
+    // (undocumented)
+    equal: ValueEqualityFn<D>;
+    error: unknown;
+    source: () => S;
+    sourceValue: S;
+    value: D;
+}
+
+// @public (undocumented)
+export function linkedSignalSetFn<S, D>(node: LinkedSignalNode<S, D>, newValue: D): void;
+
+// @public (undocumented)
+export function linkedSignalUpdateFn<S, D>(node: LinkedSignalNode<S, D>, updater: (value: D) => D): void;
+
 // @public
 export function producerAccessed(node: ReactiveNode): void;
 
 // @public
 export function producerIncrementEpoch(): void;
+
+// @public (undocumented)
+export function producerMarkClean(node: ReactiveNode): void;
 
 // @public
 export function producerNotifyConsumers(node: ReactiveNode): void;
@@ -73,6 +125,9 @@ export interface Reactive {
 // @public (undocumented)
 export const REACTIVE_NODE: ReactiveNode;
 
+// @public (undocumented)
+export type ReactiveHookFn = (node: ReactiveNode) => void;
+
 // @public
 export interface ReactiveNode {
     consumerAllowSignalWrites: boolean;
@@ -81,40 +136,57 @@ export interface ReactiveNode {
     // (undocumented)
     consumerMarkedDirty(node: unknown): void;
     consumerOnSignalRead(node: unknown): void;
+    consumers: ReactiveLink | undefined;
+    // (undocumented)
+    consumersTail: ReactiveLink | undefined;
+    debugName?: string;
     dirty: boolean;
+    kind: string;
     lastCleanEpoch: Version;
-    liveConsumerIndexOfThis: number[] | undefined;
-    liveConsumerNode: ReactiveNode[] | undefined;
-    nextProducerIndex: number;
-    producerIndexOfThis: number[] | undefined;
-    producerLastReadVersion: Version[] | undefined;
     producerMustRecompute(node: unknown): boolean;
-    producerNode: ReactiveNode[] | undefined;
     // (undocumented)
     producerRecomputeValue(node: unknown): void;
+    producers: ReactiveLink | undefined;
+    producersTail: ReactiveLink | undefined;
+    recomputing: boolean;
     version: Version;
 }
 
+// @public
+export function resetConsumerBeforeComputation(node: ReactiveNode): void;
+
 // @public (undocumented)
-export function runPostSignalSetFn(): void;
+export function runEffect(node: BaseEffectNode): void;
+
+// @public (undocumented)
+export function runPostProducerCreatedFn(node: ReactiveNode): void;
+
+// @public (undocumented)
+export function runPostSignalSetFn<T>(node: SignalNode<T>): void;
 
 // @public (undocumented)
 export function setActiveConsumer(consumer: ReactiveNode | null): ReactiveNode | null;
 
-// @public (undocumented)
+// @public
 export function setAlternateWeakRefImpl(impl: unknown): void;
 
 // @public (undocumented)
-export function setPostSignalSetFn(fn: (() => void) | null): (() => void) | null;
+export function setPostProducerCreatedFn(fn: ReactiveHookFn | null): ReactiveHookFn | null;
 
 // @public (undocumented)
-export function setThrowInvalidWriteToSignalError(fn: () => never): void;
+export function setPostSignalSetFn(fn: ReactiveHookFn | null): ReactiveHookFn | null;
+
+// @public (undocumented)
+export function setThrowInvalidWriteToSignalError(fn: <T>(node: SignalNode<T>) => never): void;
 
 // @public
 export const SIGNAL: unique symbol;
 
 // @public (undocumented)
 export const SIGNAL_NODE: SignalNode<unknown>;
+
+// @public (undocumented)
+export function signalGetFn<T>(node: SignalNode<T>): T;
 
 // @public (undocumented)
 export interface SignalGetter<T> extends SignalBaseGetter<T> {
@@ -135,6 +207,9 @@ export function signalSetFn<T>(node: SignalNode<T>, newValue: T): void;
 
 // @public (undocumented)
 export function signalUpdateFn<T>(node: SignalNode<T>, updater: (value: T) => T): void;
+
+// @public
+export function untracked<T>(nonReactiveReadsFn: () => T): T;
 
 // @public
 export type ValueEqualityFn<T> = (a: T, b: T) => boolean;

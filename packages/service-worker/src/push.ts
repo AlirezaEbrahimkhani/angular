@@ -3,13 +3,14 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {Injectable} from '@angular/core';
-import {merge, NEVER, Observable, Subject} from 'rxjs';
+import {Injectable, ɵRuntimeError as RuntimeError} from '@angular/core';
+import {NEVER, Observable, Subject} from 'rxjs';
 import {map, switchMap, take} from 'rxjs/operators';
 
+import {RuntimeErrorCode} from './errors';
 import {ERR_SW_NOT_SUPPORTED, NgswCommChannel, PushEvent} from './low_level';
 
 /**
@@ -117,6 +118,43 @@ export class SwPush {
   }>;
 
   /**
+   * Emits the payloads of notifications that were closed, along with the action (if any)
+   * associated with the close event. If no action was used, the `action` property contains
+   * an empty string `''`.
+   *
+   * Note that the `notification` property does **not** contain a
+   * [Notification][Mozilla Notification] object but rather a
+   * [NotificationOptions](https://notifications.spec.whatwg.org/#dictdef-notificationoptions)
+   * object that also includes the `title` of the [Notification][Mozilla Notification] object.
+   *
+   * [Mozilla Notification]: https://developer.mozilla.org/en-US/docs/Web/API/Notification
+   */
+  readonly notificationCloses: Observable<{
+    action: string;
+    notification: NotificationOptions & {
+      title: string;
+    };
+  }>;
+
+  /**
+   * Emits updates to the push subscription, including both the previous (`oldSubscription`)
+   * and current (`newSubscription`) values. Either subscription may be `null`, depending on
+   * the context:
+   *
+   * - `oldSubscription` is `null` if no previous subscription existed.
+   * - `newSubscription` is `null` if the subscription was invalidated and not replaced.
+   *
+   * This stream allows clients to react to automatic changes in push subscriptions,
+   * such as those triggered by browser expiration or key rotation.
+   *
+   * [Push API]: https://w3c.github.io/push-api
+   */
+  readonly pushSubscriptionChanges: Observable<{
+    oldSubscription: PushSubscription | null;
+    newSubscription: PushSubscription | null;
+  }>;
+
+  /**
    * Emits the currently active
    * [PushSubscription](https://developer.mozilla.org/en-US/docs/Web/API/PushSubscription)
    * associated to the Service Worker registration or `null` if there is no subscription.
@@ -138,6 +176,8 @@ export class SwPush {
     if (!sw.isEnabled) {
       this.messages = NEVER;
       this.notificationClicks = NEVER;
+      this.notificationCloses = NEVER;
+      this.pushSubscriptionChanges = NEVER;
       this.subscription = NEVER;
       return;
     }
@@ -148,12 +188,27 @@ export class SwPush {
       .eventsOfType('NOTIFICATION_CLICK')
       .pipe(map((message: any) => message.data));
 
+    this.notificationCloses = this.sw
+      .eventsOfType('NOTIFICATION_CLOSE')
+      .pipe(map((message: any) => message.data));
+
+    this.pushSubscriptionChanges = this.sw
+      .eventsOfType('PUSH_SUBSCRIPTION_CHANGE')
+      .pipe(map((message: any) => message.data));
+
     this.pushManager = this.sw.registration.pipe(map((registration) => registration.pushManager));
 
     const workerDrivenSubscriptions = this.pushManager.pipe(
       switchMap((pm) => pm.getSubscription()),
     );
-    this.subscription = merge(workerDrivenSubscriptions, this.subscriptionChanges);
+    this.subscription = new Observable((subscriber) => {
+      const workerDrivenSubscription = workerDrivenSubscriptions.subscribe(subscriber);
+      const subscriptionChanges = this.subscriptionChanges.subscribe(subscriber);
+      return () => {
+        workerDrivenSubscription.unsubscribe();
+        subscriptionChanges.unsubscribe();
+      };
+    });
   }
 
   /**
@@ -175,16 +230,18 @@ export class SwPush {
     }
     pushOptions.applicationServerKey = applicationServerKey;
 
-    return this.pushManager
-      .pipe(
+    return new Promise((resolve, reject) => {
+      this.pushManager!.pipe(
         switchMap((pm) => pm.subscribe(pushOptions)),
         take(1),
-      )
-      .toPromise()
-      .then((sub) => {
-        this.subscriptionChanges.next(sub!);
-        return sub!;
+      ).subscribe({
+        next: (sub) => {
+          this.subscriptionChanges.next(sub);
+          resolve(sub);
+        },
+        error: reject,
       });
+    });
   }
 
   /**
@@ -200,19 +257,30 @@ export class SwPush {
 
     const doUnsubscribe = (sub: PushSubscription | null) => {
       if (sub === null) {
-        throw new Error('Not subscribed to push notifications.');
+        throw new RuntimeError(
+          RuntimeErrorCode.NOT_SUBSCRIBED_TO_PUSH_NOTIFICATIONS,
+          (typeof ngDevMode === 'undefined' || ngDevMode) &&
+            'Not subscribed to push notifications.',
+        );
       }
 
       return sub.unsubscribe().then((success) => {
         if (!success) {
-          throw new Error('Unsubscribe failed!');
+          throw new RuntimeError(
+            RuntimeErrorCode.PUSH_SUBSCRIPTION_UNSUBSCRIBE_FAILED,
+            (typeof ngDevMode === 'undefined' || ngDevMode) && 'Unsubscribe failed!',
+          );
         }
 
         this.subscriptionChanges.next(null);
       });
     };
 
-    return this.subscription.pipe(take(1), switchMap(doUnsubscribe)).toPromise();
+    return new Promise((resolve, reject) => {
+      this.subscription
+        .pipe(take(1), switchMap(doUnsubscribe))
+        .subscribe({next: resolve, error: reject});
+    });
   }
 
   private decodeBase64(input: string): string {

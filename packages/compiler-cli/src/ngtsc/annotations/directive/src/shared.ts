@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {
@@ -11,6 +11,7 @@ import {
   emitDistinctChangesOnlyDefaultValue,
   Expression,
   ExternalExpr,
+  ExternalReference,
   ForwardRefHandling,
   getSafePropertyAccessString,
   MaybeForwardRefExpression,
@@ -42,10 +43,12 @@ import {
   InputMapping,
   InputOrOutput,
   isHostDirectiveMetaForGlobalMode,
+  Resource,
 } from '../../../metadata';
 import {
   DynamicValue,
   EnumValue,
+  ForeignFunctionResolver,
   PartialEvaluator,
   ResolvedValue,
   traceDynamicValue,
@@ -64,9 +67,9 @@ import {
 import {CompilationMode} from '../../../transform';
 import {
   assertLocalCompilationUnresolvedConst,
+  createForwardRefResolver,
   createSourceSpan,
   createValueHasWrongTypeError,
-  forwardRefResolver,
   getAngularDecorators,
   getConstructorDependencies,
   isAngularDecorator,
@@ -95,6 +98,12 @@ export const queryDecoratorNames: QueryDecoratorName[] = [
   'ContentChildren',
 ];
 
+export interface HostBindingNodes {
+  literal: ts.ObjectLiteralExpression | null;
+  bindingDecorators: Set<ts.Decorator>;
+  listenerDecorators: Set<ts.Decorator>;
+}
+
 const QUERY_TYPES = new Set<string>(queryDecoratorNames);
 
 /**
@@ -115,8 +124,12 @@ export function extractDirectiveMetadata(
   annotateForClosureCompiler: boolean,
   compilationMode: CompilationMode,
   defaultSelector: string | null,
+  strictStandalone: boolean,
+  implicitStandaloneValue: boolean,
+  emitDeclarationOnly: boolean,
 ):
   | {
+      jitForced: false;
       decorator: Map<string, ts.Expression>;
       metadata: R3DirectiveMetadata;
       inputs: ClassPropertyMapping<InputMapping>;
@@ -124,8 +137,10 @@ export function extractDirectiveMetadata(
       isStructural: boolean;
       hostDirectives: HostDirectiveMeta[] | null;
       rawHostDirectives: ts.Expression | null;
+      inputFieldNamesFromMetadataArray: Set<string>;
+      hostBindingNodes: HostBindingNodes;
     }
-  | undefined {
+  | {jitForced: true} {
   let directive: Map<string, ts.Expression>;
   if (decorator.args === null || decorator.args.length === 0) {
     directive = new Map<string, ts.Expression>();
@@ -149,7 +164,7 @@ export function extractDirectiveMetadata(
 
   if (directive.has('jit')) {
     // The only allowed value is true, so there's no need to expand further.
-    return undefined;
+    return {jitForced: true};
   }
 
   const members = reflector.getMembersOfClass(clazz);
@@ -171,6 +186,7 @@ export function extractDirectiveMetadata(
     reflector,
     refEmitter,
     compilationMode,
+    emitDeclarationOnly,
   );
   const inputsFromFields = parseInputFields(
     clazz,
@@ -183,6 +199,7 @@ export function extractDirectiveMetadata(
     compilationMode,
     inputsFromMeta,
     decorator,
+    emitDeclarationOnly,
   );
   const inputs = ClassPropertyMapping.fromMappedObject({...inputsFromMeta, ...inputsFromFields});
 
@@ -266,11 +283,18 @@ export function extractDirectiveMetadata(
     }
   }
 
+  const hostBindingNodes: HostBindingNodes = {
+    literal: null,
+    bindingDecorators: new Set<ts.Decorator>(),
+    listenerDecorators: new Set<ts.Decorator>(),
+  };
+
   const host = extractHostBindings(
     decoratedElements,
     evaluator,
     coreModule,
     compilationMode,
+    hostBindingNodes,
     directive,
   );
 
@@ -332,7 +356,7 @@ export function extractDirectiveMetadata(
         dep.token.value.name === 'TemplateRef',
     );
 
-  let isStandalone = false;
+  let isStandalone = implicitStandaloneValue;
   if (directive.has('standalone')) {
     const expr = directive.get('standalone')!;
     const resolved = evaluator.evaluate(expr);
@@ -340,6 +364,14 @@ export function extractDirectiveMetadata(
       throw createValueHasWrongTypeError(expr, resolved, `standalone flag must be a boolean`);
     }
     isStandalone = resolved;
+
+    if (!isStandalone && strictStandalone) {
+      throw new FatalDiagnosticError(
+        ErrorCode.NON_STANDALONE_NOT_ALLOWED,
+        expr,
+        `Only standalone components/directives are allowed when 'strictStandalone' is enabled.`,
+      );
+    }
   }
   let isSignal = false;
   if (directive.has('signals')) {
@@ -360,7 +392,14 @@ export function extractDirectiveMetadata(
   const hostDirectives =
     rawHostDirectives === null
       ? null
-      : extractHostDirectives(rawHostDirectives, evaluator, compilationMode);
+      : extractHostDirectives(
+          rawHostDirectives,
+          evaluator,
+          reflector,
+          compilationMode,
+          createForwardRefResolver(isCore),
+          emitDeclarationOnly,
+        );
 
   if (compilationMode !== CompilationMode.LOCAL && hostDirectives !== null) {
     // In global compilation mode where we do type checking, the template type-checker will need to
@@ -407,6 +446,7 @@ export function extractDirectiveMetadata(
       null,
   };
   return {
+    jitForced: false,
     decorator: directive,
     metadata,
     inputs,
@@ -414,6 +454,11 @@ export function extractDirectiveMetadata(
     isStructural,
     hostDirectives,
     rawHostDirectives,
+    hostBindingNodes,
+    // Track inputs from class metadata. This is useful for migration efforts.
+    inputFieldNamesFromMetadataArray: new Set(
+      Object.values(inputsFromMeta).map((i) => i.classPropertyName),
+    ),
   };
 }
 
@@ -534,16 +579,21 @@ export function extractDecoratorQueryMetadata(
   };
 }
 
-export function extractHostBindings(
+function extractHostBindings(
   members: ClassMember[],
   evaluator: PartialEvaluator,
   coreModule: string | undefined,
   compilationMode: CompilationMode,
+  hostBindingNodes: HostBindingNodes,
   metadata?: Map<string, ts.Expression>,
 ): ParsedHostBindings {
   let bindings: ParsedHostBindings;
   if (metadata && metadata.has('host')) {
-    bindings = evaluateHostExpressionBindings(metadata.get('host')!, evaluator);
+    const hostExpression = metadata.get('host')!;
+    bindings = evaluateHostExpressionBindings(hostExpression, evaluator);
+    if (ts.isObjectLiteralExpression(hostExpression)) {
+      hostBindingNodes.literal = hostExpression;
+    }
   } else {
     bindings = parseHostBindings({});
   }
@@ -584,6 +634,10 @@ export function extractHostBindings(
           }
 
           hostPropertyName = resolved;
+        }
+
+        if (ts.isDecorator(decorator.node)) {
+          hostBindingNodes.bindingDecorators.add(decorator.node);
         }
 
         // Since this is a decorator, we know that the value is a class member. Always access it
@@ -645,6 +699,10 @@ export function extractHostBindings(
             }
             args = resolvedArgs;
           }
+        }
+
+        if (ts.isDecorator(decorator.node)) {
+          hostBindingNodes.listenerDecorators.add(decorator.node);
         }
 
         bindings.listeners[eventName] = `${member.name}(${args.join(',')})`;
@@ -912,6 +970,7 @@ function parseInputsArray(
   reflector: ReflectionHost,
   refEmitter: ReferenceEmitter,
   compilationMode: CompilationMode,
+  emitDeclarationOnly: boolean,
 ): Record<string, InputMapping> {
   const inputsField = decoratorMetadata.get('inputs');
 
@@ -977,6 +1036,7 @@ function parseInputsArray(
           reflector,
           refEmitter,
           compilationMode,
+          emitDeclarationOnly,
         );
       }
 
@@ -1027,6 +1087,7 @@ function tryParseInputFieldMapping(
   isCore: boolean,
   refEmitter: ReferenceEmitter,
   compilationMode: CompilationMode,
+  emitDeclarationOnly: boolean,
 ): InputMapping | null {
   const classPropertyName = member.name;
 
@@ -1103,6 +1164,7 @@ function tryParseInputFieldMapping(
         reflector,
         refEmitter,
         compilationMode,
+        emitDeclarationOnly,
       );
     }
 
@@ -1139,6 +1201,7 @@ function parseInputFields(
   compilationMode: CompilationMode,
   inputsFromClassDecorator: Record<string, InputMapping>,
   classDecorator: Decorator,
+  emitDeclarationOnly: boolean,
 ): Record<string, InputMapping> {
   const inputs = {} as Record<string, InputMapping>;
 
@@ -1153,6 +1216,7 @@ function parseInputFields(
       isCore,
       refEmitter,
       compilationMode,
+      emitDeclarationOnly,
     );
     if (inputMapping === null) {
       continue;
@@ -1199,7 +1263,24 @@ export function parseDecoratorInputTransformFunction(
   reflector: ReflectionHost,
   refEmitter: ReferenceEmitter,
   compilationMode: CompilationMode,
+  emitDeclarationOnly: boolean,
 ): DecoratorInputTransform {
+  if (emitDeclarationOnly) {
+    const chain: ts.DiagnosticMessageChain = {
+      messageText:
+        '@Input decorators with a transform function are not supported in experimental declaration-only emission mode',
+      category: ts.DiagnosticCategory.Error,
+      code: 0,
+      next: [
+        {
+          messageText: `Consider converting '${clazz.name.text}.${classPropertyName}' to an input signal`,
+          category: ts.DiagnosticCategory.Message,
+          code: 0,
+        },
+      ],
+    };
+    throw new FatalDiagnosticError(ErrorCode.DECORATOR_UNEXPECTED, value.node, chain);
+  }
   // In local compilation mode we can skip type checking the function args. This is because usually
   // the type check is done in a separate build which runs in full compilation mode. So here we skip
   // all the diagnostics.
@@ -1612,15 +1693,38 @@ function evaluateHostExpressionBindings(
   const errors = verifyHostBindings(bindings, createSourceSpan(hostExpr));
   if (errors.length > 0) {
     throw new FatalDiagnosticError(
-      // TODO: provide more granular diagnostic and output specific host expression that
-      // triggered an error instead of the whole host object.
       ErrorCode.HOST_BINDING_PARSE_ERROR,
-      hostExpr,
+      getHostBindingErrorNode(errors[0], hostExpr),
       errors.map((error: ParseError) => error.msg).join('\n'),
     );
   }
 
   return bindings;
+}
+
+/**
+ * Attempts to match a parser error to the host binding expression that caused it.
+ * @param error Error to match.
+ * @param hostExpr Expression declaring the host bindings.
+ */
+function getHostBindingErrorNode(error: ParseError, hostExpr: ts.Expression): ts.Node {
+  // In the most common case the `host` object is an object literal with string values. We can
+  // confidently match the error to its expression by looking at the string value that the parser
+  // failed to parse and the initializers for each of the properties. If we fail to match, we fall
+  // back to the old behavior where the error is reported on the entire `host` object.
+  if (ts.isObjectLiteralExpression(hostExpr)) {
+    for (const prop of hostExpr.properties) {
+      if (
+        ts.isPropertyAssignment(prop) &&
+        ts.isStringLiteralLike(prop.initializer) &&
+        error.msg.includes(`[${prop.initializer.text}]`)
+      ) {
+        return prop.initializer;
+      }
+    }
+  }
+
+  return hostExpr;
 }
 
 /**
@@ -1630,7 +1734,10 @@ function evaluateHostExpressionBindings(
 function extractHostDirectives(
   rawHostDirectives: ts.Expression,
   evaluator: PartialEvaluator,
+  reflector: ReflectionHost,
   compilationMode: CompilationMode,
+  forwardRefResolver: ForeignFunctionResolver,
+  emitDeclarationOnly: boolean,
 ): HostDirectiveMeta[] {
   const resolved = evaluator.evaluate(rawHostDirectives, forwardRefResolver);
   if (!Array.isArray(resolved)) {
@@ -1663,7 +1770,7 @@ function extractHostDirectives(
       }
     }
 
-    let directive: Reference<ClassDeclaration> | Expression;
+    let directive: Reference<ClassDeclaration> | Expression | ExternalReference;
     let nameForErrors = (fieldName: string) => '@Directive.hostDirectives';
     if (compilationMode === CompilationMode.LOCAL && hostReference instanceof DynamicValue) {
       // At the moment in local compilation we only support simple array for host directives, i.e.,
@@ -1675,14 +1782,38 @@ function extractHostDirectives(
         !ts.isIdentifier(hostReference.node) &&
         !ts.isPropertyAccessExpression(hostReference.node)
       ) {
+        const compilationModeName = emitDeclarationOnly
+          ? 'experimental declaration-only emission'
+          : 'local compilation';
         throw new FatalDiagnosticError(
           ErrorCode.LOCAL_COMPILATION_UNSUPPORTED_EXPRESSION,
           hostReference.node,
-          `In local compilation mode, host directive cannot be an expression. Use an identifier instead`,
+          `In ${compilationModeName} mode, host directive cannot be an expression. Use an identifier instead`,
         );
       }
 
-      directive = new WrappedNodeExpr(hostReference.node);
+      if (emitDeclarationOnly) {
+        if (ts.isIdentifier(hostReference.node)) {
+          const importInfo = reflector.getImportOfIdentifier(hostReference.node);
+          if (importInfo) {
+            directive = new ExternalReference(importInfo.from, importInfo.name);
+          } else {
+            throw new FatalDiagnosticError(
+              ErrorCode.LOCAL_COMPILATION_UNSUPPORTED_EXPRESSION,
+              hostReference.node,
+              `In experimental declaration-only emission mode, host directive cannot use indirect external indentifiers. Use a direct external identifier instead`,
+            );
+          }
+        } else {
+          throw new FatalDiagnosticError(
+            ErrorCode.LOCAL_COMPILATION_UNSUPPORTED_EXPRESSION,
+            hostReference.node,
+            `In experimental declaration-only emission mode, host directive cannot be an expression. Use an identifier instead`,
+          );
+        }
+      } else {
+        directive = new WrappedNodeExpr(hostReference.node);
+      }
     } else if (hostReference instanceof Reference) {
       directive = hostReference as Reference<ClassDeclaration>;
       nameForErrors = (fieldName: string) =>
@@ -1752,6 +1883,11 @@ function toHostDirectiveMetadata(
       context,
       refEmitter,
     );
+  } else if (hostDirective.directive instanceof ExternalReference) {
+    directive = {
+      value: new ExternalExpr(hostDirective.directive),
+      type: new ExternalExpr(hostDirective.directive),
+    };
   } else {
     directive = {
       value: hostDirective.directive,
@@ -1777,4 +1913,22 @@ function toR3InputMetadata(mapping: InputMapping): R3InputMetadata {
       mapping.transform !== null ? new WrappedNodeExpr(mapping.transform.node) : null,
     isSignal: mapping.isSignal,
   };
+}
+
+export function extractHostBindingResources(nodes: HostBindingNodes): ReadonlySet<Resource> {
+  const result = new Set<Resource>();
+
+  if (nodes.literal !== null) {
+    result.add({path: null, node: nodes.literal});
+  }
+
+  for (const current of nodes.bindingDecorators) {
+    result.add({path: null, node: current.expression});
+  }
+
+  for (const current of nodes.listenerDecorators) {
+    result.add({path: null, node: current.expression});
+  }
+
+  return result;
 }

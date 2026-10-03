@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {
@@ -13,7 +13,7 @@ import {
   ɵgetDeferBlocks as getDeferBlocks,
   ɵrenderDeferBlockState as renderDeferBlockState,
   ɵtriggerResourceLoading as triggerResourceLoading,
-} from '@angular/core';
+} from '../../src/core';
 
 import type {ComponentFixture} from './component_fixture';
 
@@ -23,7 +23,7 @@ import type {ComponentFixture} from './component_fixture';
  * @publicApi
  */
 export class DeferBlockFixture {
-  /** @nodoc */
+  /** @docs-private */
   constructor(
     private block: DeferBlockDetails,
     private componentFixture: ComponentFixture<unknown>,

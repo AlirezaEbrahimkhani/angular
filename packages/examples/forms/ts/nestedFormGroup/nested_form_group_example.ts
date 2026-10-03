@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 /* tslint:disable:no-console  */
@@ -15,8 +15,9 @@ import {FormControl, FormGroup, Validators} from '@angular/forms';
   selector: 'example-app',
   template: `
     <form [formGroup]="form" (ngSubmit)="onSubmit()">
-      <p *ngIf="name.invalid">Name is invalid.</p>
-
+      @if(name.invalid) {
+        <p>Name is invalid.</p>
+      }
       <div formGroupName="name">
         <input formControlName="first" placeholder="First name" />
         <input formControlName="last" placeholder="Last name" />
@@ -27,6 +28,7 @@ import {FormControl, FormGroup, Validators} from '@angular/forms';
 
     <button (click)="setPreset()">Set preset</button>
   `,
+  standalone: false,
 })
 export class NestedFormGroupComp {
   form = new FormGroup({

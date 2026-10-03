@@ -3,17 +3,17 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {getSystemPath, logging, normalize, virtualFs} from '@angular-devkit/core';
 import {TempScopedNodeJsSyncHost} from '@angular-devkit/core/node/testing';
 import {HostTree} from '@angular-devkit/schematics';
-import {SchematicTestRunner, UnitTestTree} from '@angular-devkit/schematics/testing';
-import {runfiles} from '@bazel/runfiles';
-import shx from 'shelljs';
+import {SchematicTestRunner, UnitTestTree} from '@angular-devkit/schematics/testing/index.js';
+import {resolve} from 'path';
+import {rmSync} from 'node:fs';
 
-describe('control flow migration', () => {
+describe('control flow migration (ng update)', () => {
   let runner: SchematicTestRunner;
   let host: TempScopedNodeJsSyncHost;
   let tree: UnitTestTree;
@@ -29,9 +29,9 @@ describe('control flow migration', () => {
   function runMigration(path: string | undefined = undefined, format: boolean = true) {
     return runner.runSchematic('control-flow-migration', {path, format}, tree);
   }
-
+  const migrationsJsonPath = resolve('../migrations.json');
   beforeEach(() => {
-    runner = new SchematicTestRunner('test', runfiles.resolvePackageRelative('../collection.json'));
+    runner = new SchematicTestRunner('test', migrationsJsonPath);
     host = new TempScopedNodeJsSyncHost();
     tree = new UnitTestTree(new HostTree(host));
 
@@ -54,111 +54,17 @@ describe('control flow migration', () => {
       }),
     );
 
-    previousWorkingDir = shx.pwd();
+    previousWorkingDir = process.cwd();
     tmpDirPath = getSystemPath(host.root);
 
     // Switch into the temporary directory path. This allows us to run
     // the schematic against our custom unit test tree.
-    shx.cd(tmpDirPath);
+    process.chdir(tmpDirPath);
   });
 
   afterEach(() => {
-    shx.cd(previousWorkingDir);
-    shx.rm('-r', tmpDirPath);
-  });
-
-  describe('path', () => {
-    it('should throw an error if no files match the passed-in path', async () => {
-      let error: string | null = null;
-
-      writeFile(
-        'dir.ts',
-        `
-        import {Directive} from '@angular/core';
-
-        @Directive({selector: '[dir]'})
-        export class MyDir {}
-      `,
-      );
-
-      try {
-        await runMigration('./foo');
-      } catch (e: any) {
-        error = e.message;
-      }
-
-      expect(error).toMatch(
-        /Could not find any files to migrate under the path .*\/foo\. Cannot run the control flow migration/,
-      );
-    });
-
-    it('should throw an error if a path outside of the project is passed in', async () => {
-      let error: string | null = null;
-
-      writeFile(
-        'dir.ts',
-        `
-        import {Directive} from '@angular/core';
-
-        @Directive({selector: '[dir]'})
-        export class MyDir {}
-      `,
-      );
-
-      try {
-        await runMigration('../foo');
-      } catch (e: any) {
-        error = e.message;
-      }
-      expect(error).toBe('Cannot run control flow migration outside of the current project.');
-    });
-
-    it('should only migrate the paths that were passed in', async () => {
-      writeFile(
-        'comp.ts',
-        `
-        import {Component} from '@angular/core';
-        import {NgIf} from '@angular/common';
-
-        @Component({
-          imports: [NgIf, NgFor,NgSwitch,NgSwitchCase ,NgSwitchDefault],
-          template: \`<div><span *ngIf="toggle">This should be hidden</span></div>\`
-        })
-        class Comp {
-          toggle = false;
-        }
-      `,
-      );
-
-      writeFile(
-        'skip.ts',
-        `
-        import {Component} from '@angular/core';
-        import {NgIf} from '@angular/common';
-
-        @Component({
-          imports: [NgIf],
-          template: \`<div *ngIf="show">Show me</div>\`
-        })
-        class Comp {
-          show = false;
-        }
-      `,
-      );
-
-      await runMigration('./comp.ts');
-      const migratedContent = tree.readContent('/comp.ts');
-      const skippedContent = tree.readContent('/skip.ts');
-
-      expect(migratedContent).toContain(
-        'template: `<div>@if (toggle) {<span>This should be hidden</span>}</div>`',
-      );
-      expect(migratedContent).toContain('imports: []');
-      expect(migratedContent).not.toContain(`import {NgIf} from '@angular/common';`);
-      expect(skippedContent).toContain('template: `<div *ngIf="show">Show me</div>`');
-      expect(skippedContent).toContain('imports: [NgIf]');
-      expect(skippedContent).toContain(`import {NgIf} from '@angular/common';`);
-    });
+    process.chdir(previousWorkingDir);
+    rmSync(tmpDirPath, {recursive: true});
   });
 
   describe('ngIf', () => {
@@ -1653,6 +1559,48 @@ describe('control flow migration', () => {
         [
           `<div>`,
           `<div *ngIf="user of users; else noUserBlock; let tooltipContent;">{{ user.name }}</div>`,
+          `<ng-template #noUserBlock>No user</ng-template>`,
+          `</div>`,
+        ].join('\n'),
+      );
+
+      await runMigration();
+      const content = tree.readContent('/comp.html');
+
+      expect(content).toBe(
+        [
+          `<div>`,
+          `  @if (user of users; as tooltipContent) {`,
+          `    <div>{{ user.name }}</div>`,
+          `  } @else {`,
+          `    No user`,
+          `  }`,
+          `</div>`,
+        ].join('\n'),
+      );
+    });
+
+    it('should migrate if/else with let variable in wrong place with no semicolons', async () => {
+      writeFile(
+        '/comp.ts',
+        `
+        import {Component} from '@angular/core';
+        import {NgIf} from '@angular/common';
+
+        @Component({
+          templateUrl: './comp.html'
+        })
+        class Comp {
+          user$ = of({ name: 'Jane' }})
+        }
+      `,
+      );
+
+      writeFile(
+        '/comp.html',
+        [
+          `<div>`,
+          `<div *ngIf="user of users; let tooltipContent else noUserBlock">{{ user.name }}</div>`,
           `<ng-template #noUserBlock>No user</ng-template>`,
           `</div>`,
         ].join('\n'),
@@ -5126,6 +5074,44 @@ describe('control flow migration', () => {
         '@if (show) {<div>Some greek characters: θδ!</div>}',
       );
     });
+
+    it('should migrate multiple ngIf directives with same else template and preserve template outlet', async () => {
+      writeFile(
+        '/comp.ts',
+        `
+        import {Component} from '@angular/core';
+        import {NgIf} from '@angular/common';
+
+        @Component({
+          imports: [NgIf],
+          template: \`
+            <div *ngIf="1 == 1; else elseTemplate">
+              <h1>TEST</h1>
+            </div>
+            <div *ngIf="1 == 1; else elseTemplate">
+              <h1>TEST</h1>
+            </div>
+
+            <ng-container [ngTemplateOutlet]="elseTemplate"></ng-container>
+            <ng-template #elseTemplate>
+              <h1>Test</h1>
+              <div>Test</div>
+            </ng-template>
+          \`
+        })
+        class Comp {
+        }
+      `,
+      );
+
+      await runMigration();
+      const content = tree.readContent('/comp.ts');
+
+      expect(content.replace(/\s+/g, ' ')).toContain(
+        `<ng-container [ngTemplateOutlet]="elseTemplate"></ng-container>`,
+      );
+      expect(content.replace(/\s+/g, ' ')).toContain(`<ng-template #elseTemplate>`);
+    });
   });
 
   describe('formatting', () => {
@@ -5552,48 +5538,6 @@ describe('control flow migration', () => {
       ].join('\n');
 
       expect(actual).toBe(expected);
-    });
-
-    it('should migrate an if else case and not format', async () => {
-      writeFile(
-        '/comp.ts',
-        `
-        import {Component} from '@angular/core';
-        import {NgIf} from '@angular/common';
-
-        @Component({
-          templateUrl: './comp.html'
-        })
-        class Comp {
-          show = false;
-        }
-      `,
-      );
-
-      writeFile(
-        '/comp.html',
-        [
-          `<div>`,
-          `<span *ngIf="show;else elseBlock">Content here</span>`,
-          `<ng-template #elseBlock>Else Content</ng-template>`,
-          `</div>`,
-        ].join('\n'),
-      );
-
-      await runMigration(undefined, false);
-      const content = tree.readContent('/comp.html');
-
-      expect(content).toBe(
-        [
-          `<div>`,
-          `@if (show) {`,
-          `<span>Content here</span>`,
-          `} @else {`,
-          `Else Content`,
-          `}\n`,
-          `</div>`,
-        ].join('\n'),
-      );
     });
 
     it('should ignore formatting on i18n sections', async () => {
@@ -6201,6 +6145,54 @@ describe('control flow migration', () => {
       expect(actual).toBe(expected);
     });
 
+    it('should not remove common module when second run of migration and common module symbols are found', async () => {
+      writeFile(
+        '/comp.ts',
+        [
+          `import {Component} from '@angular/core';`,
+          `import {CommonModule} from '@angular/common';\n`,
+          `@Component({`,
+          `  standalone: true`,
+          `  selector: 'example-cmp',`,
+          `  templateUrl: './comp.html',`,
+          `  imports: [CommonModule],`,
+          `})`,
+          `export class ExampleCmp {`,
+          `}`,
+        ].join('\n'),
+      );
+
+      writeFile(
+        '/comp.html',
+        [
+          `<div>`,
+          `  @if (state$ | async; as state) {`,
+          `    <div>`,
+          `      <span>Content here {{state}}</span>`,
+          `    </div>`,
+          `  }`,
+          `</div>`,
+        ].join('\n'),
+      );
+
+      await runMigration();
+      const actual = tree.readContent('/comp.ts');
+      const expected = [
+        `import {Component} from '@angular/core';`,
+        `import {CommonModule} from '@angular/common';\n`,
+        `@Component({`,
+        `  standalone: true`,
+        `  selector: 'example-cmp',`,
+        `  templateUrl: './comp.html',`,
+        `  imports: [CommonModule],`,
+        `})`,
+        `export class ExampleCmp {`,
+        `}`,
+      ].join('\n');
+
+      expect(actual).toBe(expected);
+    });
+
     it('should not remove imports when mismatch in counts', async () => {
       writeFile(
         '/comp.ts',
@@ -6384,6 +6376,72 @@ describe('control flow migration', () => {
         `})`,
         `class Comp {`,
         `  show = false;`,
+        `}`,
+      ].join('\n');
+
+      expect(actual).toBe(expected);
+    });
+
+    it('should not remove common module if symbols are used inside new control flow', async () => {
+      writeFile(
+        '/comp.ts',
+        [
+          `import {CommonModule} from '@angular/common';`,
+          `import {Component} from '@angular/core';\n`,
+          `@Component({`,
+          `  imports: [CommonModule],`,
+          `  template: \`@if (toggle) {<div>{{ d | date }}</div>} <span *ngIf="toggle">hi</span>\``,
+          `})`,
+          `class Comp {`,
+          `  toggle = false;`,
+          `}`,
+        ].join('\n'),
+      );
+
+      await runMigration();
+      const actual = tree.readContent('/comp.ts');
+      const expected = [
+        `import {CommonModule} from '@angular/common';`,
+        `import {Component} from '@angular/core';\n`,
+        `@Component({`,
+        `  imports: [CommonModule],`,
+        `  template: \`@if (toggle) {<div>{{ d | date }}</div>} @if (toggle) {<span>hi</span>}\``,
+        `})`,
+        `class Comp {`,
+        `  toggle = false;`,
+        `}`,
+      ].join('\n');
+
+      expect(actual).toBe(expected);
+    });
+
+    it('should not remove common module if symbols are used inside @let', async () => {
+      writeFile(
+        '/comp.ts',
+        [
+          `import {CommonModule} from '@angular/common';`,
+          `import {Component} from '@angular/core';\n`,
+          `@Component({`,
+          `  imports: [CommonModule],`,
+          `  template: \`@let foo = 123 | date; <span *ngIf="foo">{{foo}}</span>\``,
+          `})`,
+          `class Comp {`,
+          `  toggle = false;`,
+          `}`,
+        ].join('\n'),
+      );
+
+      await runMigration();
+      const actual = tree.readContent('/comp.ts');
+      const expected = [
+        `import {CommonModule} from '@angular/common';`,
+        `import {Component} from '@angular/core';\n`,
+        `@Component({`,
+        `  imports: [CommonModule],`,
+        `  template: \`@let foo = 123 | date; @if (foo) {<span>{{foo}}</span>}\``,
+        `})`,
+        `class Comp {`,
+        `  toggle = false;`,
         `}`,
       ].join('\n');
 
@@ -6680,5 +6738,321 @@ describe('control flow migration', () => {
           `"ng-container". Please fix and re-run the migration.`,
       );
     });
+
+    it('should not remove component reference it is used in component file with viewChild', async () => {
+      writeFile(
+        '/comp.ts',
+        `
+        import {Component, TemplateRef, ViewChild, ViewContainerRef} from '@angular/core';
+        import { NgIf } from '@angular/common';
+
+        @Component({
+          standalone: true
+          imports: [NgIf],
+          template: \`<h1>Hello from {{ name }}!</h1>
+                      <div *ngIf="showContent; then contentTemplate"></div>
+                      <ng-template #contentTemplate><div>test content</div></ng-template>\`
+        })
+        class Comp {
+            @ViewChild('contentTemplate') testContainer!: TemplateRef<unknown>;
+            name = 'Angular';
+            showContent = true;
+            options: { value: string; html: any }[] = [];
+
+            constructor(private viewContainerRef: ViewContainerRef) {}
+
+            ngAfterViewInit(): void {
+              this.viewContainerRef.createEmbeddedView(this.testContainer);
+            }
+        }
+      `,
+      );
+
+      await runMigration();
+      const content = tree.readContent('/comp.ts');
+      expect(content).toContain('<ng-template #contentTemplate>');
+    });
+
+    it('should not remove component reference it is used in component file with viewChildren', async () => {
+      writeFile(
+        '/comp.ts',
+        `
+        import {Component, TemplateRef, ViewChildren, ViewContainerRef, QueryList} from '@angular/core';
+        import { NgIf } from '@angular/common';
+
+        @Component({
+          standalone: true
+          imports: [NgIf],
+          template: \`<h1>Hello from {{ name }}!</h1>
+                      <div *ngIf="showContent; then contentTemplate"></div>
+                      <ng-template #contentTemplate><div>test content</div></ng-template>\`
+        })
+        class Comp {
+            @ViewChildren('contentTemplate') testContainer!: QueryList<TemplateRef<unknown>>;
+            name = 'Angular';
+            showContent = true;
+            options: { value: string; html: any }[] = [];
+
+            constructor(private viewContainerRef: ViewContainerRef) {}
+
+            ngAfterViewInit(): void {
+              this.viewContainerRef.createEmbeddedView(this.testContainer.last);
+            }
+        }
+      `,
+      );
+
+      await runMigration();
+      const content = tree.readContent('/comp.ts');
+      expect(content).toContain('<ng-template #contentTemplate>');
+    });
+
+    it('should remove component reference when viewChild is commented in component file', async () => {
+      writeFile(
+        '/comp.ts',
+        `
+        import {Component, TemplateRef, ViewChild} from '@angular/core';
+        import { NgIf } from '@angular/common';
+
+        @Component({
+          standalone: true
+          imports: [NgIf],
+          template: \`<h1>Hello from {{ name }}!</h1>
+                      <div *ngIf="showContent; then contentTemplate"></div>
+                      <ng-template #contentTemplate><div>test content</div></ng-template>\`
+        })
+        class Comp {
+            // @ViewChild('contentTemplate') testContainer!: TemplateRef<unknown>;
+            name = 'Angular';
+            showContent = true;
+            options: { value: string; html: any }[] = [];
+        }
+      `,
+      );
+
+      await runMigration();
+      const content = tree.readContent('/comp.ts');
+      expect(content).not.toContain('<ng-template #contentTemplate>');
+    });
+
+    it('should remove ng-template reference when use in if-else block', async () => {
+      writeFile(
+        '/comp.ts',
+        `
+        import {Component} from '@angular/core';
+
+        @Component({
+          templateUrl: './comp.html'
+        })
+        class Comp {
+        }
+      `,
+      );
+
+      writeFile(
+        '/comp.html',
+        [
+          `<div>`,
+          `<div *ngIf="param; else loading">`,
+          `<div>content</div>`,
+          `</div>`,
+          `<ng-template #loading>`,
+          `<div>loading</div>`,
+          `</ng-template>`,
+          `</div>`,
+        ].join('\n'),
+      );
+
+      await runMigration();
+      const content = tree.readContent('/comp.html');
+      expect(content).not.toContain('<ng-template #loading>');
+    });
+  });
+});
+
+describe('control flow migration (ng generate)', () => {
+  let runner: SchematicTestRunner;
+  let host: TempScopedNodeJsSyncHost;
+  let tree: UnitTestTree;
+  let tmpDirPath: string;
+  let previousWorkingDir: string;
+  let errorOutput: string[] = [];
+  let warnOutput: string[] = [];
+
+  function writeFile(filePath: string, contents: string) {
+    host.sync.write(normalize(filePath), virtualFs.stringToFileBuffer(contents));
+  }
+
+  function runMigration(path: string | undefined = undefined, format: boolean = true) {
+    return runner.runSchematic('control-flow-migration', {path, format}, tree);
+  }
+
+  const collectionJsonPath = resolve('../collection.json');
+  beforeEach(() => {
+    runner = new SchematicTestRunner('test', collectionJsonPath);
+    host = new TempScopedNodeJsSyncHost();
+    tree = new UnitTestTree(new HostTree(host));
+
+    errorOutput = [];
+    warnOutput = [];
+    runner.logger.subscribe((e: logging.LogEntry) => {
+      if (e.level === 'error') {
+        errorOutput.push(e.message);
+      } else if (e.level === 'warn') {
+        warnOutput.push(e.message);
+      }
+    });
+
+    writeFile('/tsconfig.json', '{}');
+    writeFile(
+      '/angular.json',
+      JSON.stringify({
+        version: 1,
+        projects: {t: {root: '', architect: {build: {options: {tsConfig: './tsconfig.json'}}}}},
+      }),
+    );
+
+    previousWorkingDir = process.cwd();
+    tmpDirPath = getSystemPath(host.root);
+
+    // Switch into the temporary directory path. This allows us to run
+    // the schematic against our custom unit test tree.
+    process.chdir(tmpDirPath);
+  });
+
+  afterEach(() => {
+    process.chdir(previousWorkingDir);
+    rmSync(tmpDirPath, {recursive: true});
+  });
+
+  describe('path', () => {
+    it('should throw an error if no files match the passed-in path', async () => {
+      let error: string | null = null;
+
+      writeFile(
+        'dir.ts',
+        `
+        import {Directive} from '@angular/core';
+        @Directive({selector: '[dir]'})
+        export class MyDir {}
+      `,
+      );
+
+      try {
+        await runMigration('./foo');
+      } catch (e: any) {
+        error = e.message;
+      }
+
+      expect(error).toMatch(
+        /Could not find any files to migrate under the path .*\/foo\. Cannot run the control flow migration/,
+      );
+    });
+
+    it('should throw an error if a path outside of the project is passed in', async () => {
+      let error: string | null = null;
+
+      writeFile(
+        'dir.ts',
+        `
+        import {Directive} from '@angular/core';
+        @Directive({selector: '[dir]'})
+        export class MyDir {}
+      `,
+      );
+
+      try {
+        await runMigration('../foo');
+      } catch (e: any) {
+        error = e.message;
+      }
+      expect(error).toBe('Cannot run control flow migration outside of the current project.');
+    });
+
+    it('should only migrate the paths that were passed in', async () => {
+      writeFile(
+        'comp.ts',
+        `
+        import {Component} from '@angular/core';
+        import {NgIf} from '@angular/common';
+        @Component({
+          imports: [NgIf, NgFor,NgSwitch,NgSwitchCase ,NgSwitchDefault],
+          template: \`<div><span *ngIf="toggle">This should be hidden</span></div>\`
+        })
+        class Comp {
+          toggle = false;
+        }
+      `,
+      );
+
+      writeFile(
+        'skip.ts',
+        `
+        import {Component} from '@angular/core';
+        import {NgIf} from '@angular/common';
+        @Component({
+          imports: [NgIf],
+          template: \`<div *ngIf="show">Show me</div>\`
+        })
+        class Comp {
+          show = false;
+        }
+      `,
+      );
+
+      await runMigration('./comp.ts');
+      const migratedContent = tree.readContent('/comp.ts');
+      const skippedContent = tree.readContent('/skip.ts');
+
+      expect(migratedContent).toContain(
+        'template: `<div>@if (toggle) {<span>This should be hidden</span>}</div>`',
+      );
+      expect(migratedContent).toContain('imports: []');
+      expect(migratedContent).not.toContain(`import {NgIf} from '@angular/common';`);
+      expect(skippedContent).toContain('template: `<div *ngIf="show">Show me</div>`');
+      expect(skippedContent).toContain('imports: [NgIf]');
+      expect(skippedContent).toContain(`import {NgIf} from '@angular/common';`);
+    });
+  });
+
+  it('should migrate an if else case and not format', async () => {
+    writeFile(
+      '/comp.ts',
+      `
+        import {Component} from '@angular/core';
+        import {NgIf} from '@angular/common';
+        @Component({
+          templateUrl: './comp.html'
+        })
+        class Comp {
+          show = false;
+        }
+      `,
+    );
+
+    writeFile(
+      '/comp.html',
+      [
+        `<div>`,
+        `<span *ngIf="show;else elseBlock">Content here</span>`,
+        `<ng-template #elseBlock>Else Content</ng-template>`,
+        `</div>`,
+      ].join('\n'),
+    );
+
+    await runMigration(undefined, false);
+    const content = tree.readContent('/comp.html');
+
+    expect(content).toBe(
+      [
+        `<div>`,
+        `@if (show) {`,
+        `<span>Content here</span>`,
+        `} @else {`,
+        `Else Content`,
+        `}\n`,
+        `</div>`,
+      ].join('\n'),
+    );
   });
 });

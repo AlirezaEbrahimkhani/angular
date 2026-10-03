@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import ts from 'typescript';
@@ -38,14 +38,12 @@ runInEachFileSystem(() => {
 
               @Directive({
                 selector: '[dir]',
-                standalone: true,
               })
               export class TestDir {}
 
               @Component({
                 selector: 'test-cmp',
                 template: '<div dir></div>',
-                standalone: true,
                 imports: [TestDir],
               })
               export class TestCmp {}
@@ -54,7 +52,6 @@ runInEachFileSystem(() => {
         env.driveMain();
         const jsCode = env.getContents('test.js');
         expect(jsCode).toContain('dependencies: [TestDir]');
-        expect(jsCode).toContain('standalone: true');
 
         const dtsCode = env.getContents('test.d.ts');
         expect(dtsCode).toContain(
@@ -74,7 +71,6 @@ runInEachFileSystem(() => {
               @Component({
                 selector: 'test-cmp',
                 template: '<test-cmp></test-cmp>',
-                standalone: true,
               })
               export class TestCmp {}
             `,
@@ -82,7 +78,6 @@ runInEachFileSystem(() => {
         env.driveMain();
         const jsCode = env.getContents('test.js');
         expect(jsCode).toContain('dependencies: [TestCmp]');
-        expect(jsCode).toContain('standalone: true');
       });
 
       it('should compile a basic standalone pipe', () => {
@@ -91,10 +86,7 @@ runInEachFileSystem(() => {
           `
           import {Pipe} from '@angular/core';
 
-          @Pipe({
-            standalone: true,
-            name: 'test',
-          })
+          @Pipe({name: 'test'})
           export class TestPipe {
             transform(value: any): any {}
           }
@@ -102,7 +94,6 @@ runInEachFileSystem(() => {
         );
         env.driveMain();
         const jsCode = env.getContents('test.js');
-        expect(jsCode).toContain('standalone: true');
 
         const dtsCode = env.getContents('test.d.ts');
         expect(dtsCode).toContain('i0.ɵɵPipeDeclaration<TestPipe, "test", true>');
@@ -114,10 +105,7 @@ runInEachFileSystem(() => {
           `
           import {Directive} from '@angular/core';
 
-          @Directive({
-            standalone: true,
-            selector: '[dir]',
-          })
+          @Directive({selector: '[dir]'})
           export class TestDir {}
         `,
         );
@@ -128,7 +116,6 @@ runInEachFileSystem(() => {
           import {TestDir} from './dep';
 
           @Component({
-            standalone: true,
             imports: [TestDir],
             selector: 'test-cmp',
             template: '<div dir></div>',
@@ -152,10 +139,7 @@ runInEachFileSystem(() => {
           // This import creates a cycle, since 'test.ts' imports 'dir.ts'.
           import {TestType} from './test';
 
-          @Directive({
-            standalone: true,
-            selector: '[dir]',
-          })
+          @Directive({selector: '[dir]'})
           export class TestDir {
             @Input() value?: TestType;
           }
@@ -172,7 +156,6 @@ runInEachFileSystem(() => {
           }
 
           @Component({
-            standalone: true,
             imports: [TestDir],
             selector: 'test-cmp',
             template: '<div dir></div>',
@@ -198,6 +181,7 @@ runInEachFileSystem(() => {
           @Component({
             selector: 'module-cmp',
             template: '<standalone-cmp></standalone-cmp>',
+            standalone: false,
           })
           export class ModuleCmp {}
 
@@ -218,7 +202,6 @@ runInEachFileSystem(() => {
           import {Module} from './module';
 
           @Component({
-            standalone: true,
             imports: [forwardRef(() => Module)],
             selector: 'standalone-cmp',
             template: '<module-cmp></module-cmp>',
@@ -243,16 +226,14 @@ runInEachFileSystem(() => {
           `
               import {Component, Directive} from '@angular/core';
 
-              @Directive({
-                selector: '[dir]',
-                standalone: true,
-              })
+              @Directive({selector: '[dir]'})
               export class TestDir {}
 
               @Component({
                 selector: 'test-cmp',
                 template: '<div dir></div>',
                 imports: [TestDir],
+                standalone: false,
               })
               export class TestCmp {}
             `,
@@ -271,7 +252,6 @@ runInEachFileSystem(() => {
 
               @Component({
                 selector: 'test-cmp',
-                standalone: true,
                 template: '<is-unknown></is-unknown>',
                 schemas: [NO_ERRORS_SCHEMA],
               })
@@ -286,7 +266,7 @@ runInEachFileSystem(() => {
 
         // verify generated code for the unknown element
         const jsCode = env.getContents('test.js');
-        expect(jsCode).toContain('i0.ɵɵelement(0, "is-unknown");');
+        expect(jsCode).toContain('i0.ɵɵdomElement(0, "is-unknown");');
 
         // verify schemas are not included in the generated code
         const jsCodeAoT = jsCode.slice(
@@ -306,6 +286,7 @@ runInEachFileSystem(() => {
                 selector: 'test-cmp',
                 template: '<div></div>',
                 schemas: [NO_ERRORS_SCHEMA],
+                standalone: false,
               })
               export class TestCmp {}
             `,
@@ -327,6 +308,7 @@ runInEachFileSystem(() => {
 
               @Directive({
                 selector: '[dir]',
+                standalone: false,
               })
               export class TestDir {}
 
@@ -339,7 +321,6 @@ runInEachFileSystem(() => {
               @Component({
                 selector: 'test-cmp',
                 template: '<div dir></div>',
-                standalone: true,
                 imports: [TestModule],
               })
               export class TestCmp {}
@@ -357,8 +338,7 @@ runInEachFileSystem(() => {
 
               @Directive({
                 selector: '[dir]',
-                standalone: true,
-              })
+                              })
               export class TestDir {}
 
               export const DIRECTIVES = [TestDir];
@@ -366,7 +346,6 @@ runInEachFileSystem(() => {
               @Component({
                 selector: 'test-cmp',
                 template: '<div dir></div>',
-                standalone: true,
                 imports: [DIRECTIVES],
               })
               export class TestCmp {}
@@ -382,10 +361,7 @@ runInEachFileSystem(() => {
           `
               import {Component, Directive} from '@angular/core';
 
-              @Directive({
-                selector: '[dir]',
-                standalone: true,
-              })
+              @Directive({selector: '[dir]'})
               export class TestDir {}
 
               export const DIRECTIVES = [TestDir];
@@ -393,7 +369,6 @@ runInEachFileSystem(() => {
               @Component({
                 selector: 'test-cmp',
                 template: '<div dir></div>',
-                standalone: true,
                 imports: [TestDir, DIRECTIVES],
               })
               export class TestCmp {}
@@ -411,6 +386,7 @@ runInEachFileSystem(() => {
 
           @Directive({
             selector: '[dir]',
+            standalone: false,
           })
           export class TestDir {}
 
@@ -423,7 +399,6 @@ runInEachFileSystem(() => {
           @Component({
             selector: 'test-cmp',
             template: '<div dir></div>',
-            standalone: true,
             imports: [TestDir],
           })
           export class TestCmp {}
@@ -457,7 +432,6 @@ runInEachFileSystem(() => {
              @Component({
                selector: 'test-cmp',
                template: '<div></div>',
-               standalone: true,
                // @ts-ignore
                imports: [moduleWithProviders()],
              })
@@ -468,7 +442,6 @@ runInEachFileSystem(() => {
              @Component({
                selector: 'test-cmp',
                template: '<div></div>',
-               standalone: true,
                // @ts-ignore
                imports: IMPORTS,
              })
@@ -504,7 +477,6 @@ runInEachFileSystem(() => {
           @Component({
             selector: 'test-cmp',
             template: '<div></div>',
-            standalone: true,
             // @ts-ignore
             imports: [TestModule.forRoot()],
           })
@@ -527,6 +499,7 @@ runInEachFileSystem(() => {
 
             @Directive({
               selector: '[dir]',
+              standalone: false,
             })
             export class TestDir {}
 
@@ -538,7 +511,6 @@ runInEachFileSystem(() => {
             @Component({
               selector: 'test-cmp',
               template: '<div dir></div>',
-              standalone: true,
               imports: [TestDir],
             })
             export class TestCmp {}
@@ -565,6 +537,7 @@ runInEachFileSystem(() => {
           @Component({
             selector: 'not-standalone',
             template: '',
+            standalone: false,
           })
           export class NotStandaloneCmp {
             @Input() value!: string;
@@ -577,7 +550,6 @@ runInEachFileSystem(() => {
           export class NotStandaloneModule {}
 
           @Component({
-            standalone: true,
             selector: 'is-standalone',
             template: '',
           })
@@ -586,7 +558,6 @@ runInEachFileSystem(() => {
           }
 
           @Component({
-            standalone: true,
             selector: 'test-cmp',
             imports: [NotStandaloneModule, IsStandaloneCmp],
             template: '<not-standalone [value]="3"></not-standalone><is-standalone [value]="true"></is-standalone>',
@@ -608,18 +579,18 @@ runInEachFileSystem(() => {
           import {Component, Input} from '@angular/core';
 
           @Component({
-            standalone: true,
             selector: 'dep-cmp',
             template: '',
           })
           export class DepCmp {}
 
           @Component({
-            // missing standalone: true, would ordinarily cause template type-checking errors
+            // standalone: false, would ordinarily cause template type-checking errors
             // as well as an error about imports on a non-standalone component.
             imports: [DepCmp],
             selector: 'test-cmp',
             template: '<dep-cmp></dep-cmp>',
+            standalone: false,
           })
           export class TestCmp {}
         `,
@@ -638,14 +609,13 @@ runInEachFileSystem(() => {
 
           @Component({
             selector: 'test',
-            standalone: true,
             imports: [forwardRef(() => StandaloneComponent)],
             template: "<other-standalone></other-standalone>"
           })
           class TestComponent {
           }
 
-          @Component({selector: 'other-standalone', standalone: true, template: ""})
+          @Component({selector: 'other-standalone', template: ""})
           class StandaloneComponent {
           }
         `,
@@ -654,7 +624,6 @@ runInEachFileSystem(() => {
         const jsCode = env.getContents('test.js');
 
         expect(diags.length).toBe(0);
-        expect(jsCode).toContain('standalone: true');
         expect(jsCode).toContain('dependencies: () => [StandaloneComponent]');
       });
     });
@@ -669,7 +638,6 @@ runInEachFileSystem(() => {
               @Component({
                 selector: 'test-cmp',
                 template: 'Test',
-                standalone: true,
               })
               export class TestCmp {}
 
@@ -692,10 +660,7 @@ runInEachFileSystem(() => {
           `
           import {Pipe, NgModule} from '@angular/core';
 
-          @Pipe({
-            name: 'test',
-            standalone: true,
-          })
+          @Pipe({name: 'test'})
           export class TestPipe {}
 
           @NgModule({
@@ -719,7 +684,6 @@ runInEachFileSystem(() => {
 
           @Component({
             selector: 'st-cmp',
-            standalone: true,
             template: 'Test',
           })
           export class StandaloneCmp {}
@@ -727,6 +691,7 @@ runInEachFileSystem(() => {
           @Component({
             selector: 'test-cmp',
             template: '<st-cmp></st-cmp>',
+            standalone: false,
           })
           export class TestCmp {}
 
@@ -747,15 +712,13 @@ runInEachFileSystem(() => {
           `
           import {Component, Directive, NgModule} from '@angular/core';
 
-          @Directive({
-            selector: '[st-dir]',
-            standalone: true,
-          })
+          @Directive({selector: '[st-dir]'})
           export class StandaloneDir {}
 
           @Component({
             selector: 'test-cmp',
             template: '<div st-dir></div>',
+            standalone: false,
           })
           export class TestCmp {}
 
@@ -776,10 +739,7 @@ runInEachFileSystem(() => {
           `
           import {Component, Pipe, NgModule} from '@angular/core';
 
-          @Pipe({
-            name: 'stpipe',
-            standalone: true,
-          })
+          @Pipe({name: 'stpipe'})
           export class StandalonePipe {
             transform(value: any): any {
               return value;
@@ -789,6 +749,7 @@ runInEachFileSystem(() => {
           @Component({
             selector: 'test-cmp',
             template: '{{data | stpipe}}',
+            standalone: false,
           })
           export class TestCmp {
             data = 'test';
@@ -811,10 +772,7 @@ runInEachFileSystem(() => {
           `
           import {Component, Directive, NgModule} from '@angular/core';
 
-          @Directive({
-            selector: '[dir]',
-            standalone: true,
-          })
+          @Directive({selector: '[dir]'})
           export class TestDir {}
 
           @NgModule({
@@ -840,6 +798,7 @@ runInEachFileSystem(() => {
 
           @Directive({
             selector: '[dir]',
+            standalone: false,
           })
           export class TestDir {}
 
@@ -855,42 +814,6 @@ runInEachFileSystem(() => {
         expect(diagnosticToNode(diags[0], ts.isIdentifier).parent.parent.getText()).toEqual(
           'imports: [TestDir]',
         );
-      });
-    });
-
-    describe('other types', () => {
-      it('should compile a basic standalone directive', () => {
-        env.write(
-          'test.ts',
-          `
-              import {Directive} from '@angular/core';
-
-              @Directive({
-                selector: '[dir]',
-                standalone: true,
-              })
-              export class TestDir {}
-            `,
-        );
-        env.driveMain();
-        expect(env.getContents('test.js')).toContain('standalone: true');
-      });
-
-      it('should compile a basic standalone pipe', () => {
-        env.write(
-          'test.ts',
-          `
-              import {Pipe} from '@angular/core';
-
-              @Pipe({
-                name: 'testpipe',
-                standalone: true,
-              })
-              export class TestPipe {}
-            `,
-        );
-        env.driveMain();
-        expect(env.getContents('test.js')).toContain('standalone: true');
       });
     });
 
@@ -913,7 +836,6 @@ runInEachFileSystem(() => {
           import {StandaloneDir} from './lib';
 
           @Component({
-            standalone: true,
             selector: 'test-cmp',
             template: '<div dir></div>',
             imports: [StandaloneDir],
@@ -945,7 +867,6 @@ runInEachFileSystem(() => {
           import {StandaloneCmp} from './lib';
 
           @Component({
-            standalone: true,
             selector: 'test-cmp',
             template: '<standalone-cmp></standalone-cmp>',
             imports: [StandaloneCmp],
@@ -978,7 +899,6 @@ runInEachFileSystem(() => {
           import {StandalonePipe} from './lib';
 
           @Component({
-            standalone: true,
             selector: 'test-cmp',
             template: '{{value | standalone}}',
             imports: [StandalonePipe],
@@ -1014,7 +934,6 @@ runInEachFileSystem(() => {
           import {DECLARATIONS} from 'external';
 
           @Component({
-            standalone: true,
             selector: 'test-cmp',
             template: '<div dir></div>',
             imports: [DECLARATIONS],
@@ -1046,7 +965,6 @@ runInEachFileSystem(() => {
           export class DepModule {}
 
           @Component({
-            standalone: true,
             selector: 'standalone-cmp',
             imports: [DepModule],
             template: '',
@@ -1085,7 +1003,6 @@ runInEachFileSystem(() => {
             import {DepModule} from './dep';
 
             @Component({
-              standalone: true,
               selector: 'standalone-cmp',
               imports: [DepModule],
               template: '',
@@ -1124,10 +1041,9 @@ runInEachFileSystem(() => {
               import {DepCmp} from './dep';
 
               @Component({
-                standalone: true,
                 selector: 'standalone-cmp',
                 imports: [DepCmp],
-                template: '',
+                template: '<dep-cmp/>',
               })
               export class StandaloneCmp {}
 
@@ -1150,16 +1066,10 @@ runInEachFileSystem(() => {
           `
           import {Directive, NgModule, Pipe} from '@angular/core';
 
-          @Directive({
-            standalone: true,
-            selector: '[dir]',
-          })
+          @Directive({selector: '[dir]'})
           export class StandaloneDir {}
 
-          @Pipe({
-            standalone: true,
-            name: 'standalone',
-          })
+          @Pipe({name: 'standalone'})
           export class StandalonePipe {
             transform(value: any): any {}
           }
@@ -1187,7 +1097,6 @@ runInEachFileSystem(() => {
             export class DepModule {}
 
             @Component({
-              standalone: true,
               selector: 'test-cmp',
               imports: [DepModule],
               template: '',
@@ -1206,6 +1115,81 @@ runInEachFileSystem(() => {
         const jsCode = env.getContents('test.js');
         expect(jsCode).toContain('i0.ɵɵdefineInjector({});');
       });
+    });
+  });
+
+  describe('strictStandalone flag', () => {
+    let env!: NgtscTestEnvironment;
+
+    beforeEach(() => {
+      env = NgtscTestEnvironment.setup(testFiles);
+      env.tsconfig({strictTemplates: true, strictStandalone: true});
+    });
+
+    it('should not allow a non-standalone component', () => {
+      env.write(
+        'app.ts',
+        `
+        import {Component} from '@angular/core';
+
+        @Component({standalone: false, template: ''})
+        export class TestCmp {}
+      `,
+      );
+
+      const diags = env.driveDiagnostics();
+      expect(diags.length).toBe(1);
+      expect(diags[0].code).toEqual(ngErrorCode(ErrorCode.NON_STANDALONE_NOT_ALLOWED));
+      expect(diags[0].messageText).toContain('component');
+    });
+
+    it('should not allow a non-standalone directive', () => {
+      env.write(
+        'app.ts',
+        `
+        import {Directive} from '@angular/core';
+
+        @Directive({standalone: false})
+        export class TestDir {}
+      `,
+      );
+
+      const diags = env.driveDiagnostics();
+      expect(diags.length).toBe(1);
+      expect(diags[0].code).toEqual(ngErrorCode(ErrorCode.NON_STANDALONE_NOT_ALLOWED));
+      expect(diags[0].messageText).toContain('directive');
+    });
+
+    it('should allow a no-arg directive', () => {
+      env.write(
+        'app.ts',
+        `
+        import {Directive} from '@angular/core';
+
+        @Directive()
+        export class TestDir {}
+      `,
+      );
+
+      const diags = env.driveDiagnostics();
+      expect(diags.length).toBe(0);
+    });
+
+    it('should not allow a non-standalone pipe', () => {
+      env.write(
+        'app.ts',
+        `
+        import {Pipe} from '@angular/core';
+
+        @Pipe({name: 'test', standalone: false})
+        export class TestPipe {}
+      `,
+      );
+
+      const diags = env.driveDiagnostics();
+      expect(diags.length).toBe(1);
+      expect(diags[0].code).toEqual(ngErrorCode(ErrorCode.NON_STANDALONE_NOT_ALLOWED));
+      expect(diags[0].messageText).toContain('pipe');
     });
   });
 });

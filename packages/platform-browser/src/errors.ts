@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 /**
  * The list of error codes used in runtime code of the `platform-browser` package.
@@ -12,6 +12,7 @@
 export const enum RuntimeErrorCode {
   // Hydration Errors
   UNSUPPORTED_ZONEJS_INSTANCE = -5000,
+  HYDRATION_CONFLICTING_FEATURES = 5001,
 
   // misc errors (5100-5200 range)
   BROWSER_MODULE_ALREADY_LOADED = 5100,

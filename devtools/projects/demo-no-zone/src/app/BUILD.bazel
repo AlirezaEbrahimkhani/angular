@@ -1,17 +1,17 @@
-load("//devtools/tools:ng_module.bzl", "ng_module")
+load("//devtools/tools:defaults.bzl", "ng_project")
 
 package(default_visibility = ["//visibility:public"])
 
-ng_module(
+ng_project(
     name = "app",
     srcs = glob(
         include = ["*.ts"],
     ),
     angular_assets = ["app.component.html"],
     deps = [
-        "//packages/common",
-        "//packages/core",
-        "//packages/platform-browser",
-        "@npm//rxjs",
+        "//:node_modules/@angular/common",
+        "//:node_modules/@angular/core",
+        "//:node_modules/@angular/platform-browser",
+        "//:node_modules/rxjs",
     ],
 )

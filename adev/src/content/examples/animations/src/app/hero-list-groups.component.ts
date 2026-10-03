@@ -1,15 +1,13 @@
-import {Component, Input, Output, EventEmitter} from '@angular/core';
+import {Component, output, input} from '@angular/core';
 import {trigger, state, style, animate, transition, group} from '@angular/animations';
 
 import {Hero} from './hero';
-import {NgFor} from '@angular/common';
 
 @Component({
-  standalone: true,
   selector: 'app-hero-list-groups',
   template: `
     <ul class="heroes">
-      @for (hero of heroes; track hero) {
+      @for (hero of heroes(); track hero) {
         <li [@flyInOut]="'in'">
           <button class="inner" type="button" (click)="removeHero(hero.id)">
             <span class="badge">{{ hero.id }}</span>
@@ -20,7 +18,6 @@ import {NgFor} from '@angular/common';
     </ul>
   `,
   styleUrls: ['./hero-list-page.component.css'],
-  imports: [NgFor],
   // #docregion animationdef
   animations: [
     trigger('flyInOut', [
@@ -72,9 +69,9 @@ import {NgFor} from '@angular/common';
   // #enddocregion animationdef
 })
 export class HeroListGroupsComponent {
-  @Input() heroes: Hero[] = [];
+  readonly heroes = input<Hero[]>([]);
 
-  @Output() remove = new EventEmitter<number>();
+  readonly remove = output<number>();
 
   removeHero(id: number) {
     this.remove.emit(id);

@@ -3,15 +3,14 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {DOCUMENT, IMAGE_LOADER, NgOptimizedImage} from '@angular/common';
-import {Component, Inject} from '@angular/core';
+import {Component, Inject} from '../../../../../src/core';
 
 @Component({
   selector: 'preconnect-check',
-  standalone: true,
   imports: [NgOptimizedImage],
   template: `
     <img ngSrc="/e2e/a.png" width="50" height="50" priority>

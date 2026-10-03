@@ -1,21 +1,19 @@
-load("//tools:defaults.bzl", "generate_api_docs", "ng_module")
+load("//tools:defaults.bzl", "generate_api_docs", "ng_project")
 
 package(default_visibility = ["//visibility:public"])
 
-exports_files(["package.json"])
-
-ng_module(
+ng_project(
     name = "testing",
     srcs = glob(
         ["**/*.ts"],
     ),
     deps = [
-        "//packages:types",
+        "//:node_modules/@types/jasmine",
+        "//:node_modules/rxjs",
+        "//:node_modules/zone.js",
         "//packages/compiler",
         "//packages/core",
-        "//packages/localize",
-        "//packages/zone.js/lib:zone_d_ts",
-        "@npm//@types/jasmine",
+        "//packages/core/primitives/dom-navigation/testing",
     ],
 )
 

@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {
@@ -14,9 +14,9 @@ import {
   Injector,
   runInInjectionContext,
   Signal,
-} from '@angular/core';
-import {toSignal} from '@angular/core/rxjs-interop';
-import {TestBed} from '@angular/core/testing';
+} from '../../src/core';
+import {toSignal} from '../src';
+import {TestBed} from '../../testing';
 import {
   BehaviorSubject,
   Observable,
@@ -152,28 +152,6 @@ describe('toSignal()', () => {
     );
   });
 
-  it('should throw the error back to RxJS if rejectErrors is set', () => {
-    let capturedObserver: Observer<number> = null!;
-    const fake$ = {
-      subscribe(observer: Observer<number>): Unsubscribable {
-        capturedObserver = observer;
-        return {unsubscribe(): void {}};
-      },
-    } as Subscribable<number>;
-
-    const s = toSignal(fake$, {initialValue: 0, rejectErrors: true, manualCleanup: true});
-    expect(s()).toBe(0);
-    if (capturedObserver === null) {
-      return fail('Observer not captured as expected.');
-    }
-
-    capturedObserver.next(1);
-    expect(s()).toBe(1);
-
-    expect(() => capturedObserver.error('test')).toThrow('test');
-    expect(s()).toBe(1);
-  });
-
   describe('with no initial value', () => {
     it(
       'should return `undefined` if read before a value is emitted',
@@ -251,7 +229,7 @@ describe('toSignal()', () => {
         const counter$ = new Subject<{value: number}>();
         const counter = toSignal(counter$, {
           initialValue: {value: 0},
-          equals: (a, b) => a.value === b.value,
+          equal: (a, b) => a.value === b.value,
         });
 
         let updates = 0;
@@ -274,6 +252,30 @@ describe('toSignal()', () => {
         expect(updates).toBe(3);
       }),
     );
+
+    it(
+      'should update when values are reference equal but equality function says otherwise',
+      test(() => {
+        const numsSet = new Set<number>();
+        const nums$ = new BehaviorSubject<Set<number>>(numsSet);
+        const nums = toSignal(nums$, {
+          requireSync: true,
+          equal: () => false,
+        });
+
+        let updates = 0;
+        const tracker = computed(() => {
+          updates++;
+          return Array.from(nums()!.values());
+        });
+
+        expect(tracker()).toEqual([]);
+        numsSet.add(1);
+        nums$.next(numsSet); // same value as before
+        expect(tracker()).toEqual([1]);
+        expect(updates).toBe(2);
+      }),
+    );
   });
 
   describe('in a @Component', () => {
@@ -281,6 +283,7 @@ describe('toSignal()', () => {
       @Component({
         template: '{{counter()}}',
         changeDetection: ChangeDetectionStrategy.OnPush,
+        standalone: false,
       })
       class TestCmp {
         // Component creation should not run inside the template effect/consumer,

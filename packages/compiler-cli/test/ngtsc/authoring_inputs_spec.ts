@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import ts from 'typescript';
@@ -21,7 +21,7 @@ runInEachFileSystem(() => {
 
     beforeEach(() => {
       env = NgtscTestEnvironment.setup(testFiles);
-      env.tsconfig({strictTemplates: true});
+      env.tsconfig({strictTemplates: true, _checkTwoWayBoundEvents: true});
     });
 
     it('should handle a basic, primitive valued input', () => {
@@ -238,14 +238,13 @@ runInEachFileSystem(() => {
         `
         import {Component, Directive, input, Output, EventEmitter} from '@angular/core';
 
-        @Directive({standalone: true, selector: '[dir]'})
+        @Directive({selector: '[dir]'})
         export class TestDir {
           value = input('hello');
           @Output() valueChange = new EventEmitter<string>();
         }
 
         @Component({
-          standalone: true,
           template: \`<div dir [(value)]="value"></div>\`,
           imports: [TestDir],
         })
@@ -256,8 +255,9 @@ runInEachFileSystem(() => {
       );
 
       const diags = env.driveDiagnostics();
-      expect(diags.length).toBe(1);
+      expect(diags.length).toBe(2);
       expect(diags[0].messageText).toBe(`Type 'number' is not assignable to type 'string'.`);
+      expect(diags[1].messageText).toBe(`Type 'string' is not assignable to type 'number'.`);
     });
 
     describe('type checking', () => {
@@ -269,14 +269,12 @@ runInEachFileSystem(() => {
 
           @Directive({
             selector: '[directiveName]',
-            standalone: true,
           })
           export class TestDir {
             data = input(1);
           }
 
           @Component({
-            standalone: true,
             template: \`<div directiveName [data]="false"></div>\`,
             imports: [TestDir],
           })
@@ -300,7 +298,6 @@ runInEachFileSystem(() => {
 
           @Directive({
             selector: '[directiveName]',
-            standalone: true,
           })
           export class TestDir {
             data = input.required({
@@ -309,7 +306,6 @@ runInEachFileSystem(() => {
           }
 
           @Component({
-            standalone: true,
             template: \`<div directiveName [data]="false"></div>\`,
             imports: [TestDir],
           })
@@ -333,14 +329,12 @@ runInEachFileSystem(() => {
 
           @Directive({
             selector: '[directiveName]',
-            standalone: true,
           })
           export class TestDir {
             data = input.required<boolean>();
           }
 
           @Component({
-            standalone: true,
             template: \`<div directiveName></div>\`,
             imports: [TestDir],
           })
@@ -366,7 +360,6 @@ runInEachFileSystem(() => {
 
           @Directive({
             selector: '[directiveName]',
-            standalone: true,
           })
           export class TestDir {
             #data = input.required<boolean>();
@@ -393,7 +386,6 @@ runInEachFileSystem(() => {
 
           @Directive({
             selector: '[directiveName]',
-            standalone: true,
           })
           export class TestDir {
             private data = input.required<boolean>();
@@ -420,7 +412,6 @@ runInEachFileSystem(() => {
 
           @Directive({
             selector: '[directiveName]',
-            standalone: true,
           })
           export class TestDir {
             protected data = input.required<boolean>();
@@ -431,6 +422,40 @@ runInEachFileSystem(() => {
         const diagnostics = env.driveDiagnostics();
         expect(diagnostics.length).toBe(0);
       });
+    });
+
+    it('should resolve input inside an `as` expression', () => {
+      env.write(
+        'test.ts',
+        `
+        import {Directive, input, Signal} from '@angular/core';
+
+        @Directive()
+        export class TestDir {
+          data = input('test') as Signal<string>;
+        }
+      `,
+      );
+      env.driveMain();
+      const js = env.getContents('test.js');
+      expect(js).toContain('inputs: { data: [1, "data"] }');
+    });
+
+    it('should resolve input inside a parenthesized expression', () => {
+      env.write(
+        'test.ts',
+        `
+        import {Directive, input, Signal} from '@angular/core';
+
+        @Directive()
+        export class TestDir {
+          data = ((input('test')));
+        }
+      `,
+      );
+      env.driveMain();
+      const js = env.getContents('test.js');
+      expect(js).toContain('inputs: { data: [1, "data"] }');
     });
   });
 });

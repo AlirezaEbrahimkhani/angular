@@ -3,11 +3,10 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 import semver from 'semver';
 
-import {AbsoluteFsPath} from '../../../../src/ngtsc/file_system';
 import {Logger} from '../../../../src/ngtsc/logging';
 import {createGetSourceFile} from '../get_source_file';
 import {LinkerEnvironment} from '../linker_environment';
@@ -23,6 +22,7 @@ import {PartialLinker} from './partial_linker';
 import {PartialNgModuleLinkerVersion1} from './partial_ng_module_linker_1';
 import {PartialPipeLinkerVersion1} from './partial_pipe_linker_1';
 import {PLACEHOLDER_VERSION} from './util';
+import {AbsoluteFsPath} from '../../../../src/ngtsc/file_system/src/types';
 
 export const ɵɵngDeclareDirective = 'ɵɵngDeclareDirective';
 export const ɵɵngDeclareClassMetadata = 'ɵɵngDeclareClassMetadata';

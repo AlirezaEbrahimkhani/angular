@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 export {createEngine as ɵcreateEngine} from './create_engine';
 export {Animation as ɵAnimation} from './dsl/animation';
@@ -32,3 +32,5 @@ export {
   camelCaseToDashCase as ɵcamelCaseToDashCase,
   normalizeKeyframes as ɵnormalizeKeyframes,
 } from './util';
+export {TransitionAnimationPlayer as ɵTransitionAnimationPlayer} from './render/transition_animation_engine';
+export {ENTER_CLASSNAME as ɵENTER_CLASSNAME, LEAVE_CLASSNAME as ɵLEAVE_CLASSNAME} from './util';

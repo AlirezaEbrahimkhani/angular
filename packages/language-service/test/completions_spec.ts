@@ -3,20 +3,24 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {initMockFileSystem} from '@angular/compiler-cli/src/ngtsc/file_system/testing';
 import ts from 'typescript';
 
-import {DisplayInfoKind, unsafeCastDisplayInfoKindToScriptElementKind} from '../src/display_parts';
-import {LanguageServiceTestEnv, OpenBuffer} from '../testing';
+import {
+  DisplayInfoKind,
+  unsafeCastDisplayInfoKindToScriptElementKind,
+} from '../src/utils/display_parts';
+import {LanguageServiceTestEnv, OpenBuffer, ProjectFiles, TestableOptions} from '../testing';
 
 const DIR_WITH_INPUT = {
   'Dir': `
      @Directive({
        selector: '[dir]',
        inputs: ['myInput']
+       standalone: false,
      })
      export class Dir {
        myInput!: string;
@@ -29,6 +33,7 @@ const DIR_WITH_UNION_TYPE_INPUT = {
      @Directive({
        selector: '[dir]',
        inputs: ['myInput']
+       standalone: false,
      })
      export class Dir {
        myInput!: 'foo'|42|null|undefined
@@ -41,6 +46,7 @@ const DIR_WITH_OUTPUT = {
      @Directive({
        selector: '[dir]',
        outputs: ['myOutput']
+       standalone: false,
      })
      export class Dir {
        myInput!: any;
@@ -53,6 +59,7 @@ const CUSTOM_BUTTON = {
      @Directive({
        selector: 'button[mat-button]',
        inputs: ['color']
+       standalone: false,
      })
      export class Button {
        color!: any;
@@ -66,6 +73,7 @@ const DIR_WITH_TWO_WAY_BINDING = {
        selector: '[dir]',
        inputs: ['model', 'otherInput'],
        outputs: ['modelChange', 'otherOutput'],
+       standalone: false,
      })
      export class Dir {
        model!: any;
@@ -82,6 +90,7 @@ const DIR_WITH_BINDING_PROPERTY_NAME = {
        selector: '[dir]',
        inputs: ['model: customModel'],
        outputs: ['update: customModelChange'],
+       standalone: false,
      })
      export class Dir {
        model!: any;
@@ -94,6 +103,7 @@ const NG_FOR_DIR = {
   'NgFor': `
      @Directive({
        selector: '[ngFor][ngForOf]',
+       standalone: false,
      })
      export class NgFor {
        constructor(ref: TemplateRef<any>) {}
@@ -107,6 +117,7 @@ const DIR_WITH_SELECTED_INPUT = {
      @Directive({
        selector: '[myInput]',
        inputs: ['myInput']
+       standalone: false,
      })
      export class Dir {
        myInput!: string;
@@ -118,6 +129,7 @@ const SOME_PIPE = {
   'SomePipe': `
      @Pipe({
        name: 'somePipe',
+       standalone: false,
      })
      export class SomePipe {
        transform(value: string): string {
@@ -131,6 +143,7 @@ const UNION_TYPE_PIPE = {
   'UnionTypePipe': `
      @Pipe({
        name: 'unionTypePipe',
+       standalone: false,
      })
      export class UnionTypePipe {
        transform(value: string, config: 'foo' | 'bar'): string {
@@ -289,6 +302,7 @@ describe('completions', () => {
       'Dir': `
          @Directive({
            selector: '[dir]',
+           standalone: false,
          })
          export class Dir {
            myInput = input<'foo'|42|null>();
@@ -367,6 +381,7 @@ describe('completions', () => {
       'Dir': `
          @Directive({
            selector: '[dir]',
+           standalone: false,
          })
          export class Dir {
            bla = output<string>();
@@ -426,6 +441,7 @@ describe('completions', () => {
       'Dir': `
          @Directive({
            selector: '[dir]',
+           standalone: false,
          })
          export class Dir {
            bla = outputFromObservable(new Subject<string>());
@@ -485,6 +501,7 @@ describe('completions', () => {
       'Dir': `
          @Directive({
            selector: '[dir]',
+           standalone: false,
          })
          export class Dir {
            twoWayValue = model<string>();
@@ -820,7 +837,7 @@ describe('completions', () => {
         '',
         {},
         `
-        @Component({selector: 'other-cmp', template: 'unimportant', standalone: true})
+        @Component({selector: 'other-cmp', template: 'unimportant'})
         export class OtherCmp {}
       `,
       );
@@ -952,6 +969,27 @@ describe('completions', () => {
           expectContain(completions, DisplayInfoKind.EVENT, ['(click)']);
         });
 
+        it('should return event completion for self closing tag', () => {
+          const {templateFile} = setup(`<br />`, ``);
+          templateFile.moveCursorToText(`<br ¦`);
+          const completions = templateFile.getCompletionsAtPosition();
+          expectContain(completions, DisplayInfoKind.EVENT, ['(click)']);
+        });
+
+        it('should not return element completions in end tag', () => {
+          const {templateFile} = setup(`<button ></button>`, ``);
+          templateFile.moveCursorToText(`</¦button>`);
+          const completions = templateFile.getCompletionsAtPosition();
+          expect(completions).not.toBeDefined();
+        });
+
+        it('should not return element completions in between start and end tag', () => {
+          const {templateFile} = setup(`<button></button>`, ``);
+          templateFile.moveCursorToText(`<button>¦</button>`);
+          const completions = templateFile.getCompletionsAtPosition();
+          expect(completions).not.toBeDefined();
+        });
+
         it('should return event completion with empty parens', () => {
           const {templateFile} = setup(`<button ()></button>`, ``);
           templateFile.moveCursorToText(`<button (¦)>`);
@@ -1059,7 +1097,6 @@ describe('completions', () => {
           const {templateFile} = setup(`<input dir my>`, '', {
             'Dir': `
               @Directive({
-                standalone: true,
                 inputs: ['myInput']
               })
               export class HostDir {
@@ -1071,7 +1108,8 @@ describe('completions', () => {
                 hostDirectives: [{
                   directive: HostDir,
                   inputs: ['myInput']
-                }]
+                }],
+                standalone: false,
               })
               export class Dir {
               }
@@ -1092,8 +1130,7 @@ describe('completions', () => {
           const {templateFile} = setup(`<input dir my>`, '', {
             'Dir': `
               @Directive({
-                standalone: true,
-                inputs: ['myInput']
+                                inputs: ['myInput']
               })
               export class HostDir {
                 myInput = 'foo';
@@ -1122,8 +1159,7 @@ describe('completions', () => {
           const {templateFile} = setup(`<input dir ali>`, '', {
             'Dir': `
               @Directive({
-                standalone: true,
-                inputs: ['myInput']
+                                inputs: ['myInput']
               })
               export class HostDir {
                 myInput = 'foo';
@@ -1134,7 +1170,8 @@ describe('completions', () => {
                 hostDirectives: [{
                   directive: HostDir,
                   inputs: ['myInput: alias']
-                }]
+                }],
+                standalone: false,
               })
               export class Dir {
               }
@@ -1155,8 +1192,7 @@ describe('completions', () => {
           const {templateFile} = setup(`<input dir ali>`, '', {
             'Dir': `
                   @Directive({
-                    standalone: true,
-                    inputs: ['myInput: myPublicInput']
+                                        inputs: ['myInput: myPublicInput']
                   })
                   export class HostDir {
                     myInput = 'foo';
@@ -1167,7 +1203,8 @@ describe('completions', () => {
                     hostDirectives: [{
                       directive: HostDir,
                       inputs: ['myPublicInput: alias']
-                    }]
+                    }],
+                    standalone: false,
                   })
                   export class Dir {
                   }
@@ -1524,8 +1561,7 @@ describe('completions', () => {
         const {templateFile} = setup(`<input dir (my)>`, '', {
           'Dir': `
             @Directive({
-              standalone: true,
-              outputs: ['myOutput']
+                            outputs: ['myOutput']
             })
             export class HostDir {
               myOutput: any;
@@ -1536,7 +1572,8 @@ describe('completions', () => {
               hostDirectives: [{
                 directive: HostDir,
                 outputs: ['myOutput']
-              }]
+              }],
+              standalone: false,
             })
             export class Dir {
             }
@@ -1557,8 +1594,7 @@ describe('completions', () => {
         const {templateFile} = setup(`<input dir (my)>`, '', {
           'Dir': `
             @Directive({
-              standalone: true,
-              outputs: ['myOutput']
+                            outputs: ['myOutput']
             })
             export class HostDir {
               myOutput: any;
@@ -1586,8 +1622,7 @@ describe('completions', () => {
         const {templateFile} = setup(`<input dir (ali)>`, '', {
           'Dir': `
             @Directive({
-              standalone: true,
-              outputs: ['myOutput: myPublicOutput']
+                            outputs: ['myOutput: myPublicOutput']
             })
             export class HostDir {
               myOutput: any;
@@ -1598,7 +1633,8 @@ describe('completions', () => {
               hostDirectives: [{
                 directive: HostDir,
                 outputs: ['myPublicOutput: alias']
-              }]
+              }],
+              standalone: false,
             })
             export class Dir {
             }
@@ -1613,6 +1649,78 @@ describe('completions', () => {
           ['alias'],
         );
         expectReplacementText(completions, templateFile.contents, 'ali');
+      });
+    });
+
+    describe('element attribute out of scope', () => {
+      it('should return completions for an element attribute out of scope', () => {
+        const {templateFile} = setup(
+          `<div app />`,
+          '',
+          undefined,
+          undefined,
+          undefined,
+          {
+            '/component/share/highlight.ts': `
+            import {Directive,input} from '@angular/core';
+
+            @Directive({
+              selector: '[appHighlight]',
+            })
+            export class HighlightDirective {
+              appHighlight = input('');
+            }
+          `,
+          },
+          {
+            paths: {'@app/*': ['./component/share/*.ts']},
+          },
+        );
+        templateFile.moveCursorToText('app¦');
+
+        const completions = templateFile.getCompletionsAtPosition({
+          includeCompletionsForModuleExports: true,
+        });
+
+        const completionEntry = completions?.entries.find((entry) => {
+          return entry.name === '[appHighlight]';
+        });
+
+        expect(completionEntry).toBeDefined();
+
+        const detail = templateFile.getCompletionEntryDetails(
+          completionEntry?.name!,
+          undefined,
+          {includeCompletionsForModuleExports: true},
+          completionEntry?.data,
+        );
+
+        expect(detail?.codeActions).toContain(
+          jasmine.objectContaining({
+            'description': "Import HighlightDirective from '@app/highlight' on AppCmp",
+            'changes': [
+              {
+                'fileName': '/test/test.ts',
+                'textChanges': [
+                  {
+                    'span': {
+                      'start': 303,
+                      'length': 0,
+                    },
+                    'newText': '\nimport { HighlightDirective } from "@app/highlight";',
+                  },
+                  {
+                    'span': {
+                      'start': 407,
+                      'length': 0,
+                    },
+                    'newText': ',\n           imports: [HighlightDirective]',
+                  },
+                ],
+              },
+            ],
+          }),
+        );
       });
     });
   });
@@ -2034,6 +2142,49 @@ describe('completions', () => {
       expectContain(completions, ts.ScriptElementKind.memberVariableElement, ['hasRing', 'size']);
     });
   });
+
+  describe('host bindings', () => {
+    it('should be able to complete a property host binding', () => {
+      const {appFile} = setupInlineTemplate(
+        '',
+        `title!: string; hero!: number;`,
+        undefined,
+        `host: {'[title]': 'ti'},`,
+      );
+      appFile.moveCursorToText(`'ti¦'`);
+      const completions = appFile.getCompletionsAtPosition();
+      expectContain(completions, ts.ScriptElementKind.memberVariableElement, ['title', 'hero']);
+    });
+
+    it('should be able to complete a listener host binding', () => {
+      const {appFile} = setupInlineTemplate(
+        '',
+        `title!: string; hero!: number;`,
+        undefined,
+        `host: {'(click)': 't'},`,
+      );
+      appFile.moveCursorToText(`'(click)': 't¦'`);
+      const completions = appFile.getCompletionsAtPosition();
+      expectContain(completions, ts.ScriptElementKind.memberVariableElement, ['title', 'hero']);
+    });
+
+    it('should be able to complete inside `host` of a directive', () => {
+      const {appFile} = setupInlineTemplate('', '', {
+        'Dir': `
+            @Directive({
+              host: {'[title]': 'ti'},
+            })
+            export class Dir {
+              title!: string;
+              hero!: number;
+            }
+          `,
+      });
+      appFile.moveCursorToText(`'ti¦'`);
+      const completions = appFile.getCompletionsAtPosition();
+      expectContain(completions, ts.ScriptElementKind.memberVariableElement, ['title', 'hero']);
+    });
+  });
 });
 
 function expectContainInsertText(
@@ -2135,6 +2286,8 @@ function setup(
   otherDeclarations: {[name: string]: string} = {},
   functionDeclarations: string = '',
   componentMetadata: string = '',
+  standaloneFiles: ProjectFiles = {},
+  tsCompilerOptions = {},
 ): {
   templateFile: OpenBuffer;
 } {
@@ -2143,8 +2296,10 @@ function setup(
   const otherDirectiveClassDecls = Object.values(otherDeclarations).join('\n\n');
 
   const env = LanguageServiceTestEnv.setup();
-  const project = env.addProject('test', {
-    'test.ts': `
+  const project = env.addProject(
+    'test',
+    {
+      'test.ts': `
          import {Component,
           input,
           output,
@@ -2175,8 +2330,12 @@ function setup(
          })
          export class AppModule {}
          `,
-    'test.html': template,
-  });
+      'test.html': template,
+      ...standaloneFiles,
+    },
+    undefined,
+    tsCompilerOptions,
+  );
   return {templateFile: project.openFile('test.html')};
 }
 
@@ -2184,6 +2343,8 @@ function setupInlineTemplate(
   template: string,
   classContents: string,
   otherDeclarations: {[name: string]: string} = {},
+  componentMetadata = '',
+  compilerOptions?: TestableOptions,
 ): {
   appFile: OpenBuffer;
 } {
@@ -2192,13 +2353,16 @@ function setupInlineTemplate(
   const otherDirectiveClassDecls = Object.values(otherDeclarations).join('\n\n');
 
   const env = LanguageServiceTestEnv.setup();
-  const project = env.addProject('test', {
-    'test.ts': `
+  const project = env.addProject(
+    'test',
+    {
+      'test.ts': `
          import {Component, Directive, NgModule, Pipe, TemplateRef} from '@angular/core';
 
          @Component({
            template: '${template}',
            selector: 'app-cmp',
+           ${componentMetadata}
          })
          export class AppCmp {
            ${classContents}
@@ -2211,6 +2375,8 @@ function setupInlineTemplate(
          })
          export class AppModule {}
          `,
-  });
+    },
+    compilerOptions,
+  );
   return {appFile: project.openFile('test.ts')};
 }

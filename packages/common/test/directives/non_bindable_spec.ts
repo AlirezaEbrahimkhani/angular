@@ -3,14 +3,13 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {Component, Directive} from '@angular/core';
-import {ElementRef} from '@angular/core/src/linker/element_ref';
+import {Component, Directive, ElementRef} from '@angular/core';
 import {ComponentFixture, TestBed, waitForAsync} from '@angular/core/testing';
-import {hasClass} from '@angular/platform-browser/testing/src/browser_util';
-import {expect} from '@angular/platform-browser/testing/src/matchers';
+import {hasClass} from '@angular/private/testing';
+import {expect} from '@angular/private/testing/matchers';
 
 describe('non-bindable', () => {
   beforeEach(() => {
@@ -47,14 +46,21 @@ describe('non-bindable', () => {
   }));
 });
 
-@Directive({selector: '[test-dec]'})
+@Directive({
+  selector: '[test-dec]',
+  standalone: false,
+})
 class TestDirective {
   constructor(el: ElementRef) {
     el.nativeElement.classList.add('compiled');
   }
 }
 
-@Component({selector: 'test-cmp', template: ''})
+@Component({
+  selector: 'test-cmp',
+  template: '',
+  standalone: false,
+})
 class TestComponent {
   text: string;
   constructor() {

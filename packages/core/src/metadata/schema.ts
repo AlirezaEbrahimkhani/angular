@@ -3,11 +3,11 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 /**
- * A schema definition associated with an NgModule.
+ * A schema definition associated with a component or an NgModule.
  *
  * @see {@link NgModule}
  * @see {@link CUSTOM_ELEMENTS_SCHEMA}

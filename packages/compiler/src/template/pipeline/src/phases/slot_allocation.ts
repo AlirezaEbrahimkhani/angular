@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import * as ir from '../../ir';
@@ -58,7 +58,12 @@ export function allocateSlots(job: ComponentCompilationJob): void {
   // propagate the number of slots used for each view into the operation which declares it.
   for (const unit of job.units) {
     for (const op of unit.ops()) {
-      if (op.kind === ir.OpKind.Template || op.kind === ir.OpKind.RepeaterCreate) {
+      if (
+        op.kind === ir.OpKind.Template ||
+        op.kind === ir.OpKind.ConditionalCreate ||
+        op.kind === ir.OpKind.ConditionalBranchCreate ||
+        op.kind === ir.OpKind.RepeaterCreate
+      ) {
         // Record the number of slots used by the view this `ir.TemplateOp` declares in the
         // operation itself, so it can be emitted later.
         const childView = job.views.get(op.xref)!;

@@ -3,18 +3,14 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import localeFr from '@angular/common/locales/fr';
-import localeRo from '@angular/common/locales/ro';
-import localeSr from '@angular/common/locales/sr';
-import localeZgh from '@angular/common/locales/zgh';
-import {
-  getPluralCategory,
-  NgLocaleLocalization,
-  NgLocalization,
-} from '@angular/common/src/i18n/localization';
+import localeFr from '../../locales/fr';
+import localeRo from '../../locales/ro';
+import localeSr from '../../locales/sr';
+import localeZgh from '../../locales/zgh';
+import {getPluralCategory, NgLocaleLocalization, NgLocalization} from '../../src/i18n/localization';
 import {LOCALE_ID, ɵregisterLocaleData, ɵunregisterLocaleData} from '@angular/core';
 import {inject, TestBed} from '@angular/core/testing';
 
@@ -188,7 +184,7 @@ describe('l10n', () => {
           const l10n = new NgLocaleLocalization('ro');
           // 2 -> 'few'
           getPluralCategory(2, ['one'], l10n);
-        }).toThrowError('No plural message found for value "2"');
+        }).toThrowError('NG02308: No plural message found for value "2"');
       });
     });
   });

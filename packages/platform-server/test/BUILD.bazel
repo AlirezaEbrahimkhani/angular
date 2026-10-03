@@ -1,40 +1,34 @@
-load("//tools:defaults.bzl", "jasmine_node_test", "ts_library")
-load("//tools/circular_dependency_test:index.bzl", "circular_dependency_test")
+load("//tools:defaults.bzl", "angular_jasmine_test", "ts_project")
 
-circular_dependency_test(
-    name = "circular_deps_test",
-    entry_point = "angular/packages/platform-server/index.mjs",
-    deps = ["//packages/platform-server"],
-)
-
-circular_dependency_test(
-    name = "testing_circular_deps_test",
-    entry_point = "angular/packages/platform-server/testing/index.mjs",
-    deps = ["//packages/platform-server/testing"],
-)
-
-ts_library(
+ts_project(
     name = "dom_utils",
-    srcs = ["dom_utils.ts"],
+    testonly = True,
+    srcs = [
+        "dom_utils.ts",
+        "hydration_utils.ts",
+    ],
     deps = [
         "//packages/common",
         "//packages/core",
         "//packages/platform-browser",
+        "//packages/platform-server",
     ],
 )
 
-ts_library(
+ts_project(
     name = "test_lib",
     testonly = True,
     srcs = glob(
         ["*.ts"],
         exclude = [
             "event_replay_spec.ts",
+            "hydration_utils.ts",
             "dom_utils.ts",
         ],
     ),
     deps = [
         ":dom_utils",
+        "//:node_modules/rxjs",
         "//packages:types",
         "//packages/animations",
         "//packages/common",
@@ -47,14 +41,15 @@ ts_library(
         "//packages/localize",
         "//packages/localize/init",
         "//packages/platform-browser",
+        "//packages/platform-browser/animations",
         "//packages/platform-server",
+        "//packages/platform-server:bundled_domino_lib",
         "//packages/private/testing",
         "//packages/router",
-        "@npm//rxjs",
     ],
 )
 
-ts_library(
+ts_project(
     name = "event_replay_test_lib",
     testonly = True,
     srcs = ["event_replay_spec.ts"],
@@ -70,19 +65,18 @@ ts_library(
     ],
 )
 
-jasmine_node_test(
+angular_jasmine_test(
     name = "test",
-    bootstrap = ["//tools/testing:node"],
-    deps = [
+    data = [
         ":test_lib",
+        "//packages/core/primitives/event-dispatch:contract_bundle_min",
     ],
 )
 
-jasmine_node_test(
+angular_jasmine_test(
     name = "event_replay_test",
-    bootstrap = ["//tools/testing:node"],
-    data = ["//packages/core/primitives/event-dispatch:contract_bundle_min"],
-    deps = [
+    data = [
         ":event_replay_test_lib",
+        "//packages/core/primitives/event-dispatch:contract_bundle_min",
     ],
 )

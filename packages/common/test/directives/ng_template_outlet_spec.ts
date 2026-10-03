@@ -3,10 +3,10 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {CommonModule, NgTemplateOutlet} from '@angular/common';
+import {CommonModule, NgTemplateOutlet} from '../../index';
 import {
   Component,
   ContentChildren,
@@ -22,7 +22,7 @@ import {
   TemplateRef,
 } from '@angular/core';
 import {ComponentFixture, TestBed, waitForAsync} from '@angular/core/testing';
-import {expect} from '@angular/platform-browser/testing/src/matchers';
+import {expect} from '@angular/private/testing/matchers';
 
 describe('NgTemplateOutlet', () => {
   let fixture: ComponentFixture<any>;
@@ -32,6 +32,7 @@ describe('NgTemplateOutlet', () => {
   }
 
   function detectChangesAndExpectText(text: string): void {
+    fixture.changeDetectorRef.markForCheck();
     fixture.detectChanges();
     expect(fixture.debugElement.nativeElement).toHaveText(text);
   }
@@ -70,6 +71,12 @@ describe('NgTemplateOutlet', () => {
     detectChangesAndExpectText('');
   }));
 
+  it('should do nothing if templateRef is `undefined`', waitForAsync(() => {
+    const template = `<ng-container [ngTemplateOutlet]="undefined"></ng-container>`;
+    fixture = createTestComponent(template);
+    detectChangesAndExpectText('');
+  }));
+
   it('should insert content specified by TemplateRef', waitForAsync(() => {
     const template =
       `<ng-template #tpl>foo</ng-template>` +
@@ -93,6 +100,21 @@ describe('NgTemplateOutlet', () => {
     detectChangesAndExpectText('');
   }));
 
+  it('should clear content if TemplateRef becomes `undefined`', waitForAsync(() => {
+    const template =
+      `<tpl-refs #refs="tplRefs"><ng-template>foo</ng-template></tpl-refs>` +
+      `<ng-container [ngTemplateOutlet]="currentTplRef"></ng-container>`;
+    fixture = createTestComponent(template);
+    fixture.detectChanges();
+    const refs = fixture.debugElement.children[0].references!['refs'];
+
+    setTplRef(refs.tplRefs.first);
+    detectChangesAndExpectText('foo');
+
+    setTplRef(undefined);
+    detectChangesAndExpectText('');
+  }));
+
   it('should swap content if TemplateRef changes', waitForAsync(() => {
     const template =
       `<tpl-refs #refs="tplRefs"><ng-template>foo</ng-template><ng-template>bar</ng-template></tpl-refs>` +
@@ -113,6 +135,14 @@ describe('NgTemplateOutlet', () => {
     const template =
       `<ng-template #tpl>foo</ng-template>` +
       `<ng-container *ngTemplateOutlet="tpl; context: null"></ng-container>`;
+    fixture = createTestComponent(template);
+    detectChangesAndExpectText('foo');
+  }));
+
+  it('should display template if context is `undefined`', waitForAsync(() => {
+    const template =
+      `<ng-template #tpl>foo</ng-template>` +
+      `<ng-container *ngTemplateOutlet="tpl; context: undefined"></ng-container>`;
     fixture = createTestComponent(template);
     detectChangesAndExpectText('foo');
   }));
@@ -284,6 +314,7 @@ describe('NgTemplateOutlet', () => {
     const temp = componentInstance.context1;
     componentInstance.context1 = componentInstance.context2;
     componentInstance.context2 = temp;
+    fixture.changeDetectorRef.markForCheck();
     fixture.detectChanges();
 
     expect(nativeElement.textContent.trim()).toBe('two | one');
@@ -337,7 +368,6 @@ describe('NgTemplateOutlet', () => {
         <ng-template #tpl>Hello World</ng-template>
         <ng-container *ngTemplateOutlet="tpl"></ng-container>
       `,
-      standalone: true,
     })
     class TestComponent {}
 
@@ -354,7 +384,6 @@ describe('NgTemplateOutlet', () => {
         <ng-template #tpl let-name>Name:{{ name }}</ng-template>
         <ng-template [ngTemplateOutlet]="tpl" [ngTemplateOutletContext]="ctx"></ng-template>
       `,
-      standalone: true,
     })
     class TestComponent {
       ctx: {$implicit: string} | undefined = undefined;
@@ -366,6 +395,7 @@ describe('NgTemplateOutlet', () => {
     expect(fixture.nativeElement.textContent).toBe('Name:');
 
     fixture.componentInstance.ctx = {$implicit: 'Angular'};
+    fixture.changeDetectorRef.markForCheck();
     fixture.detectChanges();
 
     expect(fixture.nativeElement.textContent).toBe('Name:Angular');
@@ -379,7 +409,11 @@ class DestroyedSpyService {
   destroyed = false;
 }
 
-@Component({selector: 'destroyable-cmpt', template: 'Content to destroy'})
+@Component({
+  selector: 'destroyable-cmpt',
+  template: 'Content to destroy',
+  standalone: false,
+})
 class DestroyableCmpt implements OnDestroy {
   constructor(private _spyService: DestroyedSpyService) {}
 
@@ -388,12 +422,20 @@ class DestroyableCmpt implements OnDestroy {
   }
 }
 
-@Directive({selector: 'tpl-refs', exportAs: 'tplRefs'})
+@Directive({
+  selector: 'tpl-refs',
+  exportAs: 'tplRefs',
+  standalone: false,
+})
 class CaptureTplRefs {
   @ContentChildren(TemplateRef) tplRefs?: QueryList<TemplateRef<any>>;
 }
 
-@Component({selector: 'test-cmp', template: ''})
+@Component({
+  selector: 'test-cmp',
+  template: '',
+  standalone: false,
+})
 class TestComponent {
   currentTplRef?: TemplateRef<any>;
   context: any = {foo: 'bar'};
@@ -404,6 +446,7 @@ class TestComponent {
 @Component({
   selector: 'inject-value',
   template: 'Hello {{tokenValue}}',
+  standalone: false,
 })
 class InjectValueComponent {
   constructor(@Inject(templateToken) public tokenValue: string) {}
@@ -416,6 +459,7 @@ class InjectValueComponent {
     |
     <ng-template [ngTemplateOutlet]="template" [ngTemplateOutletContext]="context2"></ng-template>
   `,
+  standalone: false,
 })
 class MultiContextComponent {
   context1: {name: string} | undefined;

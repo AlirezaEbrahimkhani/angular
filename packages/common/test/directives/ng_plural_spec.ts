@@ -3,13 +3,13 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {CommonModule, NgLocalization, NgPlural, NgPluralCase} from '@angular/common';
+import {CommonModule, NgLocalization, NgPlural, NgPluralCase} from '../../index';
 import {Component, Injectable} from '@angular/core';
 import {ComponentFixture, TestBed, waitForAsync} from '@angular/core/testing';
-import {expect} from '@angular/platform-browser/testing/src/matchers';
+import {expect} from '@angular/private/testing/matchers';
 
 describe('ngPlural', () => {
   let fixture: ComponentFixture<any>;
@@ -19,6 +19,7 @@ describe('ngPlural', () => {
   }
 
   function detectChangesAndExpectText<T>(text: string): void {
+    fixture.changeDetectorRef.markForCheck();
     fixture.detectChanges();
     expect(fixture.nativeElement).toHaveText(text);
   }
@@ -142,27 +143,26 @@ describe('ngPlural', () => {
     getComponent().switchValue = 3;
     detectChangesAndExpectText('you have a few messages.');
   }));
-});
 
-it('should be available as a standalone directive', () => {
-  @Component({
-    selector: 'test-component',
-    imports: [NgPlural, NgPluralCase],
-    template:
-      '<ul [ngPlural]="switchValue">' +
-      '<ng-template ngPluralCase="=0"><li>no messages</li></ng-template>' +
-      '<ng-template ngPluralCase="=1"><li>one message</li></ng-template>' +
-      '</ul>',
-    standalone: true,
-  })
-  class TestComponent {
-    switchValue = 1;
-  }
+  it('should be available as a standalone directive', () => {
+    @Component({
+      selector: 'test-component',
+      imports: [NgPlural, NgPluralCase],
+      template:
+        '<ul [ngPlural]="switchValue">' +
+        '<ng-template ngPluralCase="=0"><li>no messages</li></ng-template>' +
+        '<ng-template ngPluralCase="=1"><li>one message</li></ng-template>' +
+        '</ul>',
+    })
+    class TestComponent {
+      switchValue = 1;
+    }
 
-  const fixture = TestBed.createComponent(TestComponent);
-  fixture.detectChanges();
+    const fixture = TestBed.createComponent(TestComponent);
+    fixture.detectChanges();
 
-  expect(fixture.nativeElement.textContent).toBe('one message');
+    expect(fixture.nativeElement.textContent).toBe('one message');
+  });
 });
 
 @Injectable()
@@ -180,7 +180,11 @@ class TestLocalization extends NgLocalization {
   }
 }
 
-@Component({selector: 'test-cmp', template: ''})
+@Component({
+  selector: 'test-cmp',
+  template: '',
+  standalone: false,
+})
 class TestComponent {
   switchValue: number | null = null;
 }

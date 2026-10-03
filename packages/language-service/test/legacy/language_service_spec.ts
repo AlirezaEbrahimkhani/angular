@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {ErrorCode, ngErrorCode} from '@angular/compiler-cli/src/ngtsc/diagnostics';
@@ -88,32 +88,6 @@ describe('language service adapter', () => {
       expect(ngLS.getCompilerOptions()).toEqual(
         jasmine.objectContaining({
           strictTemplates: true,
-        }),
-      );
-    });
-
-    it('should always disable block syntax if enableBlockSyntax is false', () => {
-      const {project, tsLS} = setup();
-      const ngLS = new LanguageService(project, tsLS, {
-        enableBlockSyntax: false,
-      });
-
-      expect(ngLS.getCompilerOptions()).toEqual(
-        jasmine.objectContaining({
-          '_enableBlockSyntax': false,
-        }),
-      );
-    });
-
-    it('should always disable let declarations if enableLetSyntax is false', () => {
-      const {project, tsLS} = setup();
-      const ngLS = new LanguageService(project, tsLS, {
-        enableLetSyntax: false,
-      });
-
-      expect(ngLS.getCompilerOptions()).toEqual(
-        jasmine.objectContaining({
-          '_enableLetSyntax': false,
         }),
       );
     });

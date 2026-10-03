@@ -53,23 +53,9 @@
           "files": [
             {
               "generated": "bare_icu.js",
-              "expected": "bare_icu.pipeline.js"
+              "expected": "bare_icu.js"
             }
           ],
-          "extraChecks": [
-            "verifyPlaceholdersIntegrity",
-            "verifyUniqueConsts"
-          ]
-        }
-      ]
-    },
-    {
-      "description": "should support interpolation with custom interpolation config",
-      "inputFiles": [
-        "custom_interpolation.ts"
-      ],
-      "expectations": [
-        {
           "extraChecks": [
             "verifyPlaceholdersIntegrity",
             "verifyUniqueConsts"

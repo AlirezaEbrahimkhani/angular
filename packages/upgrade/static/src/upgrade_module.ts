@@ -3,10 +3,19 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {Injector, NgModule, NgZone, PlatformRef, Testability} from '@angular/core';
+import {
+  Injector,
+  ApplicationRef,
+  NgModule,
+  NgZone,
+  PlatformRef,
+  Testability,
+  ɵNoopNgZone,
+  ɵinternalProvideZoneChangeDetection,
+} from '@angular/core';
 
 import {ɵangular1, ɵconstants, ɵutil} from '../common';
 
@@ -36,7 +45,7 @@ import {NgAdapterInjector} from './util';
  *    {@link UpgradeModule#upgrading-an-angular-1-service Upgrading an AngularJS service} below.
  * 4. Creation of an AngularJS service that wraps and exposes an Angular injectable
  *    so that it can be injected into an AngularJS context. See `downgradeInjectable`.
- * 3. Bootstrapping of a hybrid Angular application which contains both of the frameworks
+ * 5. Bootstrapping of a hybrid Angular application which contains both of the frameworks
  *    coexisting in a single application.
  *
  * @usageNotes
@@ -102,7 +111,7 @@ import {NgAdapterInjector} from './util';
  *
  * ### Examples
  *
- * Import the `UpgradeModule` into your top level {@link NgModule Angular `NgModule`}.
+ * Import the `UpgradeModule` into your top level Angular {@link NgModule NgModule}.
  *
  * {@example upgrade/static/ts/full/module.ts region='ng2-module'}
  *
@@ -116,7 +125,6 @@ import {NgAdapterInjector} from './util';
  *
  * {@example upgrade/static/ts/full/module.ts region='bootstrap-ng2'}
  *
- * {@a upgrading-an-angular-1-service}
  * ### Upgrading an AngularJS service
  *
  * There is no specific API for upgrading an AngularJS service. Instead you should just follow the
@@ -138,7 +146,7 @@ import {NgAdapterInjector} from './util';
  *
  * @publicApi
  */
-@NgModule({providers: [angular1Providers]})
+@NgModule({providers: [angular1Providers, ɵinternalProvideZoneChangeDetection({})]})
 export class UpgradeModule {
   /**
    * The AngularJS `$injector` for the upgrade application.
@@ -146,6 +154,7 @@ export class UpgradeModule {
   public $injector: any /*angular.IInjectorService*/;
   /** The Angular Injector **/
   public injector: Injector;
+  private readonly applicationRef: ApplicationRef;
 
   constructor(
     /** The root `Injector` for the upgrade application. */
@@ -160,6 +169,7 @@ export class UpgradeModule {
     private platformRef: PlatformRef,
   ) {
     this.injector = new NgAdapterInjector(injector);
+    this.applicationRef = this.injector.get(ApplicationRef);
   }
 
   /**
@@ -296,19 +306,28 @@ export class UpgradeModule {
           // Wire up the ng1 rootScope to run a digest cycle whenever the zone settles
           // We need to do this in the next tick so that we don't prevent the bootup stabilizing
           setTimeout(() => {
-            const subscription = this.ngZone.onMicrotaskEmpty.subscribe(() => {
-              if ($rootScope.$$phase) {
-                if (typeof ngDevMode === 'undefined' || ngDevMode) {
-                  console.warn(
-                    'A digest was triggered while one was already in progress. This may mean that something is triggering digests outside the Angular zone.',
-                  );
+            const synchronize = () => {
+              this.ngZone.run(() => {
+                if ($rootScope.$$phase) {
+                  if (typeof ngDevMode === 'undefined' || ngDevMode) {
+                    console.warn(
+                      'A digest was triggered while one was already in progress. This may mean that something is triggering digests outside the Angular zone.',
+                    );
+                  }
+
+                  $rootScope.$evalAsync();
+                } else {
+                  $rootScope.$digest();
                 }
-
-                return $rootScope.$evalAsync();
-              }
-
-              return $rootScope.$digest();
-            });
+              });
+            };
+            const subscription =
+              // We _DO NOT_ usually want to have any code that does one thing for zoneless and another for ZoneJS.
+              // This is only here because there is not enough coverage for hybrid apps anymore so we cannot
+              // be confident that making UpgradeModule work with zoneless is a non-breaking change.
+              this.ngZone instanceof ɵNoopNgZone
+                ? (this.applicationRef as any).afterTick.subscribe(() => synchronize())
+                : this.ngZone.onMicrotaskEmpty.subscribe(() => synchronize());
             $rootScope.$on('$destroy', () => {
               subscription.unsubscribe();
             });

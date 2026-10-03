@@ -12,7 +12,7 @@ export class LocalDep {
 …
 
 function TestCmp_Template(rf, ctx) { if (rf & 1) {
-	$r3$.ɵɵtemplate(0, TestCmp_Defer_0_Template, 2, 0);
+	$r3$.ɵɵdomTemplate(0, TestCmp_Defer_0_Template, 2, 0);
 	$r3$.ɵɵdefer(1, 0, $TestCmp_Defer_1_DepsFn$);
 	$r3$.ɵɵdeferOnIdle();
 } }
@@ -25,7 +25,6 @@ function TestCmp_Template(rf, ctx) { if (rf & 1) {
       type: Component,
       args: [{
         selector: 'test-cmp',
-        standalone: true,
         imports: [CmpA, LocalDep],
         template: …
       }]

@@ -74,9 +74,9 @@ HELPFUL: Approximate dates are offered as general guidance and are subject to ch
 
 | Version | Date               |
 |:--------|:-------------------|
-| v18.1   | Week of 2024-07-08 |
-| v18.2   | Week of 2024-08-12 |
-| v19.0   | Week of 2024-11-13 |
+| v20.1   | Week of 2025-07-07 |
+| v20.2   | Week of 2025-08-18 |
+| v21.0   | Week of 2025-11-17 |
 
 ### Support window
 
@@ -93,11 +93,11 @@ The following table provides the status for Angular versions under support.
 
 | Version | Status | Released   | Active ends | LTS ends   |
 |:--------|:-------|:-----------|:------------|:-----------|
-| ^18.0.0 | Active | 2024-05-22 | 2024-11-15  | 2025-11-15 |
-| ^17.0.0 | LTS    | 2023-11-08 | 2024-05-08  | 2025-05-15 |
-| ^16.0.0 | LTS    | 2023-05-03 | 2023-11-08  | 2024-11-08 |
+| ^20.0.0 | Active | 2025-05-28 | 2025-11-21  | 2026-11-21 |
+| ^19.0.0 | LTS    | 2024-11-19 | 2025-05-28  | 2026-05-19 |
+| ^18.0.0 | LTS    | 2024-05-22 | 2024-11-19  | 2025-11-21 |
 
-Angular versions v2 to v15 are no longer supported.
+Angular versions v2 to v17 are no longer supported.
 
 ### LTS fixes
 
@@ -159,12 +159,14 @@ For example, to update from version 10 to version 12:
 
 Occasionally we introduce new APIs under the label of "Developer Preview". These are APIs that are fully functional and polished, but that we are not ready to stabilize under our normal deprecation policy.
 
-This may be because we want to gather feedback from real applications before stabilization, or because the associated documentation or migration tooling is not fully complete.
+This may be because we want to gather feedback from real applications before stabilization, or because the associated documentation or migration tooling is not fully complete. Feedback can be provided via a [GitHub issue](https://github.com/angular/angular/issues), where developers can share their experiences, report bugs, or suggest improvements to help refine the feature.
 
 The policies and practices that are described in this document do not apply to APIs marked as Developer Preview. Such APIs can change at any time, even in new patch versions of the framework. Teams should decide for themselves whether the benefits of using Developer Preview APIs are worth the risk of breaking changes outside of our normal use of semantic versioning.
 
+
+
 ## Experimental
 
-These are APIs might not become stable at all or have significant changes before becoming stable.
+These APIs might not become stable at all or have significant changes before becoming stable.
 
 The policies and practices that are described in this document do not apply to APIs marked as experimental. Such APIs can change at any time, even in new patch versions of the framework. Teams should decide for themselves whether the benefits of using experimental APIs are worth the risk of breaking changes outside of our normal use of semantic versioning.

@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {state, style, trigger} from '@angular/animations';
@@ -17,29 +17,38 @@ import {
   Input,
   OnChanges,
   Output,
+  provideZoneChangeDetection,
   QueryList,
   ViewChildren,
-} from '@angular/core';
-import {getDirectiveDef} from '@angular/core/src/render3/definition';
-import {TestBed} from '@angular/core/testing';
+} from '../../src/core';
+import {getDirectiveDef} from '../../src/render3/def_getters';
+import {TestBed} from '../../testing';
 import {By} from '@angular/platform-browser';
 import {NoopAnimationsModule} from '@angular/platform-browser/animations';
 
 describe('inheritance', () => {
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      providers: [provideZoneChangeDetection()],
+    });
+  });
   it('should throw when trying to inherit a component from a directive', () => {
     @Component({
       selector: 'my-comp',
       template: '<div></div>',
+      standalone: false,
     })
     class MyComponent {}
 
     @Directive({
       selector: '[my-dir]',
+      standalone: false,
     })
     class MyDirective extends MyComponent {}
 
     @Component({
       template: `<div my-dir></div>`,
+      standalone: false,
     })
     class App {}
 
@@ -74,7 +83,10 @@ describe('inheritance', () => {
       // especially an issue if we have a lot of sub-classes (as is common in component libraries)
       const log: string[] = [];
 
-      @Directive({selector: '[superDir]'})
+      @Directive({
+        selector: '[superDir]',
+        standalone: false,
+      })
       class BaseDirective {
         @HostBinding('style.background-color')
         get backgroundColor() {
@@ -83,7 +95,10 @@ describe('inheritance', () => {
         }
       }
 
-      @Directive({selector: '[superDir]'})
+      @Directive({
+        selector: '[superDir]',
+        standalone: false,
+      })
       class SuperDirective extends BaseDirective {
         @HostBinding('style.color')
         get color() {
@@ -92,7 +107,10 @@ describe('inheritance', () => {
         }
       }
 
-      @Directive({selector: '[subDir1]'})
+      @Directive({
+        selector: '[subDir1]',
+        standalone: false,
+      })
       class Sub1Directive extends SuperDirective {
         @HostBinding('style.height')
         get height() {
@@ -101,7 +119,10 @@ describe('inheritance', () => {
         }
       }
 
-      @Directive({selector: '[subDir2]'})
+      @Directive({
+        selector: '[subDir2]',
+        standalone: false,
+      })
       class Sub2Directive extends SuperDirective {
         @HostBinding('style.width')
         get width() {
@@ -110,7 +131,10 @@ describe('inheritance', () => {
         }
       }
 
-      @Component({template: `<div subDir1 subDir2></div>`})
+      @Component({
+        template: `<div subDir1 subDir2></div>`,
+        standalone: false,
+      })
       class App {}
 
       TestBed.configureTestingModule({
@@ -139,7 +163,10 @@ describe('inheritance', () => {
     it('should be inherited when super is a directive', () => {
       const log: string[] = [];
 
-      @Directive({selector: '[superDir]'})
+      @Directive({
+        selector: '[superDir]',
+        standalone: false,
+      })
       class SuperDirective implements OnChanges {
         @Input() someInput = '';
 
@@ -148,10 +175,16 @@ describe('inheritance', () => {
         }
       }
 
-      @Directive({selector: '[subDir]'})
+      @Directive({
+        selector: '[subDir]',
+        standalone: false,
+      })
       class SubDirective extends SuperDirective {}
 
-      @Component({template: `<div subDir [someInput]="1"></div>`})
+      @Component({
+        template: `<div subDir [someInput]="1"></div>`,
+        standalone: false,
+      })
       class App {}
 
       TestBed.configureTestingModule({
@@ -172,12 +205,18 @@ describe('inheritance', () => {
         }
       }
 
-      @Directive({selector: '[subDir]'})
+      @Directive({
+        selector: '[subDir]',
+        standalone: false,
+      })
       class SubDirective extends SuperClass {
         @Input() someInput = '';
       }
 
-      @Component({template: `<div subDir [someInput]="1"></div>`})
+      @Component({
+        template: `<div subDir [someInput]="1"></div>`,
+        standalone: false,
+      })
       class App {}
 
       TestBed.configureTestingModule({
@@ -192,7 +231,10 @@ describe('inheritance', () => {
     it('should be inherited when super is a directive and grand-super is a directive', () => {
       const log: string[] = [];
 
-      @Directive({selector: '[grandSuperDir]'})
+      @Directive({
+        selector: '[grandSuperDir]',
+        standalone: false,
+      })
       class GrandSuperDirective implements OnChanges {
         @Input() someInput = '';
 
@@ -201,13 +243,22 @@ describe('inheritance', () => {
         }
       }
 
-      @Directive({selector: '[superDir]'})
+      @Directive({
+        selector: '[superDir]',
+        standalone: false,
+      })
       class SuperDirective extends GrandSuperDirective {}
 
-      @Directive({selector: '[subDir]'})
+      @Directive({
+        selector: '[subDir]',
+        standalone: false,
+      })
       class SubDirective extends SuperDirective {}
 
-      @Component({template: `<div subDir [someInput]="1"></div>`})
+      @Component({
+        template: `<div subDir [someInput]="1"></div>`,
+        standalone: false,
+      })
       class App {}
 
       TestBed.configureTestingModule({
@@ -228,15 +279,24 @@ describe('inheritance', () => {
         }
       }
 
-      @Directive({selector: '[superDir]'})
+      @Directive({
+        selector: '[superDir]',
+        standalone: false,
+      })
       class SuperDirective extends GrandSuperClass {
         @Input() someInput = '';
       }
 
-      @Directive({selector: '[subDir]'})
+      @Directive({
+        selector: '[subDir]',
+        standalone: false,
+      })
       class SubDirective extends SuperDirective {}
 
-      @Component({template: `<div subDir [someInput]="1"></div>`})
+      @Component({
+        template: `<div subDir [someInput]="1"></div>`,
+        standalone: false,
+      })
       class App {}
 
       TestBed.configureTestingModule({
@@ -251,7 +311,10 @@ describe('inheritance', () => {
     it('should be inherited when super is a simple class and grand-super is a directive', () => {
       const log: string[] = [];
 
-      @Directive({selector: '[grandSuperDir]'})
+      @Directive({
+        selector: '[grandSuperDir]',
+        standalone: false,
+      })
       class GrandSuperDirective implements OnChanges {
         @Input() someInput = '';
 
@@ -262,10 +325,16 @@ describe('inheritance', () => {
 
       class SuperClass extends GrandSuperDirective {}
 
-      @Directive({selector: '[subDir]'})
+      @Directive({
+        selector: '[subDir]',
+        standalone: false,
+      })
       class SubDirective extends SuperClass {}
 
-      @Component({template: `<div subDir [someInput]="1"></div>`})
+      @Component({
+        template: `<div subDir [someInput]="1"></div>`,
+        standalone: false,
+      })
       class App {}
 
       TestBed.configureTestingModule({
@@ -288,12 +357,18 @@ describe('inheritance', () => {
 
       class SuperClass extends GrandSuperClass {}
 
-      @Directive({selector: '[subDir]'})
+      @Directive({
+        selector: '[subDir]',
+        standalone: false,
+      })
       class SubDirective extends SuperClass {
         @Input() someInput = '';
       }
 
-      @Component({template: `<div subDir [someInput]="1"></div>`})
+      @Component({
+        template: `<div subDir [someInput]="1"></div>`,
+        standalone: false,
+      })
       class App {}
 
       TestBed.configureTestingModule({
@@ -321,12 +396,19 @@ describe('inheritance', () => {
         }
       }
 
-      @Component({selector: 'my-comp', template: ''})
+      @Component({
+        selector: 'my-comp',
+        template: '',
+        standalone: false,
+      })
       class MyComp extends UndecoratedBase {
         @Input() override input: any;
       }
 
-      @Component({template: '<my-comp [input]="value"></my-comp>'})
+      @Component({
+        template: '<my-comp [input]="value"></my-comp>',
+        standalone: false,
+      })
       class App {
         value = 'hello';
       }
@@ -375,6 +457,7 @@ describe('inheritance', () => {
       it('ngOnInit', () => {
         @Directive({
           selector: '[subDir]',
+          standalone: false,
         })
         class SubDirective extends SuperDirective {
           override ngOnInit() {
@@ -384,6 +467,7 @@ describe('inheritance', () => {
 
         @Component({
           template: `<p *ngIf="showing" subDir></p>`,
+          standalone: false,
         })
         class App {
           showing = true;
@@ -414,6 +498,7 @@ describe('inheritance', () => {
       it('ngDoCheck', () => {
         @Directive({
           selector: '[subDir]',
+          standalone: false,
         })
         class SubDirective extends SuperDirective {
           override ngDoCheck() {
@@ -423,6 +508,7 @@ describe('inheritance', () => {
 
         @Component({
           template: `<p *ngIf="showing" subDir></p>`,
+          standalone: false,
         })
         class App {
           showing = true;
@@ -453,6 +539,7 @@ describe('inheritance', () => {
       it('ngAfterContentInit', () => {
         @Directive({
           selector: '[subDir]',
+          standalone: false,
         })
         class SubDirective extends SuperDirective {
           override ngAfterContentInit() {
@@ -462,6 +549,7 @@ describe('inheritance', () => {
 
         @Component({
           template: `<p *ngIf="showing" subDir></p>`,
+          standalone: false,
         })
         class App {
           showing = true;
@@ -492,6 +580,7 @@ describe('inheritance', () => {
       it('ngAfterContentChecked', () => {
         @Directive({
           selector: '[subDir]',
+          standalone: false,
         })
         class SubDirective extends SuperDirective {
           override ngAfterContentChecked() {
@@ -501,6 +590,7 @@ describe('inheritance', () => {
 
         @Component({
           template: `<p *ngIf="showing" subDir></p>`,
+          standalone: false,
         })
         class App {
           showing = true;
@@ -531,6 +621,7 @@ describe('inheritance', () => {
       it('ngAfterViewInit', () => {
         @Directive({
           selector: '[subDir]',
+          standalone: false,
         })
         class SubDirective extends SuperDirective {
           override ngAfterViewInit() {
@@ -540,6 +631,7 @@ describe('inheritance', () => {
 
         @Component({
           template: `<p *ngIf="showing" subDir></p>`,
+          standalone: false,
         })
         class App {
           showing = true;
@@ -570,6 +662,7 @@ describe('inheritance', () => {
       it('ngAfterViewChecked', () => {
         @Directive({
           selector: '[subDir]',
+          standalone: false,
         })
         class SubDirective extends SuperDirective {
           override ngAfterViewChecked() {
@@ -579,6 +672,7 @@ describe('inheritance', () => {
 
         @Component({
           template: `<p *ngIf="showing" subDir></p>`,
+          standalone: false,
         })
         class App {
           showing = true;
@@ -609,6 +703,7 @@ describe('inheritance', () => {
       it('ngOnDestroy', () => {
         @Directive({
           selector: '[subDir]',
+          standalone: false,
         })
         class SubDirective extends SuperDirective {
           override ngOnDestroy() {
@@ -618,6 +713,7 @@ describe('inheritance', () => {
 
         @Component({
           template: `<p *ngIf="showing" subDir></p>`,
+          standalone: false,
         })
         class App {
           showing = true;
@@ -662,6 +758,7 @@ describe('inheritance', () => {
 
         @Directive({
           selector: '[sub-dir]',
+          standalone: false,
         })
         class SubDirective extends SuperDirective {
           @Input() override baz = '';
@@ -669,7 +766,10 @@ describe('inheritance', () => {
           @Input() qux = '';
         }
 
-        @Component({template: `<p sub-dir [foo]="a" [bar]="b" [baz]="c" [qux]="d"></p>`})
+        @Component({
+          template: `<p sub-dir [foo]="a" [bar]="b" [baz]="c" [qux]="d"></p>`,
+          standalone: false,
+        })
         class App {
           a = 'a';
           b = 'b';
@@ -700,14 +800,12 @@ describe('inheritance', () => {
         }
 
         @Directive({
-          standalone: true,
           selector: 'dir',
           inputs: ['someInput'],
         })
         class ActualDir extends Base {}
 
         @Component({
-          standalone: true,
           imports: [ActualDir],
           template: `<dir someInput="newValue">`,
         })
@@ -731,13 +829,11 @@ describe('inheritance', () => {
         }
 
         @Directive({
-          standalone: true,
           selector: 'dir',
         })
         class ActualDir extends Base {}
 
         @Component({
-          standalone: true,
           imports: [ActualDir],
           template: `<dir publicName="newValue">`,
         })
@@ -767,6 +863,7 @@ describe('inheritance', () => {
 
         @Directive({
           selector: '[sub-dir]',
+          standalone: false,
         })
         class SubDirective extends SuperDirective {
           ngOnInit() {
@@ -778,6 +875,7 @@ describe('inheritance', () => {
           template: `
         <div sub-dir (foo)="handleFoo($event)"></div>
       `,
+          standalone: false,
         })
         class App {
           foo = '';
@@ -810,6 +908,7 @@ describe('inheritance', () => {
 
         @Directive({
           selector: '[sub-dir]',
+          standalone: false,
         })
         class SubDirective extends SuperDirective {}
 
@@ -817,6 +916,7 @@ describe('inheritance', () => {
           template: `
           <p sub-dir>test</p>
         `,
+          standalone: false,
         })
         class App {}
 
@@ -848,12 +948,14 @@ describe('inheritance', () => {
 
         @Directive({
           selector: '[sub-dir]',
+          standalone: false,
         })
         class SubDirective extends SuperDirective {}
         @Component({
           template: `
         <p sub-dir superTitle="test">test</p>
       `,
+          standalone: false,
         })
         class App {}
 
@@ -874,7 +976,10 @@ describe('inheritance', () => {
       it('should inherit ContentChildren queries', () => {
         let foundQueryList: QueryList<ChildDir>;
 
-        @Directive({selector: '[child-dir]'})
+        @Directive({
+          selector: '[child-dir]',
+          standalone: false,
+        })
         class ChildDir {}
 
         class SuperDirective {
@@ -883,6 +988,7 @@ describe('inheritance', () => {
 
         @Directive({
           selector: '[sub-dir]',
+          standalone: false,
         })
         class SubDirective extends SuperDirective {
           ngAfterViewInit() {
@@ -897,6 +1003,7 @@ describe('inheritance', () => {
           <li child-dir>two</li>
         </ul>
       `,
+          standalone: false,
         })
         class App {}
 
@@ -942,6 +1049,7 @@ describe('inheritance', () => {
 
       @Directive({
         selector: '[super-dir]',
+        standalone: false,
       })
       class SuperDirective {
         ngOnInit() {
@@ -972,6 +1080,7 @@ describe('inheritance', () => {
       it('ngOnInit', () => {
         @Directive({
           selector: '[subDir]',
+          standalone: false,
         })
         class SubDirective extends SuperDirective {
           override ngOnInit() {
@@ -981,6 +1090,7 @@ describe('inheritance', () => {
 
         @Component({
           template: `<p *ngIf="showing" subDir></p>`,
+          standalone: false,
         })
         class App {
           showing = true;
@@ -1011,6 +1121,7 @@ describe('inheritance', () => {
       it('ngDoCheck', () => {
         @Directive({
           selector: '[subDir]',
+          standalone: false,
         })
         class SubDirective extends SuperDirective {
           override ngDoCheck() {
@@ -1020,6 +1131,7 @@ describe('inheritance', () => {
 
         @Component({
           template: `<p *ngIf="showing" subDir></p>`,
+          standalone: false,
         })
         class App {
           showing = true;
@@ -1050,6 +1162,7 @@ describe('inheritance', () => {
       it('ngAfterContentInit', () => {
         @Directive({
           selector: '[subDir]',
+          standalone: false,
         })
         class SubDirective extends SuperDirective {
           override ngAfterContentInit() {
@@ -1059,6 +1172,7 @@ describe('inheritance', () => {
 
         @Component({
           template: `<p *ngIf="showing" subDir></p>`,
+          standalone: false,
         })
         class App {
           showing = true;
@@ -1089,6 +1203,7 @@ describe('inheritance', () => {
       it('ngAfterContentChecked', () => {
         @Directive({
           selector: '[subDir]',
+          standalone: false,
         })
         class SubDirective extends SuperDirective {
           override ngAfterContentChecked() {
@@ -1098,6 +1213,7 @@ describe('inheritance', () => {
 
         @Component({
           template: `<p *ngIf="showing" subDir></p>`,
+          standalone: false,
         })
         class App {
           showing = true;
@@ -1128,6 +1244,7 @@ describe('inheritance', () => {
       it('ngAfterViewInit', () => {
         @Directive({
           selector: '[subDir]',
+          standalone: false,
         })
         class SubDirective extends SuperDirective {
           override ngAfterViewInit() {
@@ -1137,6 +1254,7 @@ describe('inheritance', () => {
 
         @Component({
           template: `<p *ngIf="showing" subDir></p>`,
+          standalone: false,
         })
         class App {
           showing = true;
@@ -1167,6 +1285,7 @@ describe('inheritance', () => {
       it('ngAfterViewChecked', () => {
         @Directive({
           selector: '[subDir]',
+          standalone: false,
         })
         class SubDirective extends SuperDirective {
           override ngAfterViewChecked() {
@@ -1176,6 +1295,7 @@ describe('inheritance', () => {
 
         @Component({
           template: `<p *ngIf="showing" subDir></p>`,
+          standalone: false,
         })
         class App {
           showing = true;
@@ -1206,6 +1326,7 @@ describe('inheritance', () => {
       it('ngOnDestroy', () => {
         @Directive({
           selector: '[subDir]',
+          standalone: false,
         })
         class SubDirective extends SuperDirective {
           override ngOnDestroy() {
@@ -1215,6 +1336,7 @@ describe('inheritance', () => {
 
         @Component({
           template: `<p *ngIf="showing" subDir></p>`,
+          standalone: false,
         })
         class App {
           showing = true;
@@ -1249,7 +1371,10 @@ describe('inheritance', () => {
       // TODO: add test where super has an @Input('alias') on the property and sub has no alias
 
       it('should inherit inputs', () => {
-        @Directive({selector: '[super-dir]'})
+        @Directive({
+          selector: '[super-dir]',
+          standalone: false,
+        })
         class SuperDirective {
           @Input() foo = '';
 
@@ -1260,6 +1385,7 @@ describe('inheritance', () => {
 
         @Directive({
           selector: '[sub-dir]',
+          standalone: false,
         })
         class SubDirective extends SuperDirective {
           @Input() override baz = '';
@@ -1267,7 +1393,10 @@ describe('inheritance', () => {
           @Input() qux = '';
         }
 
-        @Component({template: `<p sub-dir [foo]="a" [bar]="b" [baz]="c" [qux]="d"></p>`})
+        @Component({
+          template: `<p sub-dir [foo]="a" [bar]="b" [baz]="c" [qux]="d"></p>`,
+          standalone: false,
+        })
         class App {
           a = 'a';
           b = 'b';
@@ -1301,6 +1430,7 @@ describe('inheritance', () => {
       it('should inherit outputs', () => {
         @Directive({
           selector: '[super-dir]',
+          standalone: false,
         })
         class SuperDirective {
           @Output() foo = new EventEmitter<string>();
@@ -1308,6 +1438,7 @@ describe('inheritance', () => {
 
         @Directive({
           selector: '[sub-dir]',
+          standalone: false,
         })
         class SubDirective extends SuperDirective {
           ngOnInit() {
@@ -1319,6 +1450,7 @@ describe('inheritance', () => {
           template: `
         <div sub-dir (foo)="handleFoo($event)"></div>
       `,
+          standalone: false,
         })
         class App {
           foo = '';
@@ -1345,6 +1477,7 @@ describe('inheritance', () => {
       it('should compose host bindings for styles', () => {
         @Directive({
           selector: '[super-dir]',
+          standalone: false,
         })
         class SuperDirective {
           @HostBinding('style.color') color = 'red';
@@ -1354,6 +1487,7 @@ describe('inheritance', () => {
 
         @Directive({
           selector: '[sub-dir]',
+          standalone: false,
         })
         class SubDirective extends SuperDirective {}
 
@@ -1361,6 +1495,7 @@ describe('inheritance', () => {
           template: `
         <p sub-dir>test</p>
       `,
+          standalone: false,
         })
         class App {}
 
@@ -1383,6 +1518,7 @@ describe('inheritance', () => {
       it('should compose host bindings (non-style related)', () => {
         @Directive({
           selector: '[super-dir]',
+          standalone: false,
         })
         class SuperDirective {
           @HostBinding('title')
@@ -1395,12 +1531,14 @@ describe('inheritance', () => {
 
         @Directive({
           selector: '[sub-dir]',
+          standalone: false,
         })
         class SubDirective extends SuperDirective {}
         @Component({
           template: `
         <p sub-dir superTitle="test">test</p>
       `,
+          standalone: false,
         })
         class App {}
 
@@ -1418,11 +1556,15 @@ describe('inheritance', () => {
     it('should inherit ContentChildren queries', () => {
       let foundQueryList: QueryList<ChildDir>;
 
-      @Directive({selector: '[child-dir]'})
+      @Directive({
+        selector: '[child-dir]',
+        standalone: false,
+      })
       class ChildDir {}
 
       @Directive({
         selector: '[super-dir]',
+        standalone: false,
       })
       class SuperDirective {
         @ContentChildren(ChildDir) customDirs!: QueryList<ChildDir>;
@@ -1430,6 +1572,7 @@ describe('inheritance', () => {
 
       @Directive({
         selector: '[sub-dir]',
+        standalone: false,
       })
       class SubDirective extends SuperDirective {
         ngAfterViewInit() {
@@ -1444,6 +1587,7 @@ describe('inheritance', () => {
           <li child-dir>two</li>
         </ul>
       `,
+        standalone: false,
       })
       class App {}
 
@@ -1487,6 +1631,7 @@ describe('inheritance', () => {
 
       @Directive({
         selector: '[super-dir]',
+        standalone: false,
       })
       class SuperSuperDirective {
         ngOnInit() {
@@ -1519,6 +1664,7 @@ describe('inheritance', () => {
       it('ngOnInit', () => {
         @Directive({
           selector: '[subDir]',
+          standalone: false,
         })
         class SubDirective extends SuperDirective {
           override ngOnInit() {
@@ -1528,6 +1674,7 @@ describe('inheritance', () => {
 
         @Component({
           template: `<p *ngIf="showing" subDir></p>`,
+          standalone: false,
         })
         class App {
           showing = true;
@@ -1558,6 +1705,7 @@ describe('inheritance', () => {
       it('ngDoCheck', () => {
         @Directive({
           selector: '[subDir]',
+          standalone: false,
         })
         class SubDirective extends SuperDirective {
           override ngDoCheck() {
@@ -1567,6 +1715,7 @@ describe('inheritance', () => {
 
         @Component({
           template: `<p *ngIf="showing" subDir></p>`,
+          standalone: false,
         })
         class App {
           showing = true;
@@ -1597,6 +1746,7 @@ describe('inheritance', () => {
       it('ngAfterContentInit', () => {
         @Directive({
           selector: '[subDir]',
+          standalone: false,
         })
         class SubDirective extends SuperDirective {
           override ngAfterContentInit() {
@@ -1606,6 +1756,7 @@ describe('inheritance', () => {
 
         @Component({
           template: `<p *ngIf="showing" subDir></p>`,
+          standalone: false,
         })
         class App {
           showing = true;
@@ -1636,6 +1787,7 @@ describe('inheritance', () => {
       it('ngAfterContentChecked', () => {
         @Directive({
           selector: '[subDir]',
+          standalone: false,
         })
         class SubDirective extends SuperDirective {
           override ngAfterContentChecked() {
@@ -1645,6 +1797,7 @@ describe('inheritance', () => {
 
         @Component({
           template: `<p *ngIf="showing" subDir></p>`,
+          standalone: false,
         })
         class App {
           showing = true;
@@ -1675,6 +1828,7 @@ describe('inheritance', () => {
       it('ngAfterViewInit', () => {
         @Directive({
           selector: '[subDir]',
+          standalone: false,
         })
         class SubDirective extends SuperDirective {
           override ngAfterViewInit() {
@@ -1684,6 +1838,7 @@ describe('inheritance', () => {
 
         @Component({
           template: `<p *ngIf="showing" subDir></p>`,
+          standalone: false,
         })
         class App {
           showing = true;
@@ -1714,6 +1869,7 @@ describe('inheritance', () => {
       it('ngAfterViewChecked', () => {
         @Directive({
           selector: '[subDir]',
+          standalone: false,
         })
         class SubDirective extends SuperDirective {
           override ngAfterViewChecked() {
@@ -1723,6 +1879,7 @@ describe('inheritance', () => {
 
         @Component({
           template: `<p *ngIf="showing" subDir></p>`,
+          standalone: false,
         })
         class App {
           showing = true;
@@ -1753,6 +1910,7 @@ describe('inheritance', () => {
       it('ngOnDestroy', () => {
         @Directive({
           selector: '[subDir]',
+          standalone: false,
         })
         class SubDirective extends SuperDirective {
           override ngOnDestroy() {
@@ -1762,6 +1920,7 @@ describe('inheritance', () => {
 
         @Component({
           template: `<p *ngIf="showing" subDir></p>`,
+          standalone: false,
         })
         class App {
           showing = true;
@@ -1796,7 +1955,10 @@ describe('inheritance', () => {
       // TODO: add test where super has an @Input('alias') on the property and sub has no alias
 
       it('should inherit inputs', () => {
-        @Directive({selector: '[super-dir]'})
+        @Directive({
+          selector: '[super-dir]',
+          standalone: false,
+        })
         class SuperSuperDirective {
           @Input() foo = '';
 
@@ -1809,6 +1971,7 @@ describe('inheritance', () => {
 
         @Directive({
           selector: '[sub-dir]',
+          standalone: false,
         })
         class SubDirective extends SuperDirective {
           @Input() override baz = '';
@@ -1819,6 +1982,7 @@ describe('inheritance', () => {
         @Component({
           selector: 'my-app',
           template: `<p sub-dir [foo]="a" [bar]="b" [baz]="c" [qux]="d"></p>`,
+          standalone: false,
         })
         class App {
           a = 'a';
@@ -1853,6 +2017,7 @@ describe('inheritance', () => {
       it('should inherit outputs', () => {
         @Directive({
           selector: '[super-dir]',
+          standalone: false,
         })
         class SuperSuperDirective {
           @Output() foo = new EventEmitter<string>();
@@ -1864,6 +2029,7 @@ describe('inheritance', () => {
 
         @Directive({
           selector: '[sub-dir]',
+          standalone: false,
         })
         class SubDirective extends SuperDirective {
           ngOnInit() {
@@ -1876,6 +2042,7 @@ describe('inheritance', () => {
           template: `
           <div sub-dir (foo)="handleFoo($event)" (bar)="handleBar($event)"></div>
         `,
+          standalone: false,
         })
         class App {
           foo = '';
@@ -1909,6 +2076,7 @@ describe('inheritance', () => {
       it('should compose host bindings for styles', () => {
         @Directive({
           selector: '[super-dir]',
+          standalone: false,
         })
         class SuperSuperDirective {
           @HostBinding('style.color') color = 'red';
@@ -1920,6 +2088,7 @@ describe('inheritance', () => {
 
         @Directive({
           selector: '[sub-dir]',
+          standalone: false,
         })
         class SubDirective extends SuperDirective {}
 
@@ -1927,6 +2096,7 @@ describe('inheritance', () => {
           template: `
           <p sub-dir>test</p>
         `,
+          standalone: false,
         })
         class App {}
 
@@ -1949,6 +2119,7 @@ describe('inheritance', () => {
       it('should compose host bindings (non-style related)', () => {
         @Directive({
           selector: '[super-dir]',
+          standalone: false,
         })
         class SuperSuperDirective {
           @HostBinding('title')
@@ -1970,12 +2141,14 @@ describe('inheritance', () => {
 
         @Directive({
           selector: '[sub-dir]',
+          standalone: false,
         })
         class SubDirective extends SuperDirective {}
         @Component({
           template: `
         <p sub-dir superTitle="test1" superAccessKey="test2">test</p>
       `,
+          standalone: false,
         })
         class App {}
 
@@ -1997,14 +2170,21 @@ describe('inheritance', () => {
       let foundChildDir1s: QueryList<ChildDir1>;
       let foundChildDir2s: QueryList<ChildDir2>;
 
-      @Directive({selector: '[child-dir-one]'})
+      @Directive({
+        selector: '[child-dir-one]',
+        standalone: false,
+      })
       class ChildDir1 {}
 
-      @Directive({selector: '[child-dir-two]'})
+      @Directive({
+        selector: '[child-dir-two]',
+        standalone: false,
+      })
       class ChildDir2 {}
 
       @Directive({
         selector: '[super-dir]',
+        standalone: false,
       })
       class SuperSuperDirective {
         @ContentChildren(ChildDir1) childDir1s!: QueryList<ChildDir1>;
@@ -2016,6 +2196,7 @@ describe('inheritance', () => {
 
       @Directive({
         selector: '[sub-dir]',
+        standalone: false,
       })
       class SubDirective extends SuperDirective {
         ngAfterViewInit() {
@@ -2032,6 +2213,7 @@ describe('inheritance', () => {
           <li child-dir-two>three</li>
         </ul>
       `,
+        standalone: false,
       })
       class App {}
 
@@ -2101,7 +2283,11 @@ describe('inheritance', () => {
       beforeEach(() => (fired.length = 0));
 
       it('ngOnInit', () => {
-        @Component({selector: 'my-comp', template: `<p>test</p>`})
+        @Component({
+          selector: 'my-comp',
+          template: `<p>test</p>`,
+          standalone: false,
+        })
         class MyComponent extends SuperComponent {
           override ngOnInit() {
             fired.push('sub init');
@@ -2110,6 +2296,7 @@ describe('inheritance', () => {
 
         @Component({
           template: `<my-comp *ngIf="showing"></my-comp>`,
+          standalone: false,
         })
         class App {
           showing = true;
@@ -2140,6 +2327,7 @@ describe('inheritance', () => {
       it('ngDoCheck', () => {
         @Directive({
           selector: 'my-comp',
+          standalone: false,
         })
         class MyComponent extends SuperComponent {
           override ngDoCheck() {
@@ -2149,6 +2337,7 @@ describe('inheritance', () => {
 
         @Component({
           template: `<my-comp *ngIf="showing"></my-comp>`,
+          standalone: false,
         })
         class App {
           showing = true;
@@ -2180,6 +2369,7 @@ describe('inheritance', () => {
         @Component({
           selector: 'my-comp',
           template: `<p>test</p>`,
+          standalone: false,
         })
         class MyComponent extends SuperComponent {
           override ngAfterContentInit() {
@@ -2189,6 +2379,7 @@ describe('inheritance', () => {
 
         @Component({
           template: `<my-comp *ngIf="showing"></my-comp>`,
+          standalone: false,
         })
         class App {
           showing = true;
@@ -2220,6 +2411,7 @@ describe('inheritance', () => {
         @Component({
           selector: 'my-comp',
           template: `<p>test</p>`,
+          standalone: false,
         })
         class MyComponent extends SuperComponent {
           override ngAfterContentChecked() {
@@ -2229,6 +2421,7 @@ describe('inheritance', () => {
 
         @Component({
           template: `<my-comp *ngIf="showing"></my-comp>`,
+          standalone: false,
         })
         class App {
           showing = true;
@@ -2260,6 +2453,7 @@ describe('inheritance', () => {
         @Component({
           selector: 'my-comp',
           template: `<p>test</p>`,
+          standalone: false,
         })
         class MyComponent extends SuperComponent {
           override ngAfterViewInit() {
@@ -2269,6 +2463,7 @@ describe('inheritance', () => {
 
         @Component({
           template: `<my-comp *ngIf="showing"></my-comp>`,
+          standalone: false,
         })
         class App {
           showing = true;
@@ -2300,6 +2495,7 @@ describe('inheritance', () => {
         @Component({
           selector: 'my-comp',
           template: `<p>test</p>`,
+          standalone: false,
         })
         class MyComponent extends SuperComponent {
           override ngAfterViewChecked() {
@@ -2309,6 +2505,7 @@ describe('inheritance', () => {
 
         @Component({
           template: `<my-comp *ngIf="showing"></my-comp>`,
+          standalone: false,
         })
         class App {
           showing = true;
@@ -2340,6 +2537,7 @@ describe('inheritance', () => {
         @Component({
           selector: 'my-comp',
           template: `<p>test</p>`,
+          standalone: false,
         })
         class MyComponent extends SuperComponent {
           override ngOnDestroy() {
@@ -2349,6 +2547,7 @@ describe('inheritance', () => {
 
         @Component({
           template: `<my-comp *ngIf="showing"></my-comp>`,
+          standalone: false,
         })
         class App {
           showing = true;
@@ -2391,14 +2590,21 @@ describe('inheritance', () => {
           @Input() baz = '';
         }
 
-        @Component({selector: 'my-comp', template: `<p>test</p>`})
+        @Component({
+          selector: 'my-comp',
+          template: `<p>test</p>`,
+          standalone: false,
+        })
         class MyComponent extends SuperComponent {
           @Input() override baz = '';
 
           @Input() qux = '';
         }
 
-        @Component({template: `<my-comp [foo]="a" [bar]="b" [baz]="c" [qux]="d"></my-comp>`})
+        @Component({
+          template: `<my-comp [foo]="a" [bar]="b" [baz]="c" [qux]="d"></my-comp>`,
+          standalone: false,
+        })
         class App {
           a = 'a';
           b = 'b';
@@ -2437,6 +2643,7 @@ describe('inheritance', () => {
         @Component({
           selector: 'my-comp',
           template: `<p>test</p>`,
+          standalone: false,
         })
         class MyComponent extends SuperComponent {
           ngOnInit() {
@@ -2448,6 +2655,7 @@ describe('inheritance', () => {
           template: `
           <my-comp (foo)="handleFoo($event)"></my-comp>
         `,
+          standalone: false,
         })
         class App {
           foo = '';
@@ -2481,6 +2689,7 @@ describe('inheritance', () => {
         @Component({
           selector: 'my-comp',
           template: `<p>test</p>`,
+          standalone: false,
         })
         class MyComponent extends SuperComponent {}
 
@@ -2488,6 +2697,7 @@ describe('inheritance', () => {
           template: `
           <my-comp>test</my-comp>
         `,
+          standalone: false,
         })
         class App {}
 
@@ -2520,12 +2730,14 @@ describe('inheritance', () => {
         @Component({
           selector: 'my-comp',
           template: `<p>test</p>`,
+          standalone: false,
         })
         class MyComponent extends SuperComponent {}
         @Component({
           template: `
         <my-comp superTitle="test">test</my-comp>
       `,
+          standalone: false,
         })
         class App {}
 
@@ -2543,14 +2755,21 @@ describe('inheritance', () => {
     it('should inherit ContentChildren queries', () => {
       let foundQueryList: QueryList<ChildDir>;
 
-      @Directive({selector: '[child-dir]'})
+      @Directive({
+        selector: '[child-dir]',
+        standalone: false,
+      })
       class ChildDir {}
 
       class SuperComponent {
         @ContentChildren(ChildDir) customDirs!: QueryList<ChildDir>;
       }
 
-      @Component({selector: 'my-comp', template: `<ul><ng-content></ng-content></ul>`})
+      @Component({
+        selector: 'my-comp',
+        template: `<ul><ng-content></ng-content></ul>`,
+        standalone: false,
+      })
       class MyComponent extends SuperComponent {
         ngAfterViewInit() {
           foundQueryList = this.customDirs;
@@ -2564,6 +2783,7 @@ describe('inheritance', () => {
           <li child-dir>two</li>
         </my-comp>
       `,
+        standalone: false,
       })
       class App {}
 
@@ -2607,6 +2827,7 @@ describe('inheritance', () => {
 
       @Directive({
         selector: '[super-dir]',
+        standalone: false,
       })
       class SuperDirective {
         ngOnInit() {
@@ -2635,7 +2856,11 @@ describe('inheritance', () => {
       beforeEach(() => (fired.length = 0));
 
       it('ngOnInit', () => {
-        @Component({selector: 'my-comp', template: `<p>test</p>`})
+        @Component({
+          selector: 'my-comp',
+          template: `<p>test</p>`,
+          standalone: false,
+        })
         class MyComponent extends SuperDirective {
           override ngOnInit() {
             fired.push('sub init');
@@ -2644,6 +2869,7 @@ describe('inheritance', () => {
 
         @Component({
           template: `<my-comp *ngIf="showing"></my-comp>`,
+          standalone: false,
         })
         class App {
           showing = true;
@@ -2675,6 +2901,7 @@ describe('inheritance', () => {
         @Component({
           selector: 'my-comp',
           template: `<p>test</p>`,
+          standalone: false,
         })
         class MyComponent extends SuperDirective {
           override ngDoCheck() {
@@ -2684,6 +2911,7 @@ describe('inheritance', () => {
 
         @Component({
           template: `<my-comp *ngIf="showing"></my-comp>`,
+          standalone: false,
         })
         class App {
           showing = true;
@@ -2715,6 +2943,7 @@ describe('inheritance', () => {
         @Component({
           selector: 'my-comp',
           template: `<p>test</p>`,
+          standalone: false,
         })
         class MyComponent extends SuperDirective {
           override ngAfterContentInit() {
@@ -2724,6 +2953,7 @@ describe('inheritance', () => {
 
         @Component({
           template: `<my-comp *ngIf="showing"></my-comp>`,
+          standalone: false,
         })
         class App {
           showing = true;
@@ -2755,6 +2985,7 @@ describe('inheritance', () => {
         @Component({
           selector: 'my-comp',
           template: `<p>test</p>`,
+          standalone: false,
         })
         class MyComponent extends SuperDirective {
           override ngAfterContentChecked() {
@@ -2764,6 +2995,7 @@ describe('inheritance', () => {
 
         @Component({
           template: `<my-comp *ngIf="showing"></my-comp>`,
+          standalone: false,
         })
         class App {
           showing = true;
@@ -2795,6 +3027,7 @@ describe('inheritance', () => {
         @Component({
           selector: 'my-comp',
           template: `<p>test</p>`,
+          standalone: false,
         })
         class MyComponent extends SuperDirective {
           override ngAfterViewInit() {
@@ -2804,6 +3037,7 @@ describe('inheritance', () => {
 
         @Component({
           template: `<my-comp *ngIf="showing"></my-comp>`,
+          standalone: false,
         })
         class App {
           showing = true;
@@ -2835,6 +3069,7 @@ describe('inheritance', () => {
         @Component({
           selector: 'my-comp',
           template: `<p>test</p>`,
+          standalone: false,
         })
         class MyComponent extends SuperDirective {
           override ngAfterViewChecked() {
@@ -2844,6 +3079,7 @@ describe('inheritance', () => {
 
         @Component({
           template: `<my-comp *ngIf="showing"></my-comp>`,
+          standalone: false,
         })
         class App {
           showing = true;
@@ -2875,6 +3111,7 @@ describe('inheritance', () => {
         @Component({
           selector: 'my-comp',
           template: `<p>test</p>`,
+          standalone: false,
         })
         class MyComponent extends SuperDirective {
           override ngOnDestroy() {
@@ -2884,6 +3121,7 @@ describe('inheritance', () => {
 
         @Component({
           template: `<my-comp *ngIf="showing"></my-comp>`,
+          standalone: false,
         })
         class App {
           showing = true;
@@ -2920,6 +3158,7 @@ describe('inheritance', () => {
       it('should inherit inputs', () => {
         @Directive({
           selector: '[super-dir]',
+          standalone: false,
         })
         class SuperDirective {
           @Input() foo = '';
@@ -2929,14 +3168,21 @@ describe('inheritance', () => {
           @Input() baz = '';
         }
 
-        @Component({selector: 'my-comp', template: `<p>test</p>`})
+        @Component({
+          selector: 'my-comp',
+          template: `<p>test</p>`,
+          standalone: false,
+        })
         class MyComponent extends SuperDirective {
           @Input() override baz = '';
 
           @Input() qux = '';
         }
 
-        @Component({template: `<my-comp [foo]="a" [bar]="b" [baz]="c" [qux]="d"></my-comp>`})
+        @Component({
+          template: `<my-comp [foo]="a" [bar]="b" [baz]="c" [qux]="d"></my-comp>`,
+          standalone: false,
+        })
         class App {
           a = 'a';
           b = 'b';
@@ -2970,6 +3216,7 @@ describe('inheritance', () => {
       it('should inherit outputs', () => {
         @Directive({
           selector: '[super-dir]',
+          standalone: false,
         })
         class SuperDirective {
           @Output() foo = new EventEmitter<string>();
@@ -2978,6 +3225,7 @@ describe('inheritance', () => {
         @Component({
           selector: 'my-comp',
           template: `<p>test</p>`,
+          standalone: false,
         })
         class MyComponent extends SuperDirective {
           ngOnInit() {
@@ -2989,6 +3237,7 @@ describe('inheritance', () => {
           template: `
           <my-comp (foo)="handleFoo($event)"></my-comp>
         `,
+          standalone: false,
         })
         class App {
           foo = '';
@@ -3015,6 +3264,7 @@ describe('inheritance', () => {
       it('should compose host bindings for styles', () => {
         @Directive({
           selector: '[super-dir]',
+          standalone: false,
         })
         class SuperDirective {
           @HostBinding('style.color') color = 'red';
@@ -3025,6 +3275,7 @@ describe('inheritance', () => {
         @Component({
           selector: 'my-comp',
           template: `<p>test</p>`,
+          standalone: false,
         })
         class MyComponent extends SuperDirective {}
 
@@ -3032,6 +3283,7 @@ describe('inheritance', () => {
           template: `
           <my-comp>test</my-comp>
         `,
+          standalone: false,
         })
         class App {}
 
@@ -3054,6 +3306,7 @@ describe('inheritance', () => {
       it('should compose host bindings (non-style related)', () => {
         @Directive({
           selector: '[super-dir]',
+          standalone: false,
         })
         class SuperDirective {
           @HostBinding('title')
@@ -3067,12 +3320,14 @@ describe('inheritance', () => {
         @Component({
           selector: 'my-comp',
           template: `<p>test</p>`,
+          standalone: false,
         })
         class MyComponent extends SuperDirective {}
         @Component({
           template: `
         <my-comp superTitle="test">test</my-comp>
       `,
+          standalone: false,
         })
         class App {}
 
@@ -3090,17 +3345,25 @@ describe('inheritance', () => {
     it('should inherit ContentChildren queries', () => {
       let foundQueryList: QueryList<ChildDir>;
 
-      @Directive({selector: '[child-dir]'})
+      @Directive({
+        selector: '[child-dir]',
+        standalone: false,
+      })
       class ChildDir {}
 
       @Directive({
         selector: '[super-dir]',
+        standalone: false,
       })
       class SuperDirective {
         @ContentChildren(ChildDir) customDirs!: QueryList<ChildDir>;
       }
 
-      @Component({selector: 'my-comp', template: `<ul><ng-content></ng-content></ul>`})
+      @Component({
+        selector: 'my-comp',
+        template: `<ul><ng-content></ng-content></ul>`,
+        standalone: false,
+      })
       class MyComponent extends SuperDirective {
         ngAfterViewInit() {
           foundQueryList = this.customDirs;
@@ -3114,6 +3377,7 @@ describe('inheritance', () => {
           <li child-dir>two</li>
         </my-comp>
       `,
+        standalone: false,
       })
       class App {}
 
@@ -3129,11 +3393,15 @@ describe('inheritance', () => {
     it('should inherit ViewChildren queries', () => {
       let foundQueryList: QueryList<ChildDir>;
 
-      @Directive({selector: '[child-dir]'})
+      @Directive({
+        selector: '[child-dir]',
+        standalone: false,
+      })
       class ChildDir {}
 
       @Directive({
         selector: '[super-dir]',
+        standalone: false,
       })
       class SuperDirective {
         @ViewChildren(ChildDir) customDirs!: QueryList<ChildDir>;
@@ -3146,6 +3414,7 @@ describe('inheritance', () => {
             <li child-dir *ngFor="let item of items">{{item}}</li>
           </ul>
         `,
+        standalone: false,
       })
       class MyComponent extends SuperDirective {
         items = [1, 2, 3, 4, 5];
@@ -3158,6 +3427,7 @@ describe('inheritance', () => {
         template: `
         <my-comp></my-comp>
       `,
+        standalone: false,
       })
       class App {}
 
@@ -3201,6 +3471,7 @@ describe('inheritance', () => {
 
       @Directive({
         selector: '[super-dir]',
+        standalone: false,
       })
       class SuperDirective {
         ngOnInit() {
@@ -3231,7 +3502,11 @@ describe('inheritance', () => {
       beforeEach(() => (fired.length = 0));
 
       it('ngOnInit', () => {
-        @Component({selector: 'my-comp', template: `<p>test</p>`})
+        @Component({
+          selector: 'my-comp',
+          template: `<p>test</p>`,
+          standalone: false,
+        })
         class MyComponent extends BareClass {
           override ngOnInit() {
             fired.push('sub init');
@@ -3240,6 +3515,7 @@ describe('inheritance', () => {
 
         @Component({
           template: `<my-comp *ngIf="showing"></my-comp>`,
+          standalone: false,
         })
         class App {
           showing = true;
@@ -3270,6 +3546,7 @@ describe('inheritance', () => {
       it('ngDoCheck', () => {
         @Directive({
           selector: 'my-comp',
+          standalone: false,
         })
         class MyComponent extends BareClass {
           override ngDoCheck() {
@@ -3279,6 +3556,7 @@ describe('inheritance', () => {
 
         @Component({
           template: `<my-comp *ngIf="showing"></my-comp>`,
+          standalone: false,
         })
         class App {
           showing = true;
@@ -3310,6 +3588,7 @@ describe('inheritance', () => {
         @Component({
           selector: 'my-comp',
           template: `<p>test</p>`,
+          standalone: false,
         })
         class MyComponent extends BareClass {
           override ngAfterContentInit() {
@@ -3319,6 +3598,7 @@ describe('inheritance', () => {
 
         @Component({
           template: `<my-comp *ngIf="showing"></my-comp>`,
+          standalone: false,
         })
         class App {
           showing = true;
@@ -3350,6 +3630,7 @@ describe('inheritance', () => {
         @Component({
           selector: 'my-comp',
           template: `<p>test</p>`,
+          standalone: false,
         })
         class MyComponent extends BareClass {
           override ngAfterContentChecked() {
@@ -3359,6 +3640,7 @@ describe('inheritance', () => {
 
         @Component({
           template: `<my-comp *ngIf="showing"></my-comp>`,
+          standalone: false,
         })
         class App {
           showing = true;
@@ -3390,6 +3672,7 @@ describe('inheritance', () => {
         @Component({
           selector: 'my-comp',
           template: `<p>test</p>`,
+          standalone: false,
         })
         class MyComponent extends BareClass {
           override ngAfterViewInit() {
@@ -3399,6 +3682,7 @@ describe('inheritance', () => {
 
         @Component({
           template: `<my-comp *ngIf="showing"></my-comp>`,
+          standalone: false,
         })
         class App {
           showing = true;
@@ -3430,6 +3714,7 @@ describe('inheritance', () => {
         @Component({
           selector: 'my-comp',
           template: `<p>test</p>`,
+          standalone: false,
         })
         class MyComponent extends BareClass {
           override ngAfterViewChecked() {
@@ -3439,6 +3724,7 @@ describe('inheritance', () => {
 
         @Component({
           template: `<my-comp *ngIf="showing"></my-comp>`,
+          standalone: false,
         })
         class App {
           showing = true;
@@ -3470,6 +3756,7 @@ describe('inheritance', () => {
         @Component({
           selector: 'my-comp',
           template: `<p>test</p>`,
+          standalone: false,
         })
         class MyComponent extends BareClass {
           override ngOnDestroy() {
@@ -3479,6 +3766,7 @@ describe('inheritance', () => {
 
         @Component({
           template: `<my-comp *ngIf="showing"></my-comp>`,
+          standalone: false,
         })
         class App {
           showing = true;
@@ -3515,6 +3803,7 @@ describe('inheritance', () => {
       it('should inherit inputs', () => {
         @Directive({
           selector: '[super-dir]',
+          standalone: false,
         })
         class SuperDirective {
           @Input() foo = '';
@@ -3526,14 +3815,21 @@ describe('inheritance', () => {
           @Input() bar = '';
         }
 
-        @Component({selector: 'my-comp', template: `<p>test</p>`})
+        @Component({
+          selector: 'my-comp',
+          template: `<p>test</p>`,
+          standalone: false,
+        })
         class MyComponent extends BareClass {
           @Input() override baz = '';
 
           @Input() qux = '';
         }
 
-        @Component({template: `<my-comp [foo]="a" [bar]="b" [baz]="c" [qux]="d"></my-comp>`})
+        @Component({
+          template: `<my-comp [foo]="a" [bar]="b" [baz]="c" [qux]="d"></my-comp>`,
+          standalone: false,
+        })
         class App {
           a = 'a';
           b = 'b';
@@ -3567,6 +3863,7 @@ describe('inheritance', () => {
       it('should inherit outputs', () => {
         @Directive({
           selector: '[super-dir]',
+          standalone: false,
         })
         class SuperDirective {
           @Output() foo = new EventEmitter<string>();
@@ -3577,6 +3874,7 @@ describe('inheritance', () => {
         @Component({
           selector: 'my-comp',
           template: `<p>test</p>`,
+          standalone: false,
         })
         class MyComponent extends BareClass {
           ngOnInit() {
@@ -3588,6 +3886,7 @@ describe('inheritance', () => {
           template: `
           <my-comp (foo)="handleFoo($event)"></my-comp>
         `,
+          standalone: false,
         })
         class App {
           foo = '';
@@ -3614,6 +3913,7 @@ describe('inheritance', () => {
       it('should compose host bindings for styles', () => {
         @Directive({
           selector: '[super-dir]',
+          standalone: false,
         })
         class SuperDirective {
           @HostBinding('style.color') color = 'red';
@@ -3626,6 +3926,7 @@ describe('inheritance', () => {
         @Component({
           selector: 'my-comp',
           template: `<p>test</p>`,
+          standalone: false,
         })
         class MyComponent extends BareClass {}
 
@@ -3633,6 +3934,7 @@ describe('inheritance', () => {
           template: `
           <my-comp>test</my-comp>
         `,
+          standalone: false,
         })
         class App {}
 
@@ -3655,6 +3957,7 @@ describe('inheritance', () => {
       it('should compose host bindings (non-style related)', () => {
         @Directive({
           selector: '[super-dir]',
+          standalone: false,
         })
         class SuperDirective {
           @HostBinding('title')
@@ -3677,12 +3980,14 @@ describe('inheritance', () => {
         @Component({
           selector: 'my-comp',
           template: `<p>test</p>`,
+          standalone: false,
         })
         class MyComponent extends BareClass {}
         @Component({
           template: `
           <my-comp superTitle="test1" superAccessKey="test2">test</my-comp>
         `,
+          standalone: false,
         })
         class App {}
 
@@ -3701,11 +4006,15 @@ describe('inheritance', () => {
     it('should inherit ContentChildren queries', () => {
       let foundQueryList: QueryList<ChildDir>;
 
-      @Directive({selector: '[child-dir]'})
+      @Directive({
+        selector: '[child-dir]',
+        standalone: false,
+      })
       class ChildDir {}
 
       @Directive({
         selector: '[super-dir]',
+        standalone: false,
       })
       class SuperDirective {
         @ContentChildren(ChildDir) customDirs!: QueryList<ChildDir>;
@@ -3716,6 +4025,7 @@ describe('inheritance', () => {
       @Component({
         selector: 'my-comp',
         template: `<ul><ng-content></ng-content></ul>`,
+        standalone: false,
       })
       class MyComponent extends BareClass {
         ngAfterViewInit() {
@@ -3730,6 +4040,7 @@ describe('inheritance', () => {
           <li child-dir>two</li>
         </my-comp>
       `,
+        standalone: false,
       })
       class App {}
 
@@ -3745,11 +4056,15 @@ describe('inheritance', () => {
     it('should inherit ViewChildren queries', () => {
       let foundQueryList: QueryList<ChildDir>;
 
-      @Directive({selector: '[child-dir]'})
+      @Directive({
+        selector: '[child-dir]',
+        standalone: false,
+      })
       class ChildDir {}
 
       @Directive({
         selector: '[super-dir]',
+        standalone: false,
       })
       class SuperDirective {
         @ViewChildren(ChildDir) customDirs!: QueryList<ChildDir>;
@@ -3764,6 +4079,7 @@ describe('inheritance', () => {
             <li child-dir *ngFor="let item of items">{{item}}</li>
           </ul>
         `,
+        standalone: false,
       })
       class MyComponent extends BareClass {
         items = [1, 2, 3, 4, 5];
@@ -3776,6 +4092,7 @@ describe('inheritance', () => {
         template: `
         <my-comp></my-comp>
       `,
+        standalone: false,
       })
       class App {}
 
@@ -3820,6 +4137,7 @@ describe('inheritance', () => {
       @Component({
         selector: 'super-comp',
         template: `<p>super</p>`,
+        standalone: false,
       })
       class SuperComponent {
         ngOnInit() {
@@ -3851,6 +4169,7 @@ describe('inheritance', () => {
         @Component({
           selector: 'my-comp',
           template: `<p>test</p>`,
+          standalone: false,
         })
         class MyComponent extends SuperComponent {
           override ngOnInit() {
@@ -3860,6 +4179,7 @@ describe('inheritance', () => {
 
         @Component({
           template: `<my-comp *ngIf="showing"></my-comp>`,
+          standalone: false,
         })
         class App {
           showing = true;
@@ -3891,6 +4211,7 @@ describe('inheritance', () => {
         @Component({
           selector: 'my-comp',
           template: `<p>test</p>`,
+          standalone: false,
         })
         class MyComponent extends SuperComponent {
           override ngDoCheck() {
@@ -3900,6 +4221,7 @@ describe('inheritance', () => {
 
         @Component({
           template: `<my-comp *ngIf="showing"></my-comp>`,
+          standalone: false,
         })
         class App {
           showing = true;
@@ -3931,6 +4253,7 @@ describe('inheritance', () => {
         @Component({
           selector: 'my-comp',
           template: `<p>test</p>`,
+          standalone: false,
         })
         class MyComponent extends SuperComponent {
           override ngAfterContentInit() {
@@ -3940,6 +4263,7 @@ describe('inheritance', () => {
 
         @Component({
           template: `<my-comp *ngIf="showing"></my-comp>`,
+          standalone: false,
         })
         class App {
           showing = true;
@@ -3971,6 +4295,7 @@ describe('inheritance', () => {
         @Component({
           selector: 'my-comp',
           template: `<p>test</p>`,
+          standalone: false,
         })
         class MyComponent extends SuperComponent {
           override ngAfterContentChecked() {
@@ -3980,6 +4305,7 @@ describe('inheritance', () => {
 
         @Component({
           template: `<my-comp *ngIf="showing"></my-comp>`,
+          standalone: false,
         })
         class App {
           showing = true;
@@ -4011,6 +4337,7 @@ describe('inheritance', () => {
         @Component({
           selector: 'my-comp',
           template: `<p>test</p>`,
+          standalone: false,
         })
         class MyComponent extends SuperComponent {
           override ngAfterViewInit() {
@@ -4020,6 +4347,7 @@ describe('inheritance', () => {
 
         @Component({
           template: `<my-comp *ngIf="showing"></my-comp>`,
+          standalone: false,
         })
         class App {
           showing = true;
@@ -4051,6 +4379,7 @@ describe('inheritance', () => {
         @Component({
           selector: 'my-comp',
           template: `<p>test</p>`,
+          standalone: false,
         })
         class MyComponent extends SuperComponent {
           override ngAfterViewChecked() {
@@ -4060,6 +4389,7 @@ describe('inheritance', () => {
 
         @Component({
           template: `<my-comp *ngIf="showing"></my-comp>`,
+          standalone: false,
         })
         class App {
           showing = true;
@@ -4091,6 +4421,7 @@ describe('inheritance', () => {
         @Component({
           selector: 'my-comp',
           template: `<p>test</p>`,
+          standalone: false,
         })
         class MyComponent extends SuperComponent {
           override ngOnDestroy() {
@@ -4100,6 +4431,7 @@ describe('inheritance', () => {
 
         @Component({
           template: `<my-comp *ngIf="showing"></my-comp>`,
+          standalone: false,
         })
         class App {
           showing = true;
@@ -4137,6 +4469,7 @@ describe('inheritance', () => {
         @Component({
           selector: 'super-comp',
           template: `<p>super</p>`,
+          standalone: false,
         })
         class SuperComponent {
           @Input() foo = '';
@@ -4146,14 +4479,21 @@ describe('inheritance', () => {
           @Input() baz = '';
         }
 
-        @Component({selector: 'my-comp', template: `<p>test</p>`})
+        @Component({
+          selector: 'my-comp',
+          template: `<p>test</p>`,
+          standalone: false,
+        })
         class MyComponent extends SuperComponent {
           @Input() override baz = '';
 
           @Input() qux = '';
         }
 
-        @Component({template: `<my-comp [foo]="a" [bar]="b" [baz]="c" [qux]="d"></my-comp>`})
+        @Component({
+          template: `<my-comp [foo]="a" [bar]="b" [baz]="c" [qux]="d"></my-comp>`,
+          standalone: false,
+        })
         class App {
           a = 'a';
           b = 'b';
@@ -4188,6 +4528,7 @@ describe('inheritance', () => {
         @Component({
           selector: 'super-comp',
           template: `<p>super</p>`,
+          standalone: false,
         })
         class SuperComponent {
           @Output() foo = new EventEmitter<string>();
@@ -4196,6 +4537,7 @@ describe('inheritance', () => {
         @Component({
           selector: 'my-comp',
           template: `<p>test</p>`,
+          standalone: false,
         })
         class MyComponent extends SuperComponent {
           ngOnInit() {
@@ -4207,6 +4549,7 @@ describe('inheritance', () => {
           template: `
           <my-comp (foo)="handleFoo($event)"></my-comp>
         `,
+          standalone: false,
         })
         class App {
           foo = '';
@@ -4236,6 +4579,7 @@ describe('inheritance', () => {
             '[@animation]': 'colorExp',
           },
           animations: [trigger('animation', [state('color', style({color: 'red'}))])],
+          standalone: false,
         })
         class SuperComponent {
           colorExp = 'color';
@@ -4244,11 +4588,13 @@ describe('inheritance', () => {
         @Component({
           selector: 'my-comp',
           template: `<div>my-comp</div>`,
+          standalone: false,
         })
         class MyComponent extends SuperComponent {}
 
         @Component({
           template: '<my-comp>app</my-comp>',
+          standalone: false,
         })
         class App {}
 
@@ -4271,6 +4617,7 @@ describe('inheritance', () => {
             trigger('animation1', [state('color', style({color: 'red'}))]),
             trigger('animation2', [state('opacity', style({opacity: '0.5'}))]),
           ],
+          standalone: false,
         })
         class SuperComponent {}
 
@@ -4286,6 +4633,7 @@ describe('inheritance', () => {
             trigger('animation1', [state('color', style({color: 'blue'}))]),
             trigger('animation3', [state('bg', style({backgroundColor: 'green'}))]),
           ],
+          standalone: false,
         })
         class MyComponent extends SuperComponent {
           colorExp = 'color';
@@ -4295,6 +4643,7 @@ describe('inheritance', () => {
 
         @Component({
           template: '<my-comp>app</my-comp>',
+          standalone: false,
         })
         class App {}
 
@@ -4319,6 +4668,7 @@ describe('inheritance', () => {
         @Component({
           selector: 'super-comp',
           template: `<p>super</p>`,
+          standalone: false,
         })
         class SuperComponent {
           @HostBinding('style.color') color = 'red';
@@ -4329,6 +4679,7 @@ describe('inheritance', () => {
         @Component({
           selector: 'my-comp',
           template: `<p>test</p>`,
+          standalone: false,
         })
         class MyComponent extends SuperComponent {}
 
@@ -4336,6 +4687,7 @@ describe('inheritance', () => {
           template: `
           <my-comp>test</my-comp>
         `,
+          standalone: false,
         })
         class App {}
 
@@ -4359,6 +4711,7 @@ describe('inheritance', () => {
         @Component({
           selector: 'super-comp',
           template: `<p>super</p>`,
+          standalone: false,
         })
         class SuperComponent {
           @HostBinding('title')
@@ -4372,12 +4725,14 @@ describe('inheritance', () => {
         @Component({
           selector: 'my-comp',
           template: `<p>test</p>`,
+          standalone: false,
         })
         class MyComponent extends SuperComponent {}
         @Component({
           template: `
         <my-comp superTitle="test">test</my-comp>
       `,
+          standalone: false,
         })
         class App {}
 
@@ -4395,12 +4750,16 @@ describe('inheritance', () => {
     it('should inherit ContentChildren queries', () => {
       let foundQueryList: QueryList<ChildDir>;
 
-      @Directive({selector: '[child-dir]'})
+      @Directive({
+        selector: '[child-dir]',
+        standalone: false,
+      })
       class ChildDir {}
 
       @Component({
         selector: 'super-comp',
         template: `<p>super</p>`,
+        standalone: false,
       })
       class SuperComponent {
         @ContentChildren(ChildDir) customDirs!: QueryList<ChildDir>;
@@ -4409,6 +4768,7 @@ describe('inheritance', () => {
       @Component({
         selector: 'my-comp',
         template: `<ul><ng-content></ng-content></ul>`,
+        standalone: false,
       })
       class MyComponent extends SuperComponent {
         ngAfterViewInit() {
@@ -4423,6 +4783,7 @@ describe('inheritance', () => {
           <li child-dir>two</li>
         </my-comp>
       `,
+        standalone: false,
       })
       class App {}
 
@@ -4438,12 +4799,16 @@ describe('inheritance', () => {
     it('should inherit ViewChildren queries', () => {
       let foundQueryList: QueryList<ChildDir>;
 
-      @Directive({selector: '[child-dir]'})
+      @Directive({
+        selector: '[child-dir]',
+        standalone: false,
+      })
       class ChildDir {}
 
       @Component({
         selector: 'super-comp',
         template: `<p>super</p>`,
+        standalone: false,
       })
       class SuperComponent {
         @ViewChildren(ChildDir) customDirs!: QueryList<ChildDir>;
@@ -4456,6 +4821,7 @@ describe('inheritance', () => {
             <li child-dir *ngFor="let item of items">{{item}}</li>
           </ul>
         `,
+        standalone: false,
       })
       class MyComponent extends SuperComponent {
         items = [1, 2, 3, 4, 5];
@@ -4468,6 +4834,7 @@ describe('inheritance', () => {
         template: `
         <my-comp></my-comp>
       `,
+        standalone: false,
       })
       class App {}
 
@@ -4486,6 +4853,7 @@ describe('inheritance', () => {
       @Component({
         selector: 'app-base',
         template: 'base',
+        standalone: false,
       })
       class BaseComponent {
         @HostListener('click')
@@ -4497,6 +4865,7 @@ describe('inheritance', () => {
       @Component({
         selector: 'app-child',
         template: 'child',
+        standalone: false,
       })
       class ChildComponent extends BaseComponent {
         // additional host listeners are defined here to have `hostBindings` function generated on
@@ -4513,6 +4882,7 @@ describe('inheritance', () => {
       @Component({
         selector: 'app-grand-child',
         template: 'grand-child',
+        standalone: false,
       })
       class GrandChildComponent extends ChildComponent {
         // additional host listeners are defined here to have `hostBindings` function generated on
@@ -4533,6 +4903,7 @@ describe('inheritance', () => {
           <app-child></app-child>
           <app-grand-child></app-grand-child>
         `,
+        standalone: false,
       })
       class RootApp {}
 
@@ -4585,6 +4956,7 @@ describe('inheritance', () => {
       @Component({
         selector: 'super-comp',
         template: `<p>super</p>`,
+        standalone: false,
       })
       class SuperSuperComponent {
         ngOnInit() {
@@ -4618,6 +4990,7 @@ describe('inheritance', () => {
         @Component({
           selector: 'my-comp',
           template: `<p>test</p>`,
+          standalone: false,
         })
         class MyComponent extends SuperComponent {
           override ngOnInit() {
@@ -4627,6 +5000,7 @@ describe('inheritance', () => {
 
         @Component({
           template: `<my-comp *ngIf="showing"></my-comp>`,
+          standalone: false,
         })
         class App {
           showing = true;
@@ -4658,6 +5032,7 @@ describe('inheritance', () => {
         @Component({
           selector: 'my-comp',
           template: `<p>test</p>`,
+          standalone: false,
         })
         class MyComponent extends SuperComponent {
           override ngDoCheck() {
@@ -4667,6 +5042,7 @@ describe('inheritance', () => {
 
         @Component({
           template: `<my-comp *ngIf="showing"></my-comp>`,
+          standalone: false,
         })
         class App {
           showing = true;
@@ -4698,6 +5074,7 @@ describe('inheritance', () => {
         @Component({
           selector: 'my-comp',
           template: `<p>test</p>`,
+          standalone: false,
         })
         class MyComponent extends SuperComponent {
           override ngAfterContentInit() {
@@ -4707,6 +5084,7 @@ describe('inheritance', () => {
 
         @Component({
           template: `<my-comp *ngIf="showing"></my-comp>`,
+          standalone: false,
         })
         class App {
           showing = true;
@@ -4738,6 +5116,7 @@ describe('inheritance', () => {
         @Component({
           selector: 'my-comp',
           template: `<p>test</p>`,
+          standalone: false,
         })
         class MyComponent extends SuperComponent {
           override ngAfterContentChecked() {
@@ -4747,6 +5126,7 @@ describe('inheritance', () => {
 
         @Component({
           template: `<my-comp *ngIf="showing"></my-comp>`,
+          standalone: false,
         })
         class App {
           showing = true;
@@ -4778,6 +5158,7 @@ describe('inheritance', () => {
         @Component({
           selector: 'my-comp',
           template: `<p>test</p>`,
+          standalone: false,
         })
         class MyComponent extends SuperComponent {
           override ngAfterViewInit() {
@@ -4787,6 +5168,7 @@ describe('inheritance', () => {
 
         @Component({
           template: `<my-comp *ngIf="showing"></my-comp>`,
+          standalone: false,
         })
         class App {
           showing = true;
@@ -4818,6 +5200,7 @@ describe('inheritance', () => {
         @Component({
           selector: 'my-comp',
           template: `<p>test</p>`,
+          standalone: false,
         })
         class MyComponent extends SuperComponent {
           override ngAfterViewChecked() {
@@ -4827,6 +5210,7 @@ describe('inheritance', () => {
 
         @Component({
           template: `<my-comp *ngIf="showing"></my-comp>`,
+          standalone: false,
         })
         class App {
           showing = true;
@@ -4858,6 +5242,7 @@ describe('inheritance', () => {
         @Component({
           selector: 'my-comp',
           template: `<p>test</p>`,
+          standalone: false,
         })
         class MyComponent extends SuperComponent {
           override ngOnDestroy() {
@@ -4867,6 +5252,7 @@ describe('inheritance', () => {
 
         @Component({
           template: `<my-comp *ngIf="showing"></my-comp>`,
+          standalone: false,
         })
         class App {
           showing = true;
@@ -4904,6 +5290,7 @@ describe('inheritance', () => {
         @Component({
           selector: 'super-comp',
           template: `<p>super</p>`,
+          standalone: false,
         })
         class SuperSuperComponent {
           @Input() foo = '';
@@ -4915,14 +5302,21 @@ describe('inheritance', () => {
           @Input() bar = '';
         }
 
-        @Component({selector: 'my-comp', template: `<p>test</p>`})
+        @Component({
+          selector: 'my-comp',
+          template: `<p>test</p>`,
+          standalone: false,
+        })
         class MyComponent extends BareClass {
           @Input() override baz = '';
 
           @Input() qux = '';
         }
 
-        @Component({template: `<my-comp [foo]="a" [bar]="b" [baz]="c" [qux]="d"></my-comp>`})
+        @Component({
+          template: `<my-comp [foo]="a" [bar]="b" [baz]="c" [qux]="d"></my-comp>`,
+          standalone: false,
+        })
         class App {
           a = 'a';
           b = 'b';
@@ -4957,6 +5351,7 @@ describe('inheritance', () => {
         @Component({
           selector: 'super-comp',
           template: `<p>super</p>`,
+          standalone: false,
         })
         class SuperSuperComponent {
           @Output() foo = new EventEmitter<string>();
@@ -4969,6 +5364,7 @@ describe('inheritance', () => {
         @Component({
           selector: 'my-comp',
           template: `<p>test</p>`,
+          standalone: false,
         })
         class MyComponent extends SuperComponent {
           ngOnInit() {
@@ -4981,6 +5377,7 @@ describe('inheritance', () => {
           template: `
           <my-comp (foo)="handleFoo($event)" (bar)="handleBar($event)"></my-comp>
         `,
+          standalone: false,
         })
         class App {
           foo = '';
@@ -5021,6 +5418,7 @@ describe('inheritance', () => {
             trigger('animation1', [state('color', style({color: 'red'}))]),
             trigger('animation2', [state('opacity', style({opacity: '0.5'}))]),
           ],
+          standalone: false,
         })
         class SuperComponent {
           colorExp = 'color';
@@ -5030,6 +5428,7 @@ describe('inheritance', () => {
         @Component({
           selector: 'intermediate-comp',
           template: '...',
+          standalone: false,
         })
         class IntermediateComponent extends SuperComponent {}
 
@@ -5044,6 +5443,7 @@ describe('inheritance', () => {
             trigger('animation1', [state('color', style({color: 'blue'}))]),
             trigger('animation3', [state('bg', style({backgroundColor: 'green'}))]),
           ],
+          standalone: false,
         })
         class MyComponent extends IntermediateComponent {
           override colorExp = 'color';
@@ -5053,6 +5453,7 @@ describe('inheritance', () => {
 
         @Component({
           template: '<my-comp>app</my-comp>',
+          standalone: false,
         })
         class App {}
 
@@ -5076,6 +5477,7 @@ describe('inheritance', () => {
         @Component({
           selector: 'super-comp',
           template: `<p>super</p>`,
+          standalone: false,
         })
         class SuperSuperComponent {
           @HostBinding('style.color') color = 'red';
@@ -5088,6 +5490,7 @@ describe('inheritance', () => {
         @Component({
           selector: 'my-comp',
           template: `<p>test</p>`,
+          standalone: false,
         })
         class MyComponent extends SuperComponent {}
 
@@ -5095,6 +5498,7 @@ describe('inheritance', () => {
           template: `
           <my-comp>test</my-comp>
         `,
+          standalone: false,
         })
         class App {}
 
@@ -5118,6 +5522,7 @@ describe('inheritance', () => {
         @Component({
           selector: 'super-comp',
           template: `<p>super</p>`,
+          standalone: false,
         })
         class SuperSuperComponent {
           @HostBinding('title')
@@ -5140,12 +5545,14 @@ describe('inheritance', () => {
         @Component({
           selector: 'my-comp',
           template: `<p>test</p>`,
+          standalone: false,
         })
         class MyComponent extends SuperComponent {}
         @Component({
           template: `
           <my-comp superTitle="test1" superAccessKey="test2">test</my-comp>
         `,
+          standalone: false,
         })
         class App {}
 
@@ -5165,12 +5572,16 @@ describe('inheritance', () => {
     it('should inherit ContentChildren queries', () => {
       let foundQueryList: QueryList<ChildDir>;
 
-      @Directive({selector: '[child-dir]'})
+      @Directive({
+        selector: '[child-dir]',
+        standalone: false,
+      })
       class ChildDir {}
 
       @Component({
         selector: 'super-comp',
         template: `<p>super</p>`,
+        standalone: false,
       })
       class SuperComponent {
         @ContentChildren(ChildDir) customDirs!: QueryList<ChildDir>;
@@ -5179,6 +5590,7 @@ describe('inheritance', () => {
       @Component({
         selector: 'my-comp',
         template: `<ul><ng-content></ng-content></ul>`,
+        standalone: false,
       })
       class MyComponent extends SuperComponent {
         ngAfterViewInit() {
@@ -5193,6 +5605,7 @@ describe('inheritance', () => {
           <li child-dir>two</li>
         </my-comp>
       `,
+        standalone: false,
       })
       class App {}
 
@@ -5208,12 +5621,16 @@ describe('inheritance', () => {
     it('should inherit ViewChildren queries', () => {
       let foundQueryList: QueryList<ChildDir>;
 
-      @Directive({selector: '[child-dir]'})
+      @Directive({
+        selector: '[child-dir]',
+        standalone: false,
+      })
       class ChildDir {}
 
       @Component({
         selector: 'super-comp',
         template: `<p>super</p>`,
+        standalone: false,
       })
       class SuperComponent {
         @ViewChildren(ChildDir) customDirs!: QueryList<ChildDir>;
@@ -5226,6 +5643,7 @@ describe('inheritance', () => {
             <li child-dir *ngFor="let item of items">{{item}}</li>
           </ul>
         `,
+        standalone: false,
       })
       class MyComponent extends SuperComponent {
         items = [1, 2, 3, 4, 5];
@@ -5238,6 +5656,7 @@ describe('inheritance', () => {
         template: `
         <my-comp></my-comp>
       `,
+        standalone: false,
       })
       class App {}
 

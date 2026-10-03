@@ -3,22 +3,20 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 // #docplaster
 import {
   Component,
   Directive,
   ElementRef,
-  EventEmitter,
   Injectable,
   Injector,
-  Input,
+  input,
   NgModule,
-  Output,
+  output,
 } from '@angular/core';
-import {BrowserModule} from '@angular/platform-browser';
-import {platformBrowserDynamic} from '@angular/platform-browser-dynamic';
+import {BrowserModule, platformBrowser} from '@angular/platform-browser';
 import {
   downgradeComponent,
   downgradeInjectable,
@@ -49,17 +47,18 @@ export class TextFormatter {
   // Note that because its element is compiled by Angular we must use camelCased attribute names
   template: `<header><ng-content selector="h1"></ng-content></header>
     <ng-content selector=".extra"></ng-content>
-    <div *ngFor="let hero of heroes">
+    <div *ngFor="let hero of heroes()">
       <ng1-hero [hero]="hero" (onRemove)="removeHero.emit(hero)"
         ><strong>Super Hero</strong></ng1-hero
       >
-    </div>
+      </div>
     <button (click)="addHero.emit()">Add Hero</button>`,
+  standalone: false,
 })
 export class Ng2HeroesComponent {
-  @Input() heroes!: Hero[];
-  @Output() addHero = new EventEmitter();
-  @Output() removeHero = new EventEmitter();
+  heroes = input<Hero[]>([]);
+  addHero = output<void>();
+  removeHero = output<Hero>();
 }
 // #enddocregion
 
@@ -94,12 +93,15 @@ export class HeroesService {
 
 // #docregion ng1-hero-wrapper
 // This Angular directive will act as an interface to the "upgraded" AngularJS component
-@Directive({selector: 'ng1-hero'})
+@Directive({
+  selector: 'ng1-hero',
+  standalone: false,
+})
 export class Ng1HeroComponentWrapper extends UpgradeComponent {
   // The names of the input and output properties here must match the names of the
   // `<` and `&` bindings in the AngularJS component that is being wrapped
-  @Input() hero!: Hero;
-  @Output() onRemove!: EventEmitter<void>;
+  hero = input.required<Hero>();
+  onRemove = output<void>();
 
   constructor(elementRef: ElementRef, injector: Injector) {
     // We must pass the name of the directive as used by AngularJS to the super
@@ -192,5 +194,5 @@ ng1AppModule.component('exampleApp', {
 // #docregion bootstrap-ng2
 // We bootstrap the Angular module as we would do in a normal Angular app.
 // (We are using the dynamic browser platform as this example has not been compiled AOT.)
-platformBrowserDynamic().bootstrapModule(Ng2AppModule);
+platformBrowser().bootstrapModule(Ng2AppModule);
 // #enddocregion

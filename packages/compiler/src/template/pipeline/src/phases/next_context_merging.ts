@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import * as o from '../../../../output/output_ast';
@@ -26,7 +26,12 @@ import type {CompilationJob} from '../compilation';
 export function mergeNextContextExpressions(job: CompilationJob): void {
   for (const unit of job.units) {
     for (const op of unit.create) {
-      if (op.kind === ir.OpKind.Listener || op.kind === ir.OpKind.TwoWayListener) {
+      if (
+        op.kind === ir.OpKind.Listener ||
+        op.kind === ir.OpKind.Animation ||
+        op.kind === ir.OpKind.AnimationListener ||
+        op.kind === ir.OpKind.TwoWayListener
+      ) {
         mergeNextContextsInOps(op.handlerOps);
       }
     }

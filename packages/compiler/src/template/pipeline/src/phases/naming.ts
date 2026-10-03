@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {sanitizeIdentifier} from '../../../../parse_util';
@@ -51,10 +51,34 @@ function addNamesToView(
   for (const op of unit.ops()) {
     switch (op.kind) {
       case ir.OpKind.Property:
-      case ir.OpKind.HostProperty:
-        if (op.isAnimationTrigger) {
+      case ir.OpKind.DomProperty:
+        if (op.bindingKind === ir.BindingKind.LegacyAnimation) {
           op.name = '@' + op.name;
         }
+        break;
+      case ir.OpKind.Animation:
+        if (op.handlerFnName === null) {
+          const animationKind = op.name.replace('.', '');
+          op.handlerFnName = `${unit.fnName}_${animationKind}_cb`;
+          op.handlerFnName = sanitizeIdentifier(op.handlerFnName);
+        }
+        break;
+      case ir.OpKind.AnimationListener:
+        if (op.handlerFnName !== null) {
+          break;
+        }
+        if (!op.hostListener && op.targetSlot.slot === null) {
+          throw new Error(`Expected a slot to be assigned`);
+        }
+        const animationKind = op.name.replace('.', '');
+        if (op.hostListener) {
+          op.handlerFnName = `${baseName}_${animationKind}_HostBindingHandler`;
+        } else {
+          op.handlerFnName = `${unit.fnName}_${op.tag!.replace('-', '_')}_${animationKind}_${
+            op.targetSlot.slot
+          }_listener`;
+        }
+        op.handlerFnName = sanitizeIdentifier(op.handlerFnName);
         break;
       case ir.OpKind.Listener:
         if (op.handlerFnName !== null) {
@@ -64,8 +88,8 @@ function addNamesToView(
           throw new Error(`Expected a slot to be assigned`);
         }
         let animation = '';
-        if (op.isAnimationListener) {
-          op.name = `@${op.name}.${op.animationPhase}`;
+        if (op.isLegacyAnimationListener) {
+          op.name = `@${op.name}.${op.legacyAnimationPhase}`;
           animation = 'animation';
         }
         if (op.hostListener) {
@@ -133,6 +157,8 @@ function addNamesToView(
           );
         }
         break;
+      case ir.OpKind.ConditionalCreate:
+      case ir.OpKind.ConditionalBranchCreate:
       case ir.OpKind.Template:
         if (!(unit instanceof ViewCompilationUnit)) {
           throw new Error(`AssertionError: must be compiling a component`);

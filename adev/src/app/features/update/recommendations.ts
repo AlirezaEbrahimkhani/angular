@@ -1,3 +1,11 @@
+/**
+ * @license
+ * Copyright Google LLC All Rights Reserved.
+ *
+ * Use of this source code is governed by an MIT-style license that can be
+ * found in the LICENSE file at https://angular.dev/license
+ */
+
 export enum ApplicationComplexity {
   Basic = 1,
   Medium = 2,
@@ -968,7 +976,7 @@ export const RECOMMENDATIONS: Step[] = [
     level: ApplicationComplexity.Basic,
     step: 'v11 browser support',
     action:
-      'Support for IE9, IE10, and IE mobile has been removed. This was announced in the [v10 update](http://blog.angular.io/version-10-of-angular-now-available-78960babd41#c357). ',
+      'Support for IE9, IE10, and IE mobile has been removed. This was announced in the [v10 update](http://blog.angular.dev/version-10-of-angular-now-available-78960babd41#c357). ',
   },
   {
     possibleIn: 1100,
@@ -1814,7 +1822,7 @@ export const RECOMMENDATIONS: Step[] = [
     material: true,
     step: 'v15 mat refactor',
     action:
-      'In Angular Material v15, many of the components have been refactored to be based on the official Material Design Components for Web (MDC). This change affected the DOM and CSS classes of many components. <a href="https://rc.material.angular.io/guide/mdc-migration" alt="Link to more information about this change">Read further</a>',
+      'In Angular Material v15, many of the components have been refactored to be based on the official Material Design Components for Web (MDC). This change affected the DOM and CSS classes of many components. <a href="https://rc.material.angular.dev/guide/mdc-migration" alt="Link to more information about this change">Read further</a>',
   },
   {
     possibleIn: 1500,
@@ -1911,7 +1919,7 @@ export const RECOMMENDATIONS: Step[] = [
     level: ApplicationComplexity.Medium,
     step: 'v16 createUrlTree',
     action:
-      'After bug fixes in `Router.createUrlTree` you may have to readjust tests which mock `ActiveRoute`. [Read further](https://github.com/angular/angular/blob/main/CHANGELOG.md#1600-next1-2023-03-01)',
+      'After bug fixes in `Router.createUrlTree` you may have to readjust tests which mock `ActivatedRoute`. [Read further](https://github.com/angular/angular/blob/main/CHANGELOG.md#1600-2023-05-03)',
   },
   {
     possibleIn: 1600,
@@ -2094,7 +2102,7 @@ export const RECOMMENDATIONS: Step[] = [
     level: ApplicationComplexity.Basic,
     step: 'v17 zone.js support',
     action:
-      'Make sure that you are using a supported version of Zone.js before you upgrade your application. Angular v16 supports Zone.js version 0.14.x or later.',
+      'Make sure that you are using a supported version of Zone.js before you upgrade your application. Angular v17 supports Zone.js version 0.14.x or later.',
   },
   {
     possibleIn: 1700,
@@ -2258,9 +2266,9 @@ export const RECOMMENDATIONS: Step[] = [
     possibleIn: 1800,
     necessaryAsOf: 1800,
     level: ApplicationComplexity.Medium,
-    step: '18.0.0. Opt-out of caching for HTTP requests with auth headers',
+    step: '18.0.0. Opt-in of caching for HTTP requests with auth headers',
     action:
-      'Use `includeRequestsWithAuthHeaders: true` in `withHttpTransferCache` to opt-out of caching for HTTP requests that require authorization.',
+      'Use `includeRequestsWithAuthHeaders: true` in `withHttpTransferCache` to opt-in of caching for HTTP requests that require authorization.',
   },
   {
     possibleIn: 1800,
@@ -2396,5 +2404,342 @@ export const RECOMMENDATIONS: Step[] = [
     step: '18.0.0. `ComponentFixture.autoDetect` behavior more closely matches Application behavior',
     action:
       'You may experience tests failures if you have tests that rely on change detection execution order when using `ComponentFixture.autoDetect` because it now executes change detection for fixtures within `ApplicationRef.tick`. For example, this will cause test fixture to refresh before any dialogs that it creates whereas this may have been the other way around in the past.',
+  },
+  {
+    action:
+      "In the application's project directory, run `ng update @angular/core@19 @angular/cli@19` to update your application to Angular v19.",
+    level: ApplicationComplexity.Basic,
+    necessaryAsOf: 1900,
+    possibleIn: 1900,
+    step: '19.0.0_ng_update',
+  },
+  {
+    possibleIn: 1900,
+    necessaryAsOf: 1900,
+    level: ApplicationComplexity.Basic,
+    material: true,
+    step: 'update @angular/material',
+    action: 'Run `ng update @angular/material@19`.',
+  },
+  {
+    action:
+      'Angular directives, components and pipes are now standalone by default. Specify "standalone: false" for declarations that are currently declared in an NgModule. The Angular CLI will automatically update your code to reflect that.',
+    level: ApplicationComplexity.Basic,
+    necessaryAsOf: 1900,
+    possibleIn: 1900,
+    step: '19.0.0-standalone-declarations',
+  },
+  {
+    action:
+      'Remove `this.` prefix when accessing template reference variables. For example, refactor `<div #foo></div>{{ this.foo }}` to `<div #foo></div>{{ foo }}`',
+    level: ApplicationComplexity.Medium,
+    necessaryAsOf: 1900,
+    possibleIn: 1900,
+    step: '19.0.0-remove-this',
+  },
+  {
+    action:
+      'Replace usages of `BrowserModule.withServerTransition()` with injection of the `APP_ID` token to set the application `id` instead.',
+    level: ApplicationComplexity.Basic,
+    necessaryAsOf: 1900,
+    possibleIn: 1900,
+    step: '19.0.0-remove-browser-module-with-server-transition',
+  },
+  {
+    action: 'The `factories` property in `KeyValueDiffers` has been removed.',
+    level: ApplicationComplexity.Advanced,
+    necessaryAsOf: 1900,
+    possibleIn: 1900,
+    step: '19.0.0-remove-key-value-differs-factories',
+  },
+  {
+    action:
+      'In angular.json, replace the "name" option with "project" for the `@angular/localize` builder.',
+    level: ApplicationComplexity.Medium,
+    necessaryAsOf: 1900,
+    possibleIn: 1900,
+    step: '19.0.0_localize_builder_project_option',
+  },
+  {
+    action: 'Rename `ExperimentalPendingTasks` to `PendingTasks`.',
+    level: ApplicationComplexity.Advanced,
+    necessaryAsOf: 1900,
+    possibleIn: 1900,
+    step: '19.0.0_rename_experimental_pending_tasks',
+  },
+  {
+    action:
+      "Update tests that relied on the `Promise` timing of effects to use `await whenStable()` or call `.detectChanges()` to trigger effects. For effects triggered during change detection, ensure they don't depend on the application being fully rendered or consider using `afterRenderEffect()`. Tests using faked clocks may need to fast-forward/flush the clock.",
+    level: ApplicationComplexity.Medium,
+    necessaryAsOf: 1900,
+    possibleIn: 1900,
+    step: '19.0.0.1',
+  },
+  {
+    action: 'Upgrade to TypeScript version 5.5 or later.',
+    level: ApplicationComplexity.Basic,
+    necessaryAsOf: 1900,
+    possibleIn: 1900,
+    step: '19.0.0.2',
+  },
+  {
+    action:
+      'Update tests using `fakeAsync` that rely on specific timing of zone coalescing and scheduling when a change happens outside the Angular zone (hybrid mode scheduling) as these timers are now affected by `tick` and `flush`.',
+    level: ApplicationComplexity.Advanced,
+    necessaryAsOf: 1900,
+    possibleIn: 1900,
+    step: '19.0.0-timers-in-zone',
+  },
+  {
+    action:
+      "When using `createComponent` API and not passing content for the first `ng-content`, provide `document.createTextNode('')` as a `projectableNode` to prevent rendering the default fallback content.",
+    level: ApplicationComplexity.Medium,
+    necessaryAsOf: 1900,
+    possibleIn: 1900,
+    step: '19.0.0-render-default-fallback',
+  },
+  {
+    action:
+      'Update tests that rely on specific timing or ordering of change detection around custom elements, as the timing may have changed due to the switch to the hybrid scheduler.',
+    level: ApplicationComplexity.Advanced,
+    necessaryAsOf: 1900,
+    possibleIn: 1900,
+    step: '19.0.0-hybrid-scheduler-timing',
+  },
+  {
+    action:
+      'Migrate from using `Router.errorHandler` to `withNavigationErrorHandler` from `provideRouter` or `errorHandler` from `RouterModule.forRoot`.',
+    level: ApplicationComplexity.Basic,
+    necessaryAsOf: 1900,
+    possibleIn: 1900,
+    step: '19.0.0-router-error-handler',
+  },
+  {
+    action:
+      'Update tests to handle errors thrown during `ApplicationRef.tick` by either triggering change detection synchronously or rejecting outstanding `ComponentFixture.whenStable` promises.',
+    level: ApplicationComplexity.Advanced,
+    necessaryAsOf: 1900,
+    possibleIn: 1900,
+    step: '19.0.0-testbed-error-handling',
+  },
+  {
+    action: 'Update usages of `Resolve` interface to include `RedirectCommand` in its return type.',
+    level: ApplicationComplexity.Medium,
+    necessaryAsOf: 1900,
+    possibleIn: 1900,
+    step: '19.0.0-update-resolve-interface-return-type',
+  },
+  {
+    action:
+      '`fakeAsync` will flush pending timers by default. For tests that require the previous behavior, explicitly pass `{flush: false}` in the options parameter.',
+    level: ApplicationComplexity.Advanced,
+    necessaryAsOf: 1900,
+    possibleIn: 1900,
+    step: '19.0.0-update-fakeasync-to-flush-pending-timers',
+  },
+  {
+    action:
+      "In the application's project directory, run `ng update @angular/core@20 @angular/cli@20` to update your application to Angular v20.",
+    level: ApplicationComplexity.Basic,
+    necessaryAsOf: 2000,
+    possibleIn: 2000,
+    step: '20.0.0_ng_update',
+  },
+  {
+    possibleIn: 2000,
+    necessaryAsOf: 2000,
+    level: ApplicationComplexity.Basic,
+    material: true,
+    step: 'update @angular/material',
+    action: 'Run `ng update @angular/material@20`.',
+  },
+  {
+    possibleIn: 2000,
+    necessaryAsOf: 2000,
+    level: ApplicationComplexity.Basic,
+    step: '20.0.0_rename_afterRender_to_afterEveryRender',
+    action: 'Rename the `afterRender` lifecycle hook to `afterEveryRender`',
+  },
+  {
+    possibleIn: 2000,
+    necessaryAsOf: 2000,
+    level: ApplicationComplexity.Medium,
+    step: '20.0.0_replace_TestBed_flushEffects_with_tick',
+    action:
+      'Replace uses of `TestBed.flushEffects()` with `TestBed.tick()`, the closest equivalent to synchronously flush effects.',
+  },
+  {
+    possibleIn: 2000,
+    necessaryAsOf: 2000,
+    level: ApplicationComplexity.Advanced,
+    step: '20.0.0_update_provideCheckNoChangesConfig',
+    action:
+      'Rename `provideExperimentalCheckNoChangesForDebug` to `provideCheckNoChangesConfig`. Note its behavior now applies to all `checkNoChanges` runs. The `useNgZoneOnStable` option is no longer available.',
+  },
+  {
+    possibleIn: 2000,
+    necessaryAsOf: 2000,
+    level: ApplicationComplexity.Advanced,
+    step: '20.0.0_refactor_ng_reflect_attributes_usage',
+    action:
+      'Refactor application and test code to avoid relying on `ng-reflect-*` attributes. If needed temporarily for migration, use `provideNgReflectAttributes()` from `@angular/core` in bootstrap providers to re-enable them in dev mode only.',
+  },
+  {
+    possibleIn: 2000,
+    necessaryAsOf: 2000,
+    level: ApplicationComplexity.Advanced,
+    step: '20.0.0_adjust_RedirectFn_return_type_handling',
+    action:
+      'Adjust code that directly calls functions returning `RedirectFn`. These functions can now also return an `Observable` or `Promise`; ensure your logic correctly handles these asynchronous return types.',
+  },
+  {
+    possibleIn: 2000,
+    necessaryAsOf: 2000,
+    level: ApplicationComplexity.Basic,
+    step: '20.0.0_rename_resource_request_to_param',
+    action: 'Rename the `request` property passed in resources to `params`.',
+  },
+  {
+    possibleIn: 2000,
+    necessaryAsOf: 2000,
+    level: ApplicationComplexity.Medium,
+    step: '20.0.0_rename_rxResource_loader_to_stream',
+    action: 'Rename the `loader` property passed in rxResources to `stream`.',
+  },
+  {
+    possibleIn: 2000,
+    necessaryAsOf: 2000,
+    level: ApplicationComplexity.Basic,
+    step: '20.0.0_replace_ResourceStatus_by_corresponding_strings',
+    action:
+      '`ResourceStatus` is no longer an enum. Use the corresponding constant string values instead.',
+  },
+  {
+    possibleIn: 2000,
+    necessaryAsOf: 2000,
+    level: ApplicationComplexity.Advanced,
+    step: '20.0.0_rename_provideExperimentalZonelessChangeDetection',
+    action:
+      'Rename `provideExperimentalZonelessChangeDetection` to `provideZonelessChangeDetection`.',
+  },
+  {
+    possibleIn: 2000,
+    necessaryAsOf: 2000,
+    level: ApplicationComplexity.Advanced,
+    step: '20.0.0_update_template_expressions_using_in_property',
+    action:
+      "If your templates use `{{ in }}` or `in` in expressions to refer to a component property named 'in', change it to `{{ this.in }}` or `this.in` as 'in' now refers to the JavaScript 'in' operator. If you're using `in` as a template reference, you'd have to rename the reference.",
+  },
+  {
+    possibleIn: 2000,
+    necessaryAsOf: 2000,
+    level: ApplicationComplexity.Advanced,
+    step: '20.0.0_update_router_method_array_parameters_to_readonly',
+    action:
+      'The type for the commands arrays passed to Router methods (`createUrlTree`, `navigate`, `createUrlTreeFromSnapshot`) have been updated to use `readonly T[]` since the array is not mutated. Code which extracts these types (e.g. with `typeof`) may need to be adjusted if it expects mutable arrays.',
+  },
+  {
+    possibleIn: 2000,
+    necessaryAsOf: 2000,
+    level: ApplicationComplexity.Advanced,
+    step: '20.0.0_update_animation_tests_for_guaranteed_flushing',
+    action:
+      'Review and update tests asserting on DOM elements involved in animations. Animations are now guaranteed to be flushed with change detection or `ApplicationRef.tick`, potentially altering previous test outcomes.',
+  },
+  {
+    possibleIn: 2000,
+    necessaryAsOf: 2000,
+    level: ApplicationComplexity.Medium,
+    step: '20.0.0_handle_uncaught_listener_errors_in_tests',
+    action:
+      'In tests, uncaught errors in event listeners are now rethrown by default. Previously, these were only logged to the console by default. Catch them if intentional for the test case, or use `rethrowApplicationErrors: false` in `configureTestingModule` as a last resort.',
+  },
+  {
+    possibleIn: 2000,
+    necessaryAsOf: 2000,
+    level: ApplicationComplexity.Advanced,
+    step: '20.0.0_update_route_guards_array_types',
+    action:
+      'The `any` type is removed from the Route guard arrays (canActivate, canDeactivate, etc); ensure guards are functions, `ProviderToken<T>`, or (deprecated) strings. Refactor string guards to `ProviderToken<T>` or functions.',
+  },
+  {
+    possibleIn: 2000,
+    necessaryAsOf: 2000,
+    level: ApplicationComplexity.Basic,
+    step: '20.0.0_update_nodejs_version',
+    action:
+      'Ensure your Node.js version is at least 20.11.1 and not v18 or v22.0-v22.10 before upgrading to Angular v20. Check https://angular.dev/reference/versions for the full list of supported Node.js versions.',
+  },
+  {
+    possibleIn: 2000,
+    necessaryAsOf: 2000,
+    level: ApplicationComplexity.Basic,
+    step: '20.0.0_replace_TestBed_get_with_TestBed_inject',
+    action:
+      'Replace all occurrences of the deprecated `TestBed.get()` method with `TestBed.inject()` in your Angular tests for dependency injection.',
+  },
+  {
+    possibleIn: 2000,
+    necessaryAsOf: 2000,
+    level: ApplicationComplexity.Medium,
+    step: '20.0.0_remove_InjectFlags_usage',
+    action:
+      'Remove `InjectFlags` enum and its usage from `inject`, `Injector.get`, `EnvironmentInjector.get`, and `TestBed.inject` calls. Use options like `{optional: true}` for `inject` or handle null for `*.get` methods.',
+  },
+  {
+    possibleIn: 2000,
+    necessaryAsOf: 2000,
+    level: ApplicationComplexity.Advanced,
+    step: '20.0.0_update_injector_get_calls_to_use_ProviderToken',
+    action:
+      'Update `injector.get()` calls to use a specific `ProviderToken<T>` instead of relying on the removed `any` overload. If using string tokens (deprecated since v4), migrate them to `ProviderToken<T>`.',
+  },
+  {
+    possibleIn: 2000,
+    necessaryAsOf: 2000,
+    level: ApplicationComplexity.Basic,
+    step: '20.0.0_update_typescript_version',
+    action:
+      "Upgrade your project's TypeScript version to at least 5.8 before upgrading to Angular v20 to ensure compatibility.",
+  },
+  {
+    possibleIn: 2000,
+    necessaryAsOf: 2000,
+    level: ApplicationComplexity.Advanced,
+    step: '20.0.0_review_AsyncPipe_error_handling_in_tests',
+    action:
+      '`Unhandled errors in subscriptions/promises of AsyncPipe` are now directly reported to `ErrorHandler`. This may alter test outcomes; ensure tests correctly handle these reported errors.',
+  },
+  {
+    possibleIn: 2000,
+    necessaryAsOf: 2000,
+    level: ApplicationComplexity.Advanced,
+    step: '20.0.0_refactor_PendingTasks_run_usage',
+    action:
+      'If relying on the return value of `PendingTasks.run`, refactor to use `PendingTasks.add`. Handle promise results/rejections manually, especially for SSR to prevent node process shutdown on unhandled rejections.',
+  },
+  {
+    possibleIn: 2000,
+    necessaryAsOf: 2000,
+    level: ApplicationComplexity.Advanced,
+    step: '20.0.0_update_template_expressions_using_void_property',
+    action:
+      "If your templates use `{{ void }}` or `void` in expressions to refer to a component property named 'void', change it to `{{ this.void }}` or `this.void` as 'void' now refers to the JavaScript `void` operator.",
+  },
+  {
+    possibleIn: 2000,
+    necessaryAsOf: 2000,
+    level: ApplicationComplexity.Advanced,
+    step: '20.0.0_review_date_pipe_formatter_Y_usage',
+    action:
+      'Review `DatePipe` usages. Using the `Y` (week-numbering year) formatter without also including `w` (week number) is now detected as suspicious. Use `y` (year) if that was the intent, or include `w` alongside `Y`.',
+  },
+  {
+    possibleIn: 2000,
+    necessaryAsOf: 2000,
+    level: ApplicationComplexity.Medium,
+    step: '20.0.0_handle_uncaught_listener_errors_in_tests',
+    action:
+      'In templates parentheses are now always respected. This can lead to runtime breakages when nullish coalescing were nested in parathesis. eg `(foo?.bar).baz` will throw if `foo` is nullish as it would in native JavaScript.',
   },
 ];

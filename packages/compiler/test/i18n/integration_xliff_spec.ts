@@ -3,12 +3,12 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {Xliff} from '@angular/compiler/src/i18n/serializers/xliff';
+import {Xliff} from '../../src/i18n/serializers/xliff';
 import {waitForAsync} from '@angular/core/testing';
-import {expect} from '@angular/platform-browser/testing/src/matchers';
+import {expect} from '@angular/private/testing/matchers';
 
 import {
   configureCompiler,

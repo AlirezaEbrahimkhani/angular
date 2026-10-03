@@ -3,10 +3,9 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {InjectFlags} from '../di';
 import {InternalInjectFlags} from '../di/interface/injector';
 import {TNode, TNodeType} from '../render3/interfaces/node';
 import {isComponentHost} from '../render3/interfaces/type_checks';
@@ -35,8 +34,7 @@ import {ViewRef} from '../render3/view_ref';
  * (`CheckOnce`, rather than the default `CheckAlways`), then forces a second check
  * after an interval.
  *
- * <code-example path="core/ts/change_detect/change-detection.ts"
- * region="mark-for-check"></code-example>
+ * {@example core/ts/change_detect/change-detection.ts region='mark-for-check'}
  *
  * ### Detach change detector to limit how often check occurs
  *
@@ -46,7 +44,7 @@ import {ViewRef} from '../render3/view_ref';
  * less often than the changes actually occur. To do that, we detach
  * the component's change detector and perform an explicit local check every five seconds.
  *
- * <code-example path="core/ts/change_detect/change-detection.ts" region="detach"></code-example>
+ * {@example core/ts/change_detect/change-detection.ts region='detach'}
  *
  *
  * ### Reattaching a detached component
@@ -56,7 +54,7 @@ import {ViewRef} from '../render3/view_ref';
  * when the `live` property is set to false, and reattaches it when the property
  * becomes true.
  *
- * <code-example path="core/ts/change_detect/change-detection.ts" region="reattach"></code-example>
+ * {@example core/ts/change_detect/change-detection.ts region='reattach'}
  *
  * @publicApi
  */
@@ -124,11 +122,12 @@ export abstract class ChangeDetectorRef {
    * @internal
    * @nocollapse
    */
-  static __NG_ELEMENT_ID__: (flags: InjectFlags) => ChangeDetectorRef = injectChangeDetectorRef;
+  static __NG_ELEMENT_ID__: (flags: InternalInjectFlags) => ChangeDetectorRef =
+    injectChangeDetectorRef;
 }
 
 /** Returns a ChangeDetectorRef (a.k.a. a ViewRef) */
-export function injectChangeDetectorRef(flags: InjectFlags): ChangeDetectorRef {
+export function injectChangeDetectorRef(flags: InternalInjectFlags): ChangeDetectorRef {
   return createViewRef(
     getCurrentTNode()!,
     getLView(),

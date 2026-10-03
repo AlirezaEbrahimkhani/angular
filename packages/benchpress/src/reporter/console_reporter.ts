@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {Inject, Injectable, InjectionToken} from '@angular/core';
@@ -32,7 +32,7 @@ export class ConsoleReporter extends Reporter {
     },
   ];
 
-  private textReporter = new TextReporterBase(this._columnWidth, this._sampleDescription);
+  private textReporter: TextReporterBase;
 
   constructor(
     @Inject(COLUMN_WIDTH) private _columnWidth: number,
@@ -40,6 +40,7 @@ export class ConsoleReporter extends Reporter {
     @Inject(ConsoleReporter.PRINT) private _print: Function,
   ) {
     super();
+    this.textReporter = new TextReporterBase(this._columnWidth, this._sampleDescription);
     this._print(this.textReporter.description());
   }
 

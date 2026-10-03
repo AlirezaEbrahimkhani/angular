@@ -3,10 +3,18 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {animate, keyframes, state, style, transition, trigger} from '@angular/animations';
+import {
+  animate,
+  keyframes,
+  state,
+  style,
+  transition,
+  trigger,
+  AnimationEvent,
+} from '@angular/animations';
 import {Component} from '@angular/core';
 
 @Component({
@@ -45,12 +53,10 @@ import {Component} from '@angular/core';
         'active',
         style({'background-color': 'orange', 'color': 'white', 'font-size': '100px'}),
       ),
-
       transition('active <=> start', [
         animate(500, style({'transform': 'scale(2)'})),
         animate(500),
       ]),
-
       transition('* => *', [
         animate(1000, style({'opacity': 1, 'height': 300})),
         animate(1000, style({'background-color': 'blue'})),
@@ -66,10 +72,11 @@ import {Component} from '@angular/core';
       ]),
     ]),
   ],
+  standalone: false,
 })
 export class AnimateApp {
   public items: number[] = [];
-  private _state: 'start' | 'active' | 'void' | 'default';
+  private _state!: 'start' | 'active' | 'void' | 'default';
 
   public bgStatus = 'focus';
 
@@ -87,7 +94,7 @@ export class AnimateApp {
     this.items[Math.floor(Math.random() * this.items.length)] = 99;
   }
 
-  bgStatusChanged(data: {[key: string]: string}, phase: string) {
+  bgStatusChanged(data: AnimationEvent, phase: string) {
     alert(`backgroundAnimation has ${phase} from ${data['fromState']} to ${data['toState']}`);
   }
 

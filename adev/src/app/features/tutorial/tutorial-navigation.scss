@@ -1,16 +1,57 @@
 @use '@angular/docs/styles/media-queries' as mq;
 
+.adev-tutorial-nav-list-dropdown {
+  background-color: var(--page-background);
+  border: 1px solid var(--senary-contrast);
+  border-radius: 0.25rem;
+  z-index: var(--z-index-nav);
+  margin-top: 1rem;
+  width: 100%;
+  box-shadow: 10px 4px 40px 0 rgba(0, 0, 0, 0.05);
+  display: flex;
+  flex-direction: column;
+
+  @container tutorial-content (max-width: 430px) {
+    margin-top: 0;
+  }
+
+  ul {
+    padding-block-end: 1rem;
+  }
+
+  // "Next Tutorial" link
+  a {
+    position: sticky;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    color: var(--gray-400);
+    background-color: var(--page-background);
+    border-block-start: 1px solid var(--senary-contrast);
+    border-radius: 0 0 0.25rem 0.25rem;
+    text-align: right;
+    padding: 1rem;
+    font-size: 0.875rem;
+    transition: color 0.3s ease;
+
+    &:hover {
+      color: var(--primary-contrast);
+      background-color: var(--octonary-contrast);
+    }
+
+    &::after {
+      content: 'chevron_right';
+      font-family: var(--icons);
+      font-size: 1.3rem;
+      margin-inline-start: 0.2rem;
+    }
+  }
+}
+
 // horizontal tutorial nav bar
 .adev-tutorial-nav-container {
   position: sticky;
   top: 0;
-
-  @include mq.for-tablet-landscape-down {
-    top: 60px;
-  }
-  @include mq.for-phone-only {
-    top: 55px;
-  }
   width: 100%;
   background-color: var(--page-background);
   padding-block-start: var(--layout-padding);
@@ -20,6 +61,14 @@
   z-index: var(--z-index-nav);
   transition: background-color 0.3s ease;
   container: nav-container / inline-size;
+
+  @include mq.for-tablet-landscape-down {
+    top: 60px;
+  }
+
+  @include mq.for-phone-only {
+    top: 55px;
+  }
 
   &:has(.docs-reveal-answer-button) {
     @container tutorial-content (max-width: 430px) {
@@ -57,13 +106,6 @@
     min-width: 1.5rem;
     color: var(--quinary-contrast);
     transition: color 0.2s ease-in-out;
-  }
-
-  .adev-nav-open &,
-  &:hover {
-    docs-icon {
-      color: var(--primary-contrast);
-    }
   }
 }
 
@@ -122,7 +164,9 @@
 
 .adev-reset-answer-button {
   background: var(--senary-contrast);
-  transition: opacity 0.3s ease, background 0.3s ease;
+  transition:
+    opacity 0.3s ease,
+    background 0.3s ease;
 
   &:hover {
     background: var(--quinary-contrast);

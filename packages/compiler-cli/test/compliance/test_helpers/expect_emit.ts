@@ -3,9 +3,9 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
-import {escapeRegExp} from '@angular/compiler/src/util';
+import {escapeRegExp} from '@angular/compiler';
 
 const IDENTIFIER = /[A-Za-z_$ɵ][A-Za-z0-9_$]*/;
 const COMMENT_START = /\/\*/;

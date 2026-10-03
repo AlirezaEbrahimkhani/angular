@@ -3,17 +3,17 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {ɵPLATFORM_BROWSER_ID as PLATFORM_BROWSER_ID} from '@angular/common';
-import {Component, PLATFORM_ID, ɵPendingTasks as PendingTasks} from '@angular/core';
-import {DeferBlockBehavior, DeferBlockState, TestBed} from '@angular/core/testing';
-import {expect} from '@angular/platform-browser/testing/src/matchers';
+import {Component, inject, PLATFORM_ID, ViewContainerRef} from '../src/core';
+import {PendingTasksInternal} from '../src/pending_tasks_internal';
+import {DeferBlockBehavior, DeferBlockState, TestBed} from '../testing';
+import {expect} from '@angular/private/testing/matchers';
 
 @Component({
   selector: 'second-deferred-comp',
-  standalone: true,
   template: `<div class="more">More Deferred Component</div>`,
 })
 class SecondDeferredComp {}
@@ -24,7 +24,6 @@ describe('DeferFixture', () => {
   it('should start in manual behavior mode', async () => {
     @Component({
       selector: 'defer-comp',
-      standalone: true,
       imports: [SecondDeferredComp],
       template: `
         <div>
@@ -51,7 +50,6 @@ describe('DeferFixture', () => {
   it('should start in manual trigger mode by default', async () => {
     @Component({
       selector: 'defer-comp',
-      standalone: true,
       imports: [SecondDeferredComp],
       template: `
         <div>
@@ -76,7 +74,6 @@ describe('DeferFixture', () => {
   it('should defer load immediately on playthrough', async () => {
     @Component({
       selector: 'defer-comp',
-      standalone: true,
       imports: [SecondDeferredComp],
       template: `
         <div>
@@ -110,7 +107,6 @@ describe('DeferFixture', () => {
   it('should not defer load immediately when set to manual', async () => {
     @Component({
       selector: 'defer-comp',
-      standalone: true,
       imports: [SecondDeferredComp],
       template: `
         <div>
@@ -145,7 +141,6 @@ describe('DeferFixture', () => {
   it('should render a completed defer state', async () => {
     @Component({
       selector: 'defer-comp',
-      standalone: true,
       imports: [SecondDeferredComp],
       template: `
         <div>
@@ -173,7 +168,6 @@ describe('DeferFixture', () => {
   it('should not wait forever if application is unstable for a long time', async () => {
     @Component({
       selector: 'defer-comp',
-      standalone: true,
       imports: [SecondDeferredComp],
       template: `
         <div>
@@ -184,7 +178,7 @@ describe('DeferFixture', () => {
       `,
     })
     class DeferComp {
-      constructor(taskService: PendingTasks) {
+      constructor(taskService: PendingTasksInternal) {
         // Add a task and never remove it. Keeps application unstable forever
         taskService.add();
       }
@@ -206,7 +200,6 @@ describe('DeferFixture', () => {
   it('should work with templates that have local refs', async () => {
     @Component({
       selector: 'defer-comp',
-      standalone: true,
       imports: [SecondDeferredComp],
       template: `
         <ng-template #template>Hello</ng-template>
@@ -235,7 +228,6 @@ describe('DeferFixture', () => {
   it('should render a placeholder defer state', async () => {
     @Component({
       selector: 'defer-comp',
-      standalone: true,
       imports: [SecondDeferredComp],
       template: `
         <div>
@@ -268,7 +260,6 @@ describe('DeferFixture', () => {
   it('should render a loading defer state', async () => {
     @Component({
       selector: 'defer-comp',
-      standalone: true,
       imports: [SecondDeferredComp],
       template: `
         <div>
@@ -301,7 +292,6 @@ describe('DeferFixture', () => {
   it('should render an error defer state', async () => {
     @Component({
       selector: 'defer-comp',
-      standalone: true,
       imports: [SecondDeferredComp],
       template: `
         <div>
@@ -334,7 +324,6 @@ describe('DeferFixture', () => {
   it('should throw when rendering a template that does not exist', async () => {
     @Component({
       selector: 'defer-comp',
-      standalone: true,
       imports: [SecondDeferredComp],
       template: `
         <div>
@@ -367,7 +356,6 @@ describe('DeferFixture', () => {
   it('should transition between states when `after` and `minimum` are used', async () => {
     @Component({
       selector: 'defer-comp',
-      standalone: true,
       imports: [SecondDeferredComp],
       template: `
         <div>
@@ -405,7 +393,6 @@ describe('DeferFixture', () => {
   it('should get child defer blocks', async () => {
     @Component({
       selector: 'deferred-comp',
-      standalone: true,
       imports: [SecondDeferredComp],
       template: `
         <div>
@@ -419,7 +406,6 @@ describe('DeferFixture', () => {
 
     @Component({
       selector: 'defer-comp',
-      standalone: true,
       imports: [DeferredComp],
       template: `
         <div>
@@ -441,5 +427,20 @@ describe('DeferFixture', () => {
     await deferBlock.render(DeferBlockState.Complete);
     const fixtures = await deferBlock.getDeferBlocks();
     expect(fixtures.length).toBe(1);
+  });
+
+  it('should resolve defer blocks in components that inject ViewContainerRef', async () => {
+    @Component({template: '@defer {Hello}'})
+    class DeferTestComponent {
+      viewContainerRef = inject(ViewContainerRef);
+    }
+
+    TestBed.configureTestingModule({deferBlockBehavior: DeferBlockBehavior.Manual});
+    const fixture = TestBed.createComponent(DeferTestComponent);
+    fixture.detectChanges();
+
+    const deferBlocks = await fixture.getDeferBlocks();
+    expect(deferBlocks.length).toBe(1);
+    expect(fixture.componentInstance.viewContainerRef).toBeTruthy();
   });
 });

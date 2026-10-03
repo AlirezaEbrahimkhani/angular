@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {ASTWithSource, EmptyExpr} from '../expression_parser/ast';
@@ -20,13 +20,16 @@ const FOR_LOOP_EXPRESSION_PATTERN = /^\s*([0-9A-Za-z_$]*)\s+of\s+([\S\s]*)/;
 const FOR_LOOP_TRACK_PATTERN = /^track\s+([\S\s]*)/;
 
 /** Pattern for the `as` expression in a conditional block. */
-const CONDITIONAL_ALIAS_PATTERN = /^(as\s)+(.*)/;
+const CONDITIONAL_ALIAS_PATTERN = /^(as\s+)(.*)/;
 
 /** Pattern used to identify an `else if` block. */
 const ELSE_IF_PATTERN = /^else[^\S\r\n]+if/;
 
 /** Pattern used to identify a `let` parameter. */
 const FOR_LOOP_LET_PATTERN = /^let\s+([\S\s]*)/;
+
+/** Pattern used to validate a JavaScript identifier. */
+const IDENTIFIER_PATTERN = /^[$A-Z_][0-9A-Z_$]*$/i;
 
 /**
  * Pattern to group a string into leading whitespace, non whitespace, and trailing whitespace.
@@ -183,7 +186,7 @@ export function createForLoop(
     if (params.trackBy === null) {
       // TODO: We should not fail here, and instead try to produce some AST for the language
       // service.
-      errors.push(new ParseError(ast.sourceSpan, '@for loop must have a "track" expression'));
+      errors.push(new ParseError(ast.startSourceSpan, '@for loop must have a "track" expression'));
     } else {
       // The `for` block has a main span that includes the `empty` branch. For only the span of the
       // main `for` body, use `mainSourceSpan`.
@@ -284,7 +287,7 @@ function parseForLoopParameters(
   bindingParser: BindingParser,
 ) {
   if (block.parameters.length === 0) {
-    errors.push(new ParseError(block.sourceSpan, '@for loop does not have an expression'));
+    errors.push(new ParseError(block.startSourceSpan, '@for loop does not have an expression'));
     return null;
   }
 
@@ -372,7 +375,9 @@ function parseForLoopParameters(
       } else {
         const expression = parseBlockParameterToBinding(param, bindingParser, trackMatch[1]);
         if (expression.ast instanceof EmptyExpr) {
-          errors.push(new ParseError(param.sourceSpan, '@for loop must have a "track" expression'));
+          errors.push(
+            new ParseError(block.startSourceSpan, '@for loop must have a "track" expression'),
+          );
         }
         const keywordSpan = new ParseSourceSpan(
           param.sourceSpan.start,
@@ -384,7 +389,7 @@ function parseForLoopParameters(
     }
 
     errors.push(
-      new ParseError(param.sourceSpan, `Unrecognized @for loop paramater "${param.expression}"`),
+      new ParseError(param.sourceSpan, `Unrecognized @for loop parameter "${param.expression}"`),
     );
   }
 
@@ -481,18 +486,20 @@ function validateIfConnectedBlocks(connectedBlocks: html.Block[]): ParseError[] 
 
     if (block.name === 'else') {
       if (hasElse) {
-        errors.push(new ParseError(block.sourceSpan, 'Conditional can only have one @else block'));
+        errors.push(
+          new ParseError(block.startSourceSpan, 'Conditional can only have one @else block'),
+        );
       } else if (connectedBlocks.length > 1 && i < connectedBlocks.length - 1) {
         errors.push(
-          new ParseError(block.sourceSpan, '@else block must be last inside the conditional'),
+          new ParseError(block.startSourceSpan, '@else block must be last inside the conditional'),
         );
       } else if (block.parameters.length > 0) {
-        errors.push(new ParseError(block.sourceSpan, '@else block cannot have parameters'));
+        errors.push(new ParseError(block.startSourceSpan, '@else block cannot have parameters'));
       }
       hasElse = true;
     } else if (!ELSE_IF_PATTERN.test(block.name)) {
       errors.push(
-        new ParseError(block.sourceSpan, `Unrecognized conditional block @${block.name}`),
+        new ParseError(block.startSourceSpan, `Unrecognized conditional block @${block.name}`),
       );
     }
   }
@@ -506,7 +513,9 @@ function validateSwitchBlock(ast: html.Block): ParseError[] {
   let hasDefault = false;
 
   if (ast.parameters.length !== 1) {
-    errors.push(new ParseError(ast.sourceSpan, '@switch block must have exactly one parameter'));
+    errors.push(
+      new ParseError(ast.startSourceSpan, '@switch block must have exactly one parameter'),
+    );
     return errors;
   }
 
@@ -530,14 +539,16 @@ function validateSwitchBlock(ast: html.Block): ParseError[] {
     if (node.name === 'default') {
       if (hasDefault) {
         errors.push(
-          new ParseError(node.sourceSpan, '@switch block can only have one @default block'),
+          new ParseError(node.startSourceSpan, '@switch block can only have one @default block'),
         );
       } else if (node.parameters.length > 0) {
-        errors.push(new ParseError(node.sourceSpan, '@default block cannot have parameters'));
+        errors.push(new ParseError(node.startSourceSpan, '@default block cannot have parameters'));
       }
       hasDefault = true;
     } else if (node.name === 'case' && node.parameters.length !== 1) {
-      errors.push(new ParseError(node.sourceSpan, '@case block must have exactly one parameter'));
+      errors.push(
+        new ParseError(node.startSourceSpan, '@case block must have exactly one parameter'),
+      );
     }
   }
 
@@ -586,7 +597,9 @@ function parseConditionalBlockParameters(
   bindingParser: BindingParser,
 ) {
   if (block.parameters.length === 0) {
-    errors.push(new ParseError(block.sourceSpan, 'Conditional block does not have an expression'));
+    errors.push(
+      new ParseError(block.startSourceSpan, 'Conditional block does not have an expression'),
+    );
     return null;
   }
 
@@ -604,14 +617,14 @@ function parseConditionalBlockParameters(
       errors.push(
         new ParseError(
           param.sourceSpan,
-          `Unrecognized conditional paramater "${param.expression}"`,
+          `Unrecognized conditional parameter "${param.expression}"`,
         ),
       );
-    } else if (block.name !== 'if') {
+    } else if (block.name !== 'if' && !ELSE_IF_PATTERN.test(block.name)) {
       errors.push(
         new ParseError(
           param.sourceSpan,
-          '"as" expression is only allowed on the primary @if block',
+          '"as" expression is only allowed on `@if` and `@else if` blocks',
         ),
       );
     } else if (expressionAlias !== null) {
@@ -620,9 +633,16 @@ function parseConditionalBlockParameters(
       );
     } else {
       const name = aliasMatch[2].trim();
-      const variableStart = param.sourceSpan.start.moveBy(aliasMatch[1].length);
-      const variableSpan = new ParseSourceSpan(variableStart, variableStart.moveBy(name.length));
-      expressionAlias = new t.Variable(name, name, variableSpan, variableSpan);
+
+      if (IDENTIFIER_PATTERN.test(name)) {
+        const variableStart = param.sourceSpan.start.moveBy(aliasMatch[1].length);
+        const variableSpan = new ParseSourceSpan(variableStart, variableStart.moveBy(name.length));
+        expressionAlias = new t.Variable(name, name, variableSpan, variableSpan);
+      } else {
+        errors.push(
+          new ParseError(param.sourceSpan, '"as" expression must be a valid JavaScript identifier'),
+        );
+      }
     }
   }
 

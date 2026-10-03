@@ -3,15 +3,14 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {NgOptimizedImage} from '@angular/common';
-import {Component} from '@angular/core';
+import {Component} from '../../../../../src/core';
 
 @Component({
   selector: 'image-distortion-passing',
-  standalone: true,
   imports: [NgOptimizedImage],
   template: `
      <!-- All the images in this template should not throw -->
@@ -66,7 +65,6 @@ import {Component} from '@angular/core';
 export class ImageDistortionPassingComponent {}
 @Component({
   selector: 'image-distortion-failing',
-  standalone: true,
   imports: [NgOptimizedImage],
   template: `
      <!-- With the exception of the priority image, all the images in this template should throw -->

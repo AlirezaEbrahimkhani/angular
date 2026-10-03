@@ -3,10 +3,10 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {APP_ID, PLATFORM_ID} from './application/application_tokens';
+import {APP_ID} from './application/application_tokens';
 import {inject} from './di/injector_compatibility';
 import {ɵɵdefineInjectable} from './di/interface/defs';
 import {getDocument} from './render3/interfaces/document';
@@ -16,7 +16,7 @@ import {getDocument} from './render3/interfaces/document';
  *
  * Example:
  *
- * ```
+ * ```ts
  * const COUNTER_KEY = makeStateKey<number>('counter');
  * let value = 10;
  *
@@ -35,7 +35,7 @@ export type StateKey<T> = string & {
  *
  * Example:
  *
- * ```
+ * ```ts
  * const COUNTER_KEY = makeStateKey<number>('counter');
  * let value = 10;
  *
@@ -50,7 +50,7 @@ export function makeStateKey<T = void>(key: string): StateKey<T> {
 
 function initTransferState(): TransferState {
   const transferState = new TransferState();
-  if (inject(PLATFORM_ID) === 'browser') {
+  if (typeof ngServerMode === 'undefined' || !ngServerMode) {
     transferState.store = retrieveTransferredState(getDocument(), inject(APP_ID));
   }
 
@@ -74,7 +74,7 @@ function initTransferState(): TransferState {
  */
 export class TransferState {
   /** @nocollapse */
-  static ɵprov = /** @pureOrBreakMyCode */ ɵɵdefineInjectable({
+  static ɵprov = /** @pureOrBreakMyCode */ /* @__PURE__ */ ɵɵdefineInjectable({
     token: TransferState,
     providedIn: 'root',
     factory: initTransferState,
@@ -148,7 +148,7 @@ export class TransferState {
   }
 }
 
-function retrieveTransferredState(
+export function retrieveTransferredState(
   doc: Document,
   appId: string,
 ): Record<string, unknown | undefined> {

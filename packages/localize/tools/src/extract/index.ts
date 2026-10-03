@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 import {
   AbsoluteFsPath,
@@ -11,7 +11,7 @@ import {
   Logger,
   PathManipulation,
 } from '@angular/compiler-cli/private/localize';
-import {ɵParsedMessage} from '@angular/localize';
+import {ɵParsedMessage} from '../../../index';
 
 import {DiagnosticHandlingStrategy, Diagnostics} from '../diagnostics';
 

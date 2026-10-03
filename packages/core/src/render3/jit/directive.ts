@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {
@@ -18,8 +18,8 @@ import {
 import {resolveForwardRef} from '../../di/forward_ref';
 import {getReflect, reflectDependencies} from '../../di/jit/util';
 import {Type} from '../../interface/type';
-import {Query} from '../../metadata/di';
-import {Component, Directive, Input} from '../../metadata/directives';
+import type {Query} from '../../metadata/di';
+import type {Component, Directive, Input} from '../../metadata/directives';
 import {
   componentNeedsResolution,
   maybeQueueResolutionOfComponentResources,
@@ -28,8 +28,8 @@ import {ViewEncapsulation} from '../../metadata/view';
 import {flatten} from '../../util/array_utils';
 import {EMPTY_ARRAY, EMPTY_OBJ} from '../../util/empty';
 import {initNgDevMode} from '../../util/ng_dev_mode';
-import {getComponentDef, getDirectiveDef, getNgModuleDef, getPipeDef} from '../definition';
-import {depsTracker, USE_RUNTIME_DEPS_TRACKER_FOR_JIT} from '../deps_tracker/deps_tracker';
+import {getComponentDef, getDirectiveDef, getNgModuleDef, getPipeDef} from '../def_getters';
+import {depsTracker} from '../deps_tracker/deps_tracker';
 import {NG_COMP_DEF, NG_DIR_DEF, NG_FACTORY_DEF} from '../fields';
 import {ComponentDef, ComponentType, DirectiveDefList, PipeDefList} from '../interfaces/definition';
 import {stringifyForError} from '../util/stringify_utils';
@@ -129,8 +129,9 @@ export function compileComponent(type: Type<any>, metadata: Component): void {
         }
 
         const templateUrl = metadata.templateUrl || `ng:///${type.name}/template.html`;
+        const baseMeta = directiveMetadata(type, metadata);
         const meta: R3ComponentMetadataFacade = {
-          ...directiveMetadata(type, metadata),
+          ...baseMeta,
           typeSourceSpan: compiler.createParseSourceSpan('Component', type.name, templateUrl),
           template: metadata.template || '',
           preserveWhitespaces,
@@ -147,8 +148,12 @@ export function compileComponent(type: Type<any>, metadata: Component): void {
           declarations: [],
           changeDetection: metadata.changeDetection,
           encapsulation,
-          interpolation: metadata.interpolation,
           viewProviders: metadata.viewProviders || null,
+          // We can't inspect whether any of the dependencies are actually directives, because they
+          // get patched on after compilation. That's why in JIT mode we consider that any
+          // dependency might be a directive dependency.
+          hasDirectiveDependencies:
+            !baseMeta.isStandalone || (metadata.imports != null && metadata.imports.length > 0),
         };
 
         compilationDepth++;
@@ -162,7 +167,7 @@ export function compileComponent(type: Type<any>, metadata: Component): void {
             meta,
           ) as ComponentDef<unknown>;
 
-          if (metadata.standalone) {
+          if (meta.isStandalone) {
             // Patch the component definition for standalone components with `directiveDefs` and
             // `pipeDefs` functions which lazily compute the directives/pipes available in the
             // standalone component. Also set `dependencies` to the lazily resolved list of imports.
@@ -196,7 +201,7 @@ export function compileComponent(type: Type<any>, metadata: Component): void {
         }
 
         if (metadata.schemas) {
-          if (metadata.standalone) {
+          if (meta.isStandalone) {
             ngComponentDef.schemas = metadata.schemas;
           } else {
             throw new Error(
@@ -205,11 +210,14 @@ export function compileComponent(type: Type<any>, metadata: Component): void {
               )} but is only valid on a component that is standalone.`,
             );
           }
-        } else if (metadata.standalone) {
+        } else if (meta.isStandalone) {
           ngComponentDef.schemas = [];
         }
       }
       return ngComponentDef;
+    },
+    set: (def: ComponentDef<unknown> | null) => {
+      ngComponentDef = def;
     },
     // Make the property configurable in dev mode to allow overriding in tests
     configurable: !!ngDevMode,
@@ -232,105 +240,37 @@ function getStandaloneDefFunctions(
   let cachedDirectiveDefs: DirectiveDefList | null = null;
   let cachedPipeDefs: PipeDefList | null = null;
   const directiveDefs = () => {
-    if (!USE_RUNTIME_DEPS_TRACKER_FOR_JIT) {
-      if (cachedDirectiveDefs === null) {
-        // Standalone components are always able to self-reference, so include the component's own
-        // definition in its `directiveDefs`.
-        cachedDirectiveDefs = [getComponentDef(type)!];
-        const seen = new Set<Type<unknown>>([type]);
-
-        for (const rawDep of imports) {
-          ngDevMode && verifyStandaloneImport(rawDep, type);
-
-          const dep = resolveForwardRef(rawDep);
-          if (seen.has(dep)) {
-            continue;
-          }
-          seen.add(dep);
-
-          if (!!getNgModuleDef(dep)) {
-            const scope = transitiveScopesFor(dep);
-            for (const dir of scope.exported.directives) {
-              const def = getComponentDef(dir) || getDirectiveDef(dir);
-              if (def && !seen.has(dir)) {
-                seen.add(dir);
-                cachedDirectiveDefs.push(def);
-              }
-            }
-          } else {
-            const def = getComponentDef(dep) || getDirectiveDef(dep);
-            if (def) {
-              cachedDirectiveDefs.push(def);
-            }
-          }
-        }
+    if (ngDevMode) {
+      for (const rawDep of imports) {
+        verifyStandaloneImport(rawDep, type);
       }
-      return cachedDirectiveDefs;
-    } else {
-      if (ngDevMode) {
-        for (const rawDep of imports) {
-          verifyStandaloneImport(rawDep, type);
-        }
-      }
-
-      if (!isComponent(type)) {
-        return [];
-      }
-
-      const scope = depsTracker.getStandaloneComponentScope(type, imports);
-
-      return [...scope.compilation.directives]
-        .map((p) => (getComponentDef(p) || getDirectiveDef(p))!)
-        .filter((d) => d !== null);
     }
+
+    if (!isComponent(type)) {
+      return [];
+    }
+
+    const scope = depsTracker.getStandaloneComponentScope(type, imports);
+
+    return [...scope.compilation.directives]
+      .map((p) => (getComponentDef(p) || getDirectiveDef(p))!)
+      .filter((d) => d !== null);
   };
 
   const pipeDefs = () => {
-    if (!USE_RUNTIME_DEPS_TRACKER_FOR_JIT) {
-      if (cachedPipeDefs === null) {
-        cachedPipeDefs = [];
-        const seen = new Set<Type<unknown>>();
-
-        for (const rawDep of imports) {
-          const dep = resolveForwardRef(rawDep);
-          if (seen.has(dep)) {
-            continue;
-          }
-          seen.add(dep);
-
-          if (!!getNgModuleDef(dep)) {
-            const scope = transitiveScopesFor(dep);
-            for (const pipe of scope.exported.pipes) {
-              const def = getPipeDef(pipe);
-              if (def && !seen.has(pipe)) {
-                seen.add(pipe);
-                cachedPipeDefs.push(def);
-              }
-            }
-          } else {
-            const def = getPipeDef(dep);
-            if (def) {
-              cachedPipeDefs.push(def);
-            }
-          }
-        }
+    if (ngDevMode) {
+      for (const rawDep of imports) {
+        verifyStandaloneImport(rawDep, type);
       }
-      return cachedPipeDefs;
-    } else {
-      if (ngDevMode) {
-        for (const rawDep of imports) {
-          verifyStandaloneImport(rawDep, type);
-        }
-      }
-
-      if (!isComponent(type)) {
-        return [];
-      }
-
-      const scope = depsTracker.getStandaloneComponentScope(type, imports);
-
-      return [...scope.compilation.pipes].map((p) => getPipeDef(p)!).filter((d) => d !== null);
     }
+
+    if (!isComponent(type)) {
+      return [];
+    }
+
+    const scope = depsTracker.getStandaloneComponentScope(type, imports);
+
+    return [...scope.compilation.pipes].map((p) => getPipeDef(p)!).filter((d) => d !== null);
   };
 
   return {
@@ -449,7 +389,7 @@ export function directiveMetadata(type: Type<any>, metadata: Directive): R3Direc
     exportAs: extractExportAs(metadata.exportAs),
     providers: metadata.providers || null,
     viewQueries: extractQueriesMetadata(type, propMetadata, isViewQuery),
-    isStandalone: !!metadata.standalone,
+    isStandalone: metadata.standalone === undefined ? true : !!metadata.standalone,
     isSignal: !!metadata.signals,
     hostDirectives:
       metadata.hostDirectives?.map((directive) =>

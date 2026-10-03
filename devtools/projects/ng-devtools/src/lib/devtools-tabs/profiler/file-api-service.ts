@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {Injectable} from '@angular/core';
@@ -15,7 +15,7 @@ import {Subject} from 'rxjs';
 export class FileApiService {
   uploadedData: Subject<any> = new Subject();
 
-  publishFileUpload(parentEvent: InputEvent): void {
+  publishFileUpload(parentEvent: Event): void {
     const reader = new FileReader();
     reader.onload = (event) => {
       try {

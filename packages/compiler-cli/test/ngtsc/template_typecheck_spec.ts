@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import ts from 'typescript';
@@ -49,6 +49,7 @@ runInEachFileSystem(() => {
         @Component({
           selector: 'test',
           template: 'I am a simple template with no type info',
+          standalone: false,
         })
         class TestCmp {}
 
@@ -71,6 +72,7 @@ runInEachFileSystem(() => {
         @Component({
           selector: 'test',
           templateUrl: './test.html',
+          standalone: false,
         })
         class TestCmp {}
       `,
@@ -91,7 +93,6 @@ runInEachFileSystem(() => {
 
         @Component({
           selector: 'sub-cmp',
-          standalone: true,
           template: '',
         })
         class Sub { // intentionally not exported
@@ -100,7 +101,6 @@ runInEachFileSystem(() => {
 
         @Component({
           template: \`<sub-cmp [someInput]="''" />\`,
-          standalone: true,
           imports: [Sub],
         })
         export class MyComponent {}
@@ -129,10 +129,14 @@ runInEachFileSystem(() => {
         @Component({
           selector: 'test',
           template: '<div dir foo="2"></div>',
+          standalone: false,
         })
         class TestCmp {}
 
-        @Directive({selector: '[dir]'})
+        @Directive({
+          selector: '[dir]',
+          standalone: false,
+        })
         class TestDir {
           @Input() foo: number;
         }
@@ -165,10 +169,14 @@ runInEachFileSystem(() => {
         @Component({
           selector: 'test',
           template: '<div dir foo="2"></div>',
+          standalone: false,
         })
         class TestCmp {}
 
-        @Directive({selector: '[dir]'})
+        @Directive({
+          selector: '[dir]',
+          standalone: false,
+        })
         class TestDir {
           @Input('foo') foo1: number;
           @Input('foo') foo2: number;
@@ -201,6 +209,7 @@ runInEachFileSystem(() => {
         @Component({
           selector: 'test',
           template: '<div dir [some-input.xs]="2" (some-output)="handleEvent($event)"></div>',
+          standalone: false,
         })
         class TestCmp {
           handleEvent(event: number): void {}
@@ -210,6 +219,7 @@ runInEachFileSystem(() => {
           selector: '[dir]',
           inputs: ['some-input.xs'],
           outputs: ['some-output'],
+          standalone: false,
         })
         class TestDir {
           'some-input.xs': string;
@@ -239,6 +249,7 @@ runInEachFileSystem(() => {
 
         @Directive({
           selector: '[dir]',
+          standalone: false,
         })
         export class Dir {
 
@@ -249,6 +260,7 @@ runInEachFileSystem(() => {
         @Component({
           selector: 'test-cmp',
           template: '<div dir propertyName="test"></div>',
+          standalone: false,
         })
         export class Cmp {}
 
@@ -271,12 +283,16 @@ runInEachFileSystem(() => {
         @Component({
           selector: 'test',
           template: '<div dir (update)="update($event); updated = true" (focus)="update($event); focused = true"></div>',
+          standalone: false,
         })
         class TestCmp {
           update(data: string) {}
         }
 
-        @Directive({selector: '[dir]'})
+        @Directive({
+          selector: '[dir]',
+          standalone: false,
+        })
         class TestDir {
           @Output() update = new EventEmitter<number>();
         }
@@ -315,6 +331,7 @@ runInEachFileSystem(() => {
         @Component({
           selector: 'test',
           template: '<div *ngIf="person" (click)="handleEvent(person.name)"></div>',
+          standalone: false,
         })
         class TestCmp {
           person?: { name: string; };
@@ -344,6 +361,7 @@ runInEachFileSystem(() => {
         @Component({
           selector: 'test',
           template: '<div *ngIf="person"><div *ngIf="person.name" (click)="handleEvent(person.name)"></div></div>',
+          standalone: false,
         })
         class TestCmp {
           person?: { name?: string; };
@@ -372,10 +390,15 @@ runInEachFileSystem(() => {
         @Component({
           selector: 'test',
           template: '<target-cmp #ref [foo]="ref.bar"></target-cmp>',
+          standalone: false,
         })
         export class TestCmp {}
 
-        @Component({template: '', selector: 'target-cmp'})
+        @Component({
+          template: '',
+          selector: 'target-cmp',
+          standalone: false,
+        })
         export class TargetCmp {
           readonly bar = 'test';
           @Input() foo: string;
@@ -402,10 +425,15 @@ runInEachFileSystem(() => {
         @Component({
           selector: 'test',
           template: '<target-cmp disabled></target-cmp>',
+          standalone: false,
         })
         export class TestCmp {}
 
-        @Component({template: '', selector: 'target-cmp'})
+        @Component({
+          template: '',
+          selector: 'target-cmp',
+          standalone: false,
+        })
         export class TargetCmp {
           @Input()
           get disabled(): boolean { return this._disabled; }
@@ -433,6 +461,7 @@ runInEachFileSystem(() => {
         @Component({
           selector: 'test',
           template: '<child-cmp [(value)]="counterValue"></child-cmp>',
+          standalone: false,
         })
 
         export class TestCmp {
@@ -442,6 +471,7 @@ runInEachFileSystem(() => {
         @Component({
           selector: 'child-cmp',
           template: '',
+          standalone: false,
         })
 
         export class ChildCmp {
@@ -473,13 +503,15 @@ runInEachFileSystem(() => {
         @Component({
           selector: 'test',
           template: '<child-cmp [(value)]="counterValue"></child-cmp>',
+          standalone: false,
         })
         export class TestCmp {
           counterValue = 0;
         }
 
         @Directive({
-          selector: 'child-cmp'
+          selector: 'child-cmp',
+          standalone: false,
         })
         export class ChildCmpDir {
           @Output() valueChange: any;
@@ -488,6 +520,7 @@ runInEachFileSystem(() => {
         @Component({
           selector: 'child-cmp',
           template: '',
+          standalone: false,
         })
         export class ChildCmp {
           @Input() value = 0;
@@ -509,13 +542,13 @@ runInEachFileSystem(() => {
     });
 
     it('should type check a two-way binding to a generic property', () => {
-      env.tsconfig({strictTemplates: true});
+      env.tsconfig({strictTemplates: true, _checkTwoWayBoundEvents: true});
       env.write(
         'test.ts',
         `
         import {Component, Directive, Input, Output, EventEmitter} from '@angular/core';
 
-        @Directive({selector: '[dir]', standalone: true})
+        @Directive({selector: '[dir]'})
         export class Dir<T extends {id: string}> {
           @Input() val!: T;
           @Output() valChange = new EventEmitter<T>();
@@ -523,7 +556,6 @@ runInEachFileSystem(() => {
 
         @Component({
           template: '<input dir [(val)]="invalidType">',
-          standalone: true,
           imports: [Dir],
         })
         export class FooCmp {
@@ -533,20 +565,27 @@ runInEachFileSystem(() => {
       );
 
       const diags = env.driveDiagnostics();
-      expect(diags.length).toBe(1);
+      expect(diags.length).toBe(2);
       expect(diags[0].messageText).toEqual(
-        `Type '{ id: number; }' is not assignable to type '{ id: string; }'.`,
+        jasmine.objectContaining({
+          messageText: `Type '{ id: number; }' is not assignable to type '{ id: string; }'.`,
+        }),
+      );
+      expect(diags[1].messageText).toEqual(
+        jasmine.objectContaining({
+          messageText: `Type '{ id: string; }' is not assignable to type '{ id: number; }'.`,
+        }),
       );
     });
 
     it('should use the setter type when assigning using a two-way binding to an input with different getter and setter types', () => {
-      env.tsconfig({strictTemplates: true});
+      env.tsconfig({strictTemplates: true, _checkTwoWayBoundEvents: true});
       env.write(
         'test.ts',
         `
             import {Component, Directive, Input, Output, EventEmitter} from '@angular/core';
 
-            @Directive({selector: '[dir]', standalone: true})
+            @Directive({selector: '[dir]'})
             export class Dir {
               @Input()
               set val(value: string | null | undefined) {
@@ -562,11 +601,10 @@ runInEachFileSystem(() => {
 
             @Component({
               template: '<input dir [(val)]="nullableType">',
-              standalone: true,
               imports: [Dir],
             })
             export class FooCmp {
-              nullableType = null;
+              nullableType: string | null = null;
             }
           `,
       );
@@ -576,7 +614,7 @@ runInEachFileSystem(() => {
     });
 
     it('should type check a two-way binding to a function value', () => {
-      env.tsconfig({strictTemplates: true});
+      env.tsconfig({strictTemplates: true, _checkTwoWayBoundEvents: true});
       env.write(
         'test.ts',
         `
@@ -584,7 +622,7 @@ runInEachFileSystem(() => {
 
         type TestFn = (val: number | null | undefined) => string;
 
-        @Directive({selector: '[dir]', standalone: true})
+        @Directive({selector: '[dir]'})
         export class Dir {
           @Input() val!: TestFn;
           @Output() valChange = new EventEmitter<TestFn>();
@@ -592,8 +630,7 @@ runInEachFileSystem(() => {
 
         @Component({
           template: '<input dir [(val)]="invalidType">',
-          standalone: true,
-          imports: [Dir],
+                    imports: [Dir],
         })
         export class FooCmp {
           invalidType = (val: string) => 0;
@@ -602,12 +639,72 @@ runInEachFileSystem(() => {
       );
 
       const diags = env.driveDiagnostics();
-      expect(diags.length).toBe(1);
+      expect(diags.length).toBe(2);
       expect(diags[0].messageText).toEqual(
         jasmine.objectContaining({
           messageText: `Type '(val: string) => number' is not assignable to type 'TestFn'.`,
         }),
       );
+      expect(diags[1].messageText).toEqual(
+        jasmine.objectContaining({
+          messageText: `Type 'TestFn' is not assignable to type '(val: string) => number'.`,
+        }),
+      );
+    });
+
+    it('should be able to cast to any in a two-way binding', () => {
+      env.tsconfig({strictTemplates: true, _checkTwoWayBoundEvents: true});
+      env.write(
+        'test.ts',
+        `
+        import {Component, Directive, Input, Output, EventEmitter} from '@angular/core';
+
+        @Directive({selector: '[dir]'})
+        export class Dir {
+          @Input() val!: number;
+          @Output() valChange = new EventEmitter<number>();
+        }
+
+        @Component({
+          template: '<input dir [(val)]="$any(invalidType)">',
+          imports: [Dir],
+        })
+        export class FooCmp {
+          invalidType = 'hello';
+        }
+      `,
+      );
+
+      const diags = env.driveDiagnostics();
+      expect(diags.length).toBe(0);
+    });
+
+    it('should type check a two-way binding to input/output pair where the input has a wider type than the output', () => {
+      env.tsconfig({strictTemplates: true, _checkTwoWayBoundEvents: true});
+      env.write(
+        'test.ts',
+        `
+          import {Component, Directive, Input, Output, EventEmitter} from '@angular/core';
+
+          @Directive({selector: '[dir]'})
+          export class Dir {
+            @Input() value: string | number;
+            @Output() valueChange = new EventEmitter<number>();
+          }
+
+          @Component({
+            template: '<div dir [(value)]="value"></div>',
+            imports: [Dir],
+          })
+          export class App {
+            value = 'hello';
+          }
+        `,
+      );
+
+      const diags = env.driveDiagnostics();
+      expect(diags.length).toBe(1);
+      expect(diags[0].messageText).toBe(`Type 'number' is not assignable to type 'string'.`);
     });
 
     it('should check the fallback content of ng-content', () => {
@@ -617,7 +714,6 @@ runInEachFileSystem(() => {
         import {Component} from '@angular/core';
 
         @Component({
-          standalone: true,
           template: \`
             <ng-content>
               <button (click)="acceptsNumber('hello')"></button>
@@ -644,7 +740,6 @@ runInEachFileSystem(() => {
         import {Component} from '@angular/core';
 
         @Component({
-          standalone: true,
           template: \`
             <ng-content>
               <input #input/>
@@ -663,6 +758,64 @@ runInEachFileSystem(() => {
       expect(diags[0].messageText).toContain(`Property 'input' does not exist on type 'TestCmp'.`);
     });
 
+    it('should error on non valid typeof expressions', () => {
+      env.write(
+        'test.ts',
+        `
+        import {Component} from '@angular/core';
+
+        @Component({
+          template: \` {{typeof {} === 'foobar'}} \`,
+        })
+        class TestCmp {
+        }
+        `,
+      );
+
+      const diags = env.driveDiagnostics();
+      expect(diags.length).toBe(1);
+      expect(diags[0].messageText).toContain(`This comparison appears to be unintentional`);
+    });
+
+    it('should error on misused logical not in typeof expressions', () => {
+      env.write(
+        'test.ts',
+        `
+        import {Component} from '@angular/core';
+
+        @Component({
+          // should be !(typeof {} === 'object')
+          template: \` {{!typeof {} === 'object'}} \`,
+        })
+        class TestCmp {
+        }
+        `,
+      );
+
+      const diags = env.driveDiagnostics();
+      expect(diags.length).toBe(1);
+      expect(diags[0].messageText).toContain(`This comparison appears to be unintentional`);
+    });
+
+    it('should error on invalid "in" binary expressions', () => {
+      env.write(
+        'test.ts',
+        `
+        import {Component} from '@angular/core';
+
+        @Component({
+          template: \` {{'foo' in 'foobar'}} \`,
+        })
+        class TestCmp {
+        }
+        `,
+      );
+
+      const diags = env.driveDiagnostics();
+      expect(diags.length).toBe(1);
+      expect(diags[0].messageText).toContain(`Type 'string' is not assignable to type 'object'`);
+    });
+
     describe('strictInputTypes', () => {
       beforeEach(() => {
         env.write(
@@ -673,10 +826,14 @@ runInEachFileSystem(() => {
           @Component({
             selector: 'test',
             template: '<div dir [foo]="!!invalid"></div>',
+            standalone: false,
           })
           class TestCmp {}
 
-          @Directive({selector: '[dir]'})
+          @Directive({
+            selector: '[dir]',
+            standalone: false,
+          })
           class TestDir {
             @Input() foo: string;
           }
@@ -732,12 +889,16 @@ runInEachFileSystem(() => {
           @Component({
             selector: 'test',
             template: '<div dir [foo]="!!invalid && nullable"></div>',
+            standalone: false,
           })
           class TestCmp {
             nullable: boolean | null | undefined;
           }
 
-          @Directive({selector: '[dir]'})
+          @Directive({
+            selector: '[dir]',
+            standalone: false,
+          })
           class TestDir {
             @Input() foo: boolean;
           }
@@ -801,12 +962,16 @@ runInEachFileSystem(() => {
           @Component({
             selector: 'test',
             template: '<div dir [foo]="!!invalid && user?.isMember"></div>',
+            standalone: false,
           })
           class TestCmp {
             user?: {isMember: boolean};
           }
 
-          @Directive({selector: '[dir]'})
+          @Directive({
+            selector: '[dir]',
+            standalone: false,
+          })
           class TestDir {
             @Input() foo: boolean;
           }
@@ -874,12 +1039,16 @@ runInEachFileSystem(() => {
           @Component({
             selector: 'test',
             template: '<div dir (update)="invalid && update($event);"></div>',
+            standalone: false,
           })
           class TestCmp {
             update(data: string) {}
           }
 
-          @Directive({selector: '[dir]'})
+          @Directive({
+            selector: '[dir]',
+            standalone: false,
+          })
           class TestDir {
             @Output() update = new EventEmitter<number>();
           }
@@ -939,6 +1108,7 @@ runInEachFileSystem(() => {
           @Component({
             selector: 'test',
             template: '<div (@animation.done)="invalid; update($event);"></div>',
+            standalone: false,
           })
           class TestCmp {
             update(data: string) {}
@@ -999,6 +1169,7 @@ runInEachFileSystem(() => {
           @Component({
             selector: 'test',
             template: '<input #ref>{{ref.does_not_exist}}',
+            standalone: false,
           })
           class TestCmp {}
 
@@ -1048,10 +1219,14 @@ runInEachFileSystem(() => {
           @Component({
             selector: 'test',
             template: '<textarea dir disabled cols="3"></textarea>',
+            standalone: false,
           })
           class TestCmp {}
 
-          @Directive({selector: '[dir]'})
+          @Directive({
+            selector: '[dir]',
+            standalone: false,
+          })
           class TestDir {
             @Input() disabled: boolean;
             @Input() cols: number;
@@ -1105,6 +1280,7 @@ runInEachFileSystem(() => {
           @Component({
             selector: 'test',
             template: '<div (focus)="invalid; update($event)"></div>',
+            standalone: false,
           })
           class TestCmp {
             update(data: string) {}
@@ -1165,6 +1341,7 @@ runInEachFileSystem(() => {
     @Component({
       selector: 'test',
       template: '<div *ngIf="user">{{user.name}}</div>',
+      standalone: false,
     })
     class TestCmp {
       user: {name: string}|null;
@@ -1191,6 +1368,7 @@ runInEachFileSystem(() => {
     @Component({
       selector: 'test',
       template: '<div *ngIf="user !== null">{{user.name}}</div>',
+      standalone: false,
     })
     class TestCmp {
       user: {name: string}|null;
@@ -1218,6 +1396,7 @@ runInEachFileSystem(() => {
     @Component({
       selector: 'test',
       template: '<div *ngIf="user; let u">{{u.name}}</div>',
+      standalone: false,
     })
     class TestCmp {
       user: {name: string}|null|false;
@@ -1245,6 +1424,7 @@ runInEachFileSystem(() => {
     @Component({
       selector: 'test',
       template: '<div *ngIf="user as u">{{u.name}}</div>',
+      standalone: false,
     })
     class TestCmp {
       user: {name: string}|null|false;
@@ -1271,6 +1451,7 @@ runInEachFileSystem(() => {
     @Component({
       selector: 'test',
       template: '<div *ngFor="let user of users">{{user.name}}</div>',
+      standalone: false,
     })
     class TestCmp {
       users: {name: string}[];
@@ -1298,6 +1479,7 @@ runInEachFileSystem(() => {
     @Component({
       selector: 'test',
       template: '<div *ngFor="let user of users">{{user.does_not_exist}}</div>',
+      standalone: false,
     })
     export class TestCmp {
       users: {name: string}[];
@@ -1329,6 +1511,7 @@ runInEachFileSystem(() => {
     @Component({
       selector: 'test',
       template: '<div *ngFor="let user of users">{{user.name}}</div>',
+      standalone: false,
     })
     export class TestCmp {
       users: any;
@@ -1356,6 +1539,7 @@ runInEachFileSystem(() => {
         @Component({
           selector: 'test',
           template: '<div *ngFor="let user of users">{{user.name}}</div>',
+          standalone: false,
         })
         class TestCmp {
           users!: QueryList<{name: string}>;
@@ -1392,6 +1576,7 @@ runInEachFileSystem(() => {
         @Component({
           selector: 'test',
           template: '<div *ngFor="let derived of derivedList; trackBy: trackByBase">{{derived.name}}</div>',
+          standalone: false,
         })
         class TestCmp {
           derivedList!: Derived[];
@@ -1428,6 +1613,7 @@ runInEachFileSystem(() => {
         @Component({
           selector: 'test',
           template: '<div *ngFor="let item of anyList; trackBy: trackByBase">{{item.name}}</div>',
+          standalone: false,
         })
         class TestCmp {
           anyList!: any[];
@@ -1467,6 +1653,7 @@ runInEachFileSystem(() => {
         @Component({
           selector: 'test',
           template: '<div *ngFor="let item of unrelatedList; trackBy: trackByBase">{{item.name}}</div>',
+          standalone: false,
         })
         class TestCmp {
           unrelatedList!: UnrelatedType[];
@@ -1486,7 +1673,7 @@ runInEachFileSystem(() => {
 
       const diags = env.driveDiagnostics();
       expect(diags.length).toBe(1);
-      expect(diags[0].messageText).toContain(
+      expect((diags[0].messageText as ts.DiagnosticMessageChain).messageText).toContain(
         `is not assignable to type 'TrackByFunction<UnrelatedType>'.`,
       );
     });
@@ -1502,6 +1689,7 @@ runInEachFileSystem(() => {
         @Component({
           selector: 'test',
           template: '<div *ngFor="let user of users as all">{{all.length}}</div>',
+          standalone: false,
         })
         class TestCmp {
           users: {name: string}[];
@@ -1530,6 +1718,7 @@ runInEachFileSystem(() => {
         @Component({
           selector: 'test',
           template: '<div *ngFor="let fn of functions">{{fn()}}</div>',
+          standalone: false,
         })
         class TestCmp {
           functions = [() => 1, () => 2];
@@ -1556,6 +1745,7 @@ runInEachFileSystem(() => {
         @Component({
           selector: 'test',
           template: '<div *ngIf="getUser(); let user">{{user.nonExistingProp}}</div>',
+          standalone: false,
         })
         class TestCmp {
           getUser(): {name: string} {
@@ -1586,6 +1776,7 @@ runInEachFileSystem(() => {
         @Component({
           selector: 'test',
           template: '<div #ref="unknownTarget"></div>',
+          standalone: false,
         })
         class TestCmp {}
 
@@ -1610,6 +1801,7 @@ runInEachFileSystem(() => {
         @Component({
           selector: 'test',
           template: '<div #ref="unknownTarget">{{ use(ref) }}</div>',
+          standalone: false,
         })
         class TestCmp {
           use(ref: string): string { return ref; }
@@ -1636,6 +1828,7 @@ runInEachFileSystem(() => {
         @Component({
           selector: 'test',
           template: '{{expr | unknown}}',
+          standalone: false,
         })
         class TestCmp {
           expr = 3;
@@ -1663,6 +1856,7 @@ runInEachFileSystem(() => {
           @Component({
             selector: 'test',
             template: '{{expr | unknown}}',
+            standalone: false,
           })
           class TestCmp {
             expr = 3;
@@ -1701,7 +1895,8 @@ runInEachFileSystem(() => {
 
         checking the argument count:
         {{users | index: 1:2}}
-      \`
+      \`,
+      standalone: false,
     })
     class TestCmp {
       user: {name: string};
@@ -1752,6 +1947,7 @@ runInEachFileSystem(() => {
     @Component({
       selector: 'test',
       template: '<div *ngFor="let user of users">{{user.does_not_exist}}</div>',
+      standalone: false,
     })
     class TestCmp<T extends {name: string}> {
       @Input() users: T[];
@@ -1786,6 +1982,7 @@ runInEachFileSystem(() => {
               {{foo.name}} of {{foos.nonExistingProp}}
             </div>
             \`,
+            standalone: false,
           })
           export class TestCmp {
             foos: {name: string}[];
@@ -1832,6 +2029,7 @@ runInEachFileSystem(() => {
 
     @Directive({
       selector: '[base]',
+      standalone: false,
     })
     class BaseDir extends AbstractDir {
       @Input() fromBase!: string;
@@ -1839,6 +2037,7 @@ runInEachFileSystem(() => {
 
     @Directive({
       selector: '[child]',
+      standalone: false,
     })
     class ChildDir extends BaseDir {
       @Input() fromChild!: boolean;
@@ -1847,6 +2046,7 @@ runInEachFileSystem(() => {
     @Component({
       selector: 'test',
       template: '<div child [fromAbstract]="true" [fromBase]="3" [fromChild]="4"></div>',
+      standalone: false,
     })
     class TestCmp {}
 
@@ -1901,6 +2101,7 @@ runInEachFileSystem(() => {
 
         @Directive({
           selector: '[child]',
+          standalone: false,
         })
         class ChildDir extends BaseDir {
           @Input() fromChild!: boolean;
@@ -1909,6 +2110,7 @@ runInEachFileSystem(() => {
         @Component({
           selector: 'test',
           template: '<div child [fromAbstract]="true" [fromBase]="3" [fromChild]="4"></div>',
+          standalone: false,
         })
         class TestCmp {}
 
@@ -1944,6 +2146,7 @@ runInEachFileSystem(() => {
               <button (click)="y = !y">Toggle</button>
             </div>
           \`,
+          standalone: false,
         })
         export class TestCmp {
           x!: boolean;
@@ -1975,6 +2178,7 @@ runInEachFileSystem(() => {
               {{i}}
             </div>
           \`,
+          standalone: false,
         })
         export class TestCmp {
           items!: string[];
@@ -2052,6 +2256,7 @@ runInEachFileSystem(() => {
           @Component({
             selector: 'cmp',
             template: '<div test input="value"></div>',
+            standalone: false,
           })
           export class Cmp {}
 
@@ -2103,6 +2308,7 @@ runInEachFileSystem(() => {
           @Component({
             selector: 'blah',
             template: '<input matInput [value]="someNumber">',
+            standalone: false,
           })
           export class FooCmp {
             someNumber = 3;
@@ -2135,12 +2341,14 @@ runInEachFileSystem(() => {
 
           @Directive({
             selector: '[dir]',
+            standalone: false,
           })
           export class MyDir extends BaseDir {}
 
           @Component({
             selector: 'blah',
             template: '<input dir [value]="someNumber">',
+            standalone: false,
           })
           export class FooCmp {
             someNumber = 3;
@@ -2166,6 +2374,7 @@ runInEachFileSystem(() => {
             @Component({
               selector: 'blah',
               template: '<input matInput [value]="invalidType">',
+              standalone: false,
             })
             export class FooCmp {
               invalidType = true;
@@ -2195,12 +2404,16 @@ runInEachFileSystem(() => {
             @Component({
               selector: 'blah',
               template: '<input dir [regular]="undefined" [coerced]="1">',
+              standalone: false,
             })
             export class FooCmp {
               invalidType = true;
             }
 
-            @Directive({selector: '[dir]'})
+            @Directive({
+              selector: '[dir]',
+              standalone: false,
+            })
             export class CoercionDir {
               @Input() regular: string;
               @Input() coerced: boolean;
@@ -2228,14 +2441,13 @@ runInEachFileSystem(() => {
 
           export function toNumber(val: boolean | string) { return 1; }
 
-          @Directive({selector: '[dir]', standalone: true})
+          @Directive({selector: '[dir]'})
           export class CoercionDir {
             @Input({transform: toNumber}) val!: number;
           }
 
           @Component({
             template: '<input dir [val]="invalidType">',
-            standalone: true,
             imports: [CoercionDir],
           })
           export class FooCmp {
@@ -2257,14 +2469,13 @@ runInEachFileSystem(() => {
           `
             import {Component, Directive, Input} from '@angular/core';
 
-            @Directive({selector: '[dir]', standalone: true})
+            @Directive({selector: '[dir]'})
             export class CoercionDir {
               @Input({transform: (val: boolean | string) => 1}) val!: number;
             }
 
             @Component({
               template: '<input dir [val]="invalidType">',
-              standalone: true,
               imports: [CoercionDir],
             })
             export class FooCmp {
@@ -2290,7 +2501,6 @@ runInEachFileSystem(() => {
 
           @Directive({
             selector: '[dir]',
-            standalone: true,
             inputs: [{
               name: 'val',
               transform: toNumber
@@ -2302,7 +2512,6 @@ runInEachFileSystem(() => {
 
           @Component({
             template: '<input dir [val]="invalidType">',
-            standalone: true,
             imports: [CoercionDir],
           })
           export class FooCmp {
@@ -2324,14 +2533,13 @@ runInEachFileSystem(() => {
           `
           import {Component, Directive, Input} from '@angular/core';
 
-          @Directive({selector: '[dir]', standalone: true})
+          @Directive({selector: '[dir]'})
           export class CoercionDir {
             @Input({transform: parseInt}) val!: number;
           }
 
           @Component({
             template: '<input dir [val]="invalidType">',
-            standalone: true,
             imports: [CoercionDir],
           })
           export class FooCmp {
@@ -2377,14 +2585,13 @@ runInEachFileSystem(() => {
           import {Component, Directive, Input} from '@angular/core';
           import {toNumber} from './utils';
 
-          @Directive({selector: '[dir]', standalone: true})
+          @Directive({selector: '[dir]'})
           export class CoercionDir {
             @Input({transform: toNumber}) val!: number;
           }
 
           @Component({
             template: '<input dir [val]="invalidType">',
-            standalone: true,
             imports: [CoercionDir],
           })
           export class FooCmp {
@@ -2433,14 +2640,13 @@ runInEachFileSystem(() => {
               import {Component, Directive, Input} from '@angular/core';
               import {externalToNumber} from 'external';
 
-              @Directive({selector: '[dir]', standalone: true})
+              @Directive({selector: '[dir]'})
               export class CoercionDir {
                 @Input({transform: externalToNumber}) val!: number;
               }
 
               @Component({
                 template: '<input dir [val]="invalidType">',
-                standalone: true,
                 imports: [CoercionDir],
               })
               export class FooCmp {
@@ -2495,7 +2701,7 @@ runInEachFileSystem(() => {
             foo: string;
           }
 
-          @Directive({selector: '[dir]', standalone: true})
+          @Directive({selector: '[dir]'})
           export class CoercionDir {
             @Input({transform: (val: GenericWrapper<ExportedClass>) => 1}) importedVal!: number;
             @Input({transform: (val: GenericWrapper<LocalInterface>) => 1}) localVal!: number;
@@ -2503,7 +2709,6 @@ runInEachFileSystem(() => {
 
           @Component({
             template: '<input dir [importedVal]="invalidType" [localVal]="invalidType">',
-            standalone: true,
             imports: [CoercionDir],
           })
           export class FooCmp {
@@ -2550,14 +2755,13 @@ runInEachFileSystem(() => {
           import {Component, Directive, Input} from '@angular/core';
           import {CoercionType} from './types';
 
-          @Directive({selector: '[dir]', standalone: true})
+          @Directive({selector: '[dir]'})
           export class CoercionDir {
             @Input({transform: (val: CoercionType<string>) => 1}) val!: number;
           }
 
           @Component({
             template: '<input dir [val]="invalidType">',
-            standalone: true,
             imports: [CoercionDir],
           })
           export class FooCmp {
@@ -2597,14 +2801,13 @@ runInEachFileSystem(() => {
           import {Component, Directive, Input} from '@angular/core';
           import {ExternalGenericWrapper, ExternalClass} from 'external';
 
-          @Directive({selector: '[dir]', standalone: true})
+          @Directive({selector: '[dir]'})
           export class CoercionDir {
             @Input({transform: (val: ExternalGenericWrapper<ExternalClass>) => 1}) val!: number;
           }
 
           @Component({
             template: '<input dir [val]="invalidType">',
-            standalone: true,
             imports: [CoercionDir],
           })
           export class FooCmp {
@@ -2632,14 +2835,13 @@ runInEachFileSystem(() => {
           `
               import {Component, Directive, Input} from '@angular/core';
 
-              @Directive({selector: '[dir]', standalone: true})
+              @Directive({selector: '[dir]'})
               export class CoercionDir {
                 @Input({transform: () => 1}) val!: number;
               }
 
               @Component({
                 template: '<input dir [val]="invalidType">',
-                standalone: true,
                 imports: [CoercionDir],
               })
               export class FooCmp {
@@ -2660,14 +2862,13 @@ runInEachFileSystem(() => {
 
           export function toNumber(val: number | boolean) { return 1; }
 
-          @Directive({selector: '[dir]', standalone: true})
+          @Directive({selector: '[dir]'})
           export class CoercionDir {
             @Input({transform: toNumber}) val!: number;
           }
 
           @Component({
             template: '<input dir val="test">',
-            standalone: true,
             imports: [CoercionDir],
           })
           export class FooCmp {}
@@ -2707,7 +2908,6 @@ runInEachFileSystem(() => {
 
           @Directive({
             selector: '[dir]',
-            standalone: true,
             hostDirectives: [{
               directive: HostDir,
               inputs: ['val']
@@ -2717,7 +2917,6 @@ runInEachFileSystem(() => {
 
           @Component({
             template: '<input dir [val]="invalidType">',
-            standalone: true,
             imports: [CoercionDir],
           })
           export class FooCmp {
@@ -2761,15 +2960,11 @@ runInEachFileSystem(() => {
           import {Component, Directive, Input} from '@angular/core';
           import {Parent} from './host-dir';
 
-          @Directive({
-            selector: '[dir]',
-            standalone: true
-          })
+          @Directive({selector: '[dir]'})
           export class CoercionDir extends Parent {}
 
           @Component({
             template: '<input dir [val]="invalidType">',
-            standalone: true,
             imports: [CoercionDir],
           })
           export class FooCmp {
@@ -2802,7 +2997,6 @@ runInEachFileSystem(() => {
 
           @Directive({
             selector: '[dir]',
-            standalone: true,
           })
           export class Dir {
             @Input({transform: (val: HTMLInputElement | ElementRef<HTMLInputElement>) => {
@@ -2812,7 +3006,6 @@ runInEachFileSystem(() => {
           }
 
           @Component({
-            standalone: true,
             imports: [Dir],
             template: '<div dir [expectsInput]="someDiv"></div>',
           })
@@ -2831,7 +3024,7 @@ runInEachFileSystem(() => {
       });
 
       it('should type check a two-way binding to an input with a transform', () => {
-        env.tsconfig({strictTemplates: true});
+        env.tsconfig({strictTemplates: true, _checkTwoWayBoundEvents: true});
         env.write(
           'test.ts',
           `
@@ -2839,7 +3032,7 @@ runInEachFileSystem(() => {
 
           export function toNumber(val: boolean | string) { return 1; }
 
-          @Directive({selector: '[dir]', standalone: true})
+          @Directive({selector: '[dir]'})
           export class CoercionDir {
             @Input({transform: toNumber}) val!: number;
             @Output() valChange = new EventEmitter<number>();
@@ -2847,7 +3040,6 @@ runInEachFileSystem(() => {
 
           @Component({
             template: '<input dir [(val)]="invalidType">',
-            standalone: true,
             imports: [CoercionDir],
           })
           export class FooCmp {
@@ -2865,7 +3057,10 @@ runInEachFileSystem(() => {
 
     describe('restricted inputs', () => {
       const directiveDeclaration = `
-            @Directive({selector: '[dir]'})
+            @Directive({
+              selector: '[dir]',
+              standalone: false,
+            })
             export class TestDir {
               @Input()
               protected protectedField!: string;
@@ -2882,6 +3077,7 @@ runInEachFileSystem(() => {
             @Component({
               selector: 'blah',
               template: '<div dir [readonlyField]="value" [protectedField]="value" [privateField]="value"></div>',
+              standalone: false,
             })
             export class FooCmp {
               value = "value";
@@ -2901,6 +3097,7 @@ runInEachFileSystem(() => {
             @Component({
               selector: 'blah',
               template: '<div child-dir [readonlyField]="value" [protectedField]="value" [privateField]="value"></div>',
+              standalone: false,
             })
             export class FooCmp {
               value = "value";
@@ -2908,7 +3105,10 @@ runInEachFileSystem(() => {
 
             ${directiveDeclaration}
 
-            @Directive({selector: '[child-dir]'})
+            @Directive({
+              selector: '[child-dir]',
+              standalone: false,
+            })
             export class ChildDir extends TestDir {
             }
 
@@ -2956,12 +3156,16 @@ runInEachFileSystem(() => {
             @Component({
               selector: 'blah',
               template: '<div dir [private-input.xs]="value"></div>',
+              standalone: false,
             })
             export class FooCmp {
               value = 5;
             }
 
-            @Directive({selector: '[dir]'})
+            @Directive({
+              selector: '[dir]',
+              standalone: false,
+            })
             export class TestDir {
               @Input()
               private 'private-input.xs'!: string;
@@ -3005,6 +3209,7 @@ runInEachFileSystem(() => {
             @Component({
               selector: 'blah',
               template: '<div dir [readonlyField]="value" [protectedField]="value" [privateField]="value"></div>',
+              standalone: false,
             })
             export class FooCmp {
               value = 1;
@@ -3037,6 +3242,7 @@ runInEachFileSystem(() => {
             @Component({
               selector: 'blah',
               template: '<div dir [undeclared]="value"></div>',
+              standalone: false,
             })
             export class FooCmp {
               value = "value";
@@ -3045,6 +3251,7 @@ runInEachFileSystem(() => {
             @Directive({
               selector: '[dir]',
               inputs: ['undeclared'],
+              standalone: false,
             })
             export class TestDir {
             }
@@ -3069,6 +3276,7 @@ runInEachFileSystem(() => {
             @Component({
               selector: 'blah',
               template: '<div dir [undeclared]="value"></div>',
+              standalone: false,
             })
             export class FooCmp {
             }
@@ -3076,6 +3284,7 @@ runInEachFileSystem(() => {
             @Directive({
               selector: '[dir]',
               inputs: ['undeclared'],
+              standalone: false,
             })
             export class TestDir {
             }
@@ -3101,6 +3310,7 @@ runInEachFileSystem(() => {
             @Component({
               selector: 'blah',
               template: '<div dir [undeclaredBase]="value"></div>',
+              standalone: false,
             })
             export class FooCmp {
               value = "value";
@@ -3108,11 +3318,15 @@ runInEachFileSystem(() => {
 
             @Directive({
               inputs: ['undeclaredBase'],
+              standalone: false,
             })
             export class BaseDir {
             }
 
-            @Directive({selector: '[dir]'})
+            @Directive({
+              selector: '[dir]',
+              standalone: false,
+            })
             export class TestDir extends BaseDir {
             }
 
@@ -3124,6 +3338,154 @@ runInEachFileSystem(() => {
       );
       const diags = env.driveDiagnostics();
       expect(diags.length).toBe(0);
+    });
+
+    describe('template literals', () => {
+      it('should treat template literals as strings', () => {
+        env.write(
+          'test.ts',
+          `
+          import {Component} from '@angular/core';
+
+          @Component({
+            template: 'Result: {{getValue(\`foo\`)}}',
+          })
+          export class Main {
+            getValue(value: number) {
+              return value;
+            }
+          }
+        `,
+        );
+
+        const diags = env.driveDiagnostics();
+        expect(diags.length).toBe(1);
+        expect(diags[0].messageText).toBe(
+          `Argument of type 'string' is not assignable to parameter of type 'number'.`,
+        );
+      });
+
+      it('should check interpolations inside template literals', () => {
+        env.write(
+          'test.ts',
+          `
+          import {Component} from '@angular/core';
+
+          @Component({
+            template: '{{\`Hello \${getName(123)}\`}}',
+          })
+          export class Main {
+            getName(value: string) {
+              return value;
+            }
+          }
+        `,
+        );
+
+        const diags = env.driveDiagnostics();
+        expect(diags.length).toBe(1);
+        expect(diags[0].messageText).toBe(
+          `Argument of type 'number' is not assignable to parameter of type 'string'.`,
+        );
+      });
+    });
+
+    describe('tagged template literals', () => {
+      function getDiagnosticLines(diag: ts.Diagnostic): string[] {
+        const separator = '~~~~~';
+        return ts.flattenDiagnosticMessageText(diag.messageText, separator).split(separator);
+      }
+
+      it('should not produce diagnostics for valid tagged literals', () => {
+        env.write(
+          'test.ts',
+          `
+          import {Component} from '@angular/core';
+
+          @Component({
+            template: 'Result: {{ tag\`foo\` }} {{ tag\`foo \${"bar"}\` }}',
+          })
+          export class Main {
+            tag(strings: TemplateStringsArray, ...args: string[]) {
+              return '';
+            }
+          }
+        `,
+        );
+
+        const diags = env.driveDiagnostics();
+        expect(diags.length).toBe(0);
+      });
+
+      it('should treat tagged template literals as strings', () => {
+        env.write(
+          'test.ts',
+          `
+          import {Component} from '@angular/core';
+
+          @Component({
+            template: 'Result: {{ getValue(tag\`foo\`) }}',
+          })
+          export class Main {
+            getValue(value: number) {
+              return value;
+            }
+            tag(strings: TemplateStringsArray, ...args: string[]) {
+              return '';
+            }
+          }
+        `,
+        );
+
+        const diags = env.driveDiagnostics();
+        expect(diags.length).toBe(1);
+        expect(getDiagnosticLines(diags[0])).toEqual([
+          `Argument of type 'string' is not assignable to parameter of type 'number'.`,
+        ]);
+      });
+
+      it('should produce diagnostics for invalid tag function', () => {
+        env.write(
+          'test.ts',
+          `
+          import {Component} from '@angular/core';
+
+          @Component({
+            template: 'Result: {{ null\`foo\` }}',
+          })
+          export class Main { }
+        `,
+        );
+
+        const diags = env.driveDiagnostics();
+        expect(diags.length).toBe(1);
+        expect(getDiagnosticLines(diags[0])).toEqual([
+          `This expression is not callable.`,
+          `  Type 'null' has no call signatures.`,
+        ]);
+      });
+
+      it('should produce diagnostics for invalid tag function arguments', () => {
+        env.write(
+          'test.ts',
+          `
+          import {Component} from '@angular/core';
+
+          @Component({
+            template: 'Result: {{ tag\`foo\${"str"}\` }}',
+          })
+          export class Main {
+            tag(strings: TemplateStringsArray, arg1: number, arg2: string) {
+              return '';
+            }
+          }
+        `,
+        );
+
+        const diags = env.driveDiagnostics();
+        expect(diags.length).toBe(1);
+        expect(getDiagnosticLines(diags[0])).toEqual(['Expected 3 arguments, but got 2.']);
+      });
     });
 
     describe('legacy schema checking with the DOM schema', () => {
@@ -3139,6 +3501,7 @@ runInEachFileSystem(() => {
         @Component({
           selector: 'blah',
           template: '<foo>test</foo>',
+          standalone: false,
         })
         export class FooCmp {}
         @NgModule({
@@ -3162,7 +3525,6 @@ runInEachFileSystem(() => {
         @Component({
           selector: 'blah',
           template: '<foo>test</foo>',
-          standalone: true,
         })
         export class FooCmp {}
         @NgModule({
@@ -3186,7 +3548,6 @@ runInEachFileSystem(() => {
           @Component({
             selector: 'my-comp',
             template: '...',
-            standalone: true,
           })
           export class MyComp {}
 
@@ -3194,7 +3555,6 @@ runInEachFileSystem(() => {
             selector: 'blah',
             imports: [MyComp],
             template: '<my-comp [foo]="true"></my-comp>',
-            standalone: true,
           })
           export class FooCmp {}
         `,
@@ -3216,6 +3576,7 @@ runInEachFileSystem(() => {
         @Component({
           selector: 'blah',
           template: '<my-foo>test</my-foo>',
+          standalone: false,
         })
         export class FooCmp {}
         @NgModule({
@@ -3239,7 +3600,6 @@ runInEachFileSystem(() => {
         @Component({
           selector: 'blah',
           template: '<my-foo>test</my-foo>',
-          standalone: true,
         })
         export class FooCmp {}
         @NgModule({
@@ -3263,6 +3623,7 @@ runInEachFileSystem(() => {
         @Component({
           selector: 'blah',
           template: '<div [foo]="1">test</div>',
+          standalone: false,
         })
         export class FooCmp {}
         @NgModule({
@@ -3286,6 +3647,7 @@ runInEachFileSystem(() => {
         @Component({
           selector: 'blah',
           template: '<div [foo]="1">test</div>',
+          standalone: false,
         })
         export class FooCmp {}
         @NgModule({
@@ -3309,6 +3671,7 @@ runInEachFileSystem(() => {
         @Component({
           selector: 'blah',
           template: '<label [for]="test">',
+          standalone: false,
         })
         export class FooCmp {
           test: string = 'test';
@@ -3333,6 +3696,7 @@ runInEachFileSystem(() => {
           @Component({
             selector: 'blah',
             template: '<custom-element [foo]="1">test</custom-element>',
+            standalone: false,
           })
           export class FooCmp {}
           @NgModule({
@@ -3362,6 +3726,7 @@ runInEachFileSystem(() => {
             @Component({
               selector: 'blah',
               template: '<custom-element [foo]="1">test</custom-element>',
+              standalone: false,
             })
             export class FooCmp {}
 
@@ -3385,6 +3750,7 @@ runInEachFileSystem(() => {
         @Component({
           selector: 'blah',
           template: '<foo [bar]="1"></foo>',
+          standalone: false,
         })
         export class FooCmp {}
 
@@ -3413,6 +3779,7 @@ runInEachFileSystem(() => {
               </svg:foreignObject>
             </svg>
           \`,
+          standalone: false,
         })
         export class FooCmp {}
         @NgModule({
@@ -3438,6 +3805,7 @@ runInEachFileSystem(() => {
               </foreignObject>
             </svg>
           \`,
+          standalone: false,
         })
         export class FooCmp {}
         @NgModule({
@@ -3464,6 +3832,7 @@ runInEachFileSystem(() => {
               </svg:foreignObject>
             </svg>
           \`,
+          standalone: false,
         })
         export class FooCmp {}
         @NgModule({
@@ -3493,6 +3862,7 @@ runInEachFileSystem(() => {
               </foreignObject>
             </svg>
           \`,
+          standalone: false,
         })
         export class FooCmp {}
         @NgModule({
@@ -3524,7 +3894,6 @@ runInEachFileSystem(() => {
                   </mfrac>
                 </math>
               \`,
-              standalone: true,
             })
             export class MathCmp {}
           `,
@@ -3559,6 +3928,7 @@ runInEachFileSystem(() => {
             template: \`<p>
               {{user.does_not_exist}}
             </p>\`,
+            standalone: false,
           })
           export class TestCmp {
             user: {name: string}[];
@@ -3584,6 +3954,7 @@ runInEachFileSystem(() => {
           @Component({
             selector: 'test',
             template: TEMPLATE,
+            standalone: false,
           })
           export class TestCmp {
             user: {name: string}[];
@@ -3613,6 +3984,7 @@ runInEachFileSystem(() => {
           @Component({
             selector: 'test',
             templateUrl: './template.html',
+            standalone: false,
           })
           export class TestCmp {
             user: {name: string}[];
@@ -3843,9 +4215,7 @@ suppress
           `
           import {Component, Directive, NgModule, Input} from '@angular/core';
 
-          @Directive({
-            standalone: true,
-          })
+          @Directive()
           class HostDir {
             @Input() input: number;
             @Input() otherInput: string;
@@ -3853,13 +4223,15 @@ suppress
 
           @Directive({
             selector: '[dir]',
-            hostDirectives: [{directive: HostDir, inputs: ['input', 'otherInput: alias']}]
+            hostDirectives: [{directive: HostDir, inputs: ['input', 'otherInput: alias']}],
+            standalone: false,
           })
           class Dir {}
 
           @Component({
             selector: 'test',
             template: '<div dir [input]="person.name" [alias]="person.age"></div>',
+            standalone: false,
           })
           class TestCmp {
             person: {
@@ -3889,9 +4261,7 @@ suppress
           `
           import {Component, Directive, NgModule, Output, EventEmitter} from '@angular/core';
 
-          @Directive({
-            standalone: true,
-          })
+          @Directive()
           class HostDir {
             @Output() stringEvent = new EventEmitter<string>();
             @Output() numberEvent = new EventEmitter<number>();
@@ -3901,7 +4271,8 @@ suppress
             selector: '[dir]',
             hostDirectives: [
               {directive: HostDir, outputs: ['stringEvent', 'numberEvent: numberAlias']}
-            ]
+            ],
+            standalone: false,
           })
           class Dir {}
 
@@ -3913,6 +4284,7 @@ suppress
                 (numberAlias)="handleStringEvent($event)"
                 (stringEvent)="handleNumberEvent($event)"></div>
             \`,
+            standalone: false,
           })
           class TestCmp {
             handleStringEvent(event: string): void {}
@@ -3940,9 +4312,7 @@ suppress
           `
           import {Component, Directive, NgModule, Input, Output} from '@angular/core';
 
-          @Directive({
-            standalone: true,
-          })
+          @Directive()
           class HostDir {
             @Input() input: number;
             @Output() output: string;
@@ -3950,13 +4320,15 @@ suppress
 
           @Directive({
             selector: '[dir]',
-            hostDirectives: [HostDir]
+            hostDirectives: [HostDir],
+            standalone: false,
           })
           class Dir {}
 
           @Component({
             selector: 'test',
             template: '<div dir [input]="person.name" (output)="handleStringEvent($event)"></div>',
+            standalone: false,
           })
           class TestCmp {
             person: {
@@ -3989,20 +4361,21 @@ suppress
           import {Component, Directive, NgModule, Output, EventEmitter} from '@angular/core';
 
           @Directive({
-            standalone: true,
             exportAs: 'hostDir',
           })
           class HostDir {}
 
           @Directive({
             selector: '[dir]',
-            hostDirectives: [HostDir]
+            hostDirectives: [HostDir],
+            standalone: false,
           })
           class Dir {}
 
           @Component({
             selector: 'test',
             template: '<div dir #hostDir="hostDir">{{ render(hostDir) }}</div>',
+            standalone: false,
           })
           class TestCmp {
             render(input: string): string { return input; }
@@ -4028,28 +4401,26 @@ suppress
           `
           import {Component, Directive, NgModule, Input} from '@angular/core';
 
-          @Directive({
-            standalone: true
-          })
+          @Directive()
           class HostDirParent {
             @Input() input: number;
             @Input() otherInput: string;
           }
 
-          @Directive({
-            standalone: true,
-          })
+          @Directive()
           class HostDir extends HostDirParent {}
 
           @Directive({
             selector: '[dir]',
-            hostDirectives: [{directive: HostDir, inputs: ['input', 'otherInput: alias']}]
+            hostDirectives: [{directive: HostDir, inputs: ['input', 'otherInput: alias']}],
+            standalone: false,
           })
           class Dir {}
 
           @Component({
             selector: 'test',
             template: '<div dir [input]="person.name" [alias]="person.age"></div>',
+            standalone: false,
           })
           class TestCmp {
             person: {
@@ -4079,24 +4450,21 @@ suppress
           `
           import {Component, Directive, NgModule, Output, EventEmitter} from '@angular/core';
 
-          @Directive({
-            standalone: true
-          })
+          @Directive()
           class HostDirParent {
             @Output() stringEvent = new EventEmitter<string>();
             @Output() numberEvent = new EventEmitter<number>();
           }
 
-          @Directive({
-            standalone: true,
-          })
+          @Directive()
           class HostDir extends HostDirParent {}
 
           @Directive({
             selector: '[dir]',
             hostDirectives: [
               {directive: HostDir, outputs: ['stringEvent', 'numberEvent: numberAlias']}
-            ]
+            ],
+            standalone: false,
           })
           class Dir {}
 
@@ -4108,6 +4476,7 @@ suppress
                 (numberAlias)="handleStringEvent($event)"
                 (stringEvent)="handleNumberEvent($event)"></div>
             \`,
+            standalone: false,
           })
           class TestCmp {
             handleStringEvent(event: string): void {}
@@ -4135,9 +4504,7 @@ suppress
           `
           import {Component, Directive, NgModule, Input} from '@angular/core';
 
-          @Directive({
-            standalone: true,
-          })
+          @Directive()
           class HostDir {
             @Input('ownInputAlias') input: number;
             @Input('ownOtherInputAlias') otherInput: string;
@@ -4145,13 +4512,15 @@ suppress
 
           @Directive({
             selector: '[dir]',
-            hostDirectives: [{directive: HostDir, inputs: ['ownInputAlias', 'ownOtherInputAlias: customAlias']}]
+            hostDirectives: [{directive: HostDir, inputs: ['ownInputAlias', 'ownOtherInputAlias: customAlias']}],
+            standalone: false,
           })
           class Dir {}
 
           @Component({
             selector: 'test',
             template: '<div dir [ownInputAlias]="person.name" [customAlias]="person.age"></div>',
+            standalone: false,
           })
           class TestCmp {
             person: {
@@ -4181,9 +4550,7 @@ suppress
           `
           import {Component, Directive, NgModule, Output, EventEmitter} from '@angular/core';
 
-          @Directive({
-            standalone: true,
-          })
+          @Directive()
           class HostDir {
             @Output('ownStringAlias') stringEvent = new EventEmitter<string>();
             @Output('ownNumberAlias') numberEvent = new EventEmitter<number>();
@@ -4193,7 +4560,8 @@ suppress
             selector: '[dir]',
             hostDirectives: [
               {directive: HostDir, outputs: ['ownStringAlias', 'ownNumberAlias: customNumberAlias']}
-            ]
+            ],
+            standalone: false,
           })
           class Dir {}
 
@@ -4205,6 +4573,7 @@ suppress
                 (customNumberAlias)="handleStringEvent($event)"
                 (ownStringAlias)="handleNumberEvent($event)"></div>
             \`,
+            standalone: false,
           })
           class TestCmp {
             handleStringEvent(event: string): void {}
@@ -4267,7 +4636,6 @@ suppress
       @Component({
         template: '<lib-post />',
         imports: [PostModule],
-        standalone: true,
       })
       export class Main { }
        `,
@@ -4285,25 +4653,28 @@ suppress
           `
           import {Component, Directive, NgModule, Input} from '@angular/core';
 
-          @Directive({
-            standalone: true,
-          })
+          @Directive()
           class HostDir {
             @Input() input: number;
             @Input() otherInput: string;
           }
 
           @Directive({
-            hostDirectives: [{directive: HostDir, inputs: ['input', 'otherInput: alias']}]
+            hostDirectives: [{directive: HostDir, inputs: ['input', 'otherInput: alias']}],
+            standalone: false,
           })
           class Parent {}
 
-          @Directive({selector: '[dir]'})
+          @Directive({
+            selector: '[dir]',
+            standalone: false,
+          })
           class Dir extends Parent {}
 
           @Component({
             selector: 'test',
             template: '<div dir [input]="person.name" [alias]="person.age"></div>',
+            standalone: false,
           })
           class TestCmp {
             person: {
@@ -4333,9 +4704,7 @@ suppress
           `
           import {Component, Directive, NgModule, Output, EventEmitter} from '@angular/core';
 
-          @Directive({
-            standalone: true,
-          })
+          @Directive()
           class HostDir {
             @Output() stringEvent = new EventEmitter<string>();
             @Output() numberEvent = new EventEmitter<number>();
@@ -4344,11 +4713,15 @@ suppress
           @Directive({
             hostDirectives: [
               {directive: HostDir, outputs: ['stringEvent', 'numberEvent: numberAlias']}
-            ]
+            ],
+            standalone: false,
           })
           class Parent {}
 
-          @Directive({selector: '[dir]'})
+          @Directive({
+            selector: '[dir]',
+            standalone: false,
+          })
           class Dir extends Parent {}
 
           @Component({
@@ -4359,6 +4732,7 @@ suppress
                 (numberAlias)="handleStringEvent($event)"
                 (stringEvent)="handleNumberEvent($event)"></div>
             \`,
+            standalone: false,
           })
           class TestCmp {
             handleStringEvent(event: string): void {}
@@ -4400,7 +4774,6 @@ suppress
                 {{does_not_exist_error}}
               }
             \`,
-            standalone: true,
           })
           export class Main {}
         `,
@@ -4425,7 +4798,6 @@ suppress
             template: \`
               @defer (when isVisible() || does_not_exist) {Hello}
             \`,
-            standalone: true,
           })
           export class Main {
             isVisible() {
@@ -4451,7 +4823,31 @@ suppress
             template: \`
               @defer (prefetch when isVisible() || does_not_exist) {Hello}
             \`,
-            standalone: true,
+          })
+          export class Main {
+            isVisible() {
+              return true;
+            }
+          }
+        `,
+        );
+
+        const diags = env.driveDiagnostics();
+        expect(diags.map((d) => ts.flattenDiagnosticMessageText(d.messageText, ''))).toEqual([
+          `Property 'does_not_exist' does not exist on type 'Main'.`,
+        ]);
+      });
+
+      it('should check `hydrate when` trigger expression', () => {
+        env.write(
+          'test.ts',
+          `
+          import {Component} from '@angular/core';
+
+          @Component({
+            template: \`
+              @defer (hydrate when isVisible() || does_not_exist) {Hello}
+            \`,
           })
           export class Main {
             isVisible() {
@@ -4477,7 +4873,6 @@ suppress
             template: \`
               @defer (on viewport(does_not_exist)) {Hello}
             \`,
-            standalone: true,
           })
           export class Main {}
         `,
@@ -4504,7 +4899,6 @@ suppress
                 <button #trigger></button>
               </ng-template>
             \`,
-            standalone: true,
           })
           export class Main {}
         `,
@@ -4537,7 +4931,6 @@ suppress
                 {{does_not_exist_else}}
               }
             \`,
-            standalone: true,
           })
           export class Main {
             expr = false;
@@ -4572,7 +4965,6 @@ suppress
                 two
               }
             \`,
-            standalone: true,
           })
           export class Main {}
         `,
@@ -4596,7 +4988,6 @@ suppress
             template: \`@if (value === 1; as alias) {
               {{acceptsNumber(alias)}}
             }\`,
-            standalone: true,
           })
           export class Main {
             value = 1;
@@ -4624,7 +5015,6 @@ suppress
             template: \`@if (value; as alias) {
               {{acceptsNumber(alias)}}
             }\`,
-            standalone: true,
           })
           export class Main {
             value: 'one' | 0 = 0;
@@ -4652,7 +5042,6 @@ suppress
             template: \`@if (value; as alias) {
               <button (click)="acceptsNumber(alias)"></button>
             }\`,
-            standalone: true,
           })
           export class Main {
             value: 'one' | 0 = 0;
@@ -4679,7 +5068,6 @@ suppress
             template: \`@if (value; as alias) {
               {{ value.length }}
             }\`,
-            standalone: true,
           })
           export class Main {
             value!: string|undefined;
@@ -4700,7 +5088,6 @@ suppress
             template: \`@if (value(); as alias) {
               {{ alias.length }}
             }\`,
-            standalone: true,
           })
           export class Main {
             value!: () => string|undefined;
@@ -4712,7 +5099,7 @@ suppress
         expect(diags.length).toBe(0);
       });
 
-      it('should not expose the aliased expression outside of the main block', () => {
+      it('should not expose the aliased expression outside of the current block', () => {
         env.write(
           'test.ts',
           `
@@ -4726,7 +5113,6 @@ suppress
                 {{alias}}
               }
             \`,
-            standalone: true,
           })
           export class Main {
             value = 1;
@@ -4754,7 +5140,6 @@ suppress
                 }
               }
             \`,
-            standalone: true,
           })
           export class Main {
             value = 1;
@@ -4786,7 +5171,6 @@ suppress
                 {{acceptsNumber(expr)}}
               }
             \`,
-            standalone: true,
           })
           export class Main {
             expr: 'hello' | 1 = 'hello';
@@ -4816,7 +5200,6 @@ suppress
                 <button (click)="acceptsNumber(expr)"></button>
               }
             \`,
-            standalone: true,
           })
           export class Main {
             expr: 'hello' | 1 = 'hello';
@@ -4848,7 +5231,6 @@ suppress
                 <button (click)="acceptsNumber(expr)"></button>
               }
             \`,
-            standalone: true,
           })
           export class Main {
             expr: 'hello' | 1 | 2 = 'hello';
@@ -4882,7 +5264,6 @@ suppress
                 <button (click)="acceptsNumber(expr)"></button>
               }
             \`,
-            standalone: true,
           })
           export class Main {
             expr: 'hello' | 1 | 2 = 'hello';
@@ -4912,8 +5293,7 @@ suppress
                  <button (click)="test()"></button>
                }
              \`,
-             standalone: true,
-           })
+            })
            export class Main {
              test() {}
            }
@@ -4946,7 +5326,6 @@ suppress
                 }
               }
             \`,
-            standalone: true,
           })
           export class Main {
             expr: any;
@@ -4976,7 +5355,6 @@ suppress
                 }
               }
             \`,
-            standalone: true,
           })
           export class Main {}
         `,
@@ -5007,7 +5385,6 @@ suppress
                 }
               }
             \`,
-            standalone: true,
           })
           export class Main {}
         `,
@@ -5037,7 +5414,6 @@ suppress
                     }
                   }
                 \`,
-                standalone: true,
               })
               export class Main {
                 value = 'zero';
@@ -5066,7 +5442,6 @@ suppress
                 }
               }
             \`,
-            standalone: true,
           })
           export class Main {
             expr: 'hello' | 1 = 'hello';
@@ -5101,7 +5476,6 @@ suppress
                 }
               }
             \`,
-            standalone: true,
           })
           export class Main {
             expr: 'hello' | 1 = 'hello';
@@ -5147,7 +5521,6 @@ suppress
                 }
               }
             \`,
-            standalone: true,
           })
           export class Main {
             value: Foo | Bar = { type: 'foo', foo: 'foo' };
@@ -5179,7 +5552,6 @@ suppress
                 }
               }
             \`,
-            standalone: true,
           })
           export class Main {
             expr = true;
@@ -5206,7 +5578,6 @@ suppress
                 }
               }
             \`,
-            standalone: true,
           })
           export class Main {
             expr: 'hello' | 1 = 'hello';
@@ -5242,7 +5613,6 @@ suppress
                 }
               }
             \`,
-            standalone: true,
           })
           export class Main {
             expr: 1 | 2 | 'hello' = 'hello';
@@ -5256,6 +5626,74 @@ suppress
         const diags = env.driveDiagnostics();
         expect(diags.map((d) => ts.flattenDiagnosticMessageText(d.messageText, ''))).toEqual([
           `Argument of type 'string' is not assignable to parameter of type 'number'.`,
+        ]);
+      });
+
+      it('should narrow the type of the `@else if` alias', () => {
+        env.write(
+          'test.ts',
+          `
+          import {Component} from '@angular/core';
+
+          @Component({
+            template: \`
+              @if (typeof value === 'number') {
+                {{acceptsNumber(value)}}
+              } @else if (typeof value === 'string'; as alias) {
+                {{acceptsNumber(alias)}}
+              }
+            \`,
+          })
+          export class Main {
+            value: string | number;
+
+            acceptsNumber(value: number) {
+              return value;
+            }
+          }
+        `,
+        );
+
+        const diags = env.driveDiagnostics();
+        expect(diags.length).toBe(1);
+        expect(diags[0].messageText).toBe(
+          `Argument of type 'boolean' is not assignable to parameter of type 'number'.`,
+        );
+      });
+
+      it('should handle same alias name for `@if` and `@else if`', () => {
+        env.write(
+          'test.ts',
+          `
+          import {Component} from '@angular/core';
+
+          @Component({
+            template: \`
+              @if (value; as alias) {
+                {{acceptsNumber(value)}}
+              } @else if (value; as alias) {
+                {{acceptsBoolean(alias)}}
+              }
+            \`,
+          })
+          export class Main {
+            value: boolean | string;
+
+            acceptsNumber(value: number) {
+              return value;
+            }
+
+            acceptsBoolean(value: boolean) {
+              return value;
+            }
+          }
+        `,
+        );
+
+        const diags = env.driveDiagnostics();
+        expect(diags.map((d) => ts.flattenDiagnosticMessageText(d.messageText, ''))).toEqual([
+          `Argument of type 'string | true' is not assignable to parameter of type 'number'.  Type 'string' is not assignable to type 'number'.`,
+          `Argument of type 'string | true' is not assignable to parameter of type 'boolean'.  Type 'string' is not assignable to type 'boolean'.`,
         ]);
       });
     });
@@ -5497,10 +5935,7 @@ suppress
           `
           import {Component, Directive, Input, Output, EventEmitter} from '@angular/core';
 
-          @Directive({
-            selector: '[twoWayDir]',
-            standalone: true
-          })
+          @Directive({selector: '[twoWayDir]'})
           export class TwoWayDir {
             @Input() value: number = 0;
             @Output() valueChange: EventEmitter<number> = new EventEmitter();
@@ -5512,7 +5947,6 @@ suppress
                 <button twoWayDir [(value)]="$index"></button>
               }
             \`,
-            standalone: true,
             imports: [TwoWayDir]
           })
           export class Main {
@@ -5533,10 +5967,7 @@ suppress
           `
           import {Component, Directive, Input, Output, EventEmitter, signal} from '@angular/core';
 
-          @Directive({
-            selector: '[twoWayDir]',
-            standalone: true
-          })
+          @Directive({selector: '[twoWayDir]'})
           export class TwoWayDir {
             @Input() value: number = 0;
             @Output() valueChange: EventEmitter<number> = new EventEmitter();
@@ -5548,7 +5979,6 @@ suppress
                 <button twoWayDir [(value)]="current"></button>
               }
             \`,
-            standalone: true,
             imports: [TwoWayDir]
           })
           export class Main {
@@ -5665,7 +6095,6 @@ suppress
 
           @Component({
             selector: 'test-cmp',
-            standalone: true,
             template: '@for (item of items; track $index + $count) {}',
           })
           export class TestCmp {
@@ -5689,7 +6118,6 @@ suppress
 
               @Component({
                 selector: 'test-cmp',
-                standalone: true,
                 template: '@for (item of items; let c = $count; track $index + c) {}',
               })
               export class TestCmp {
@@ -5713,7 +6141,6 @@ suppress
 
             @Component({
               selector: 'test-cmp',
-              standalone: true,
               template: \`
                 <input #ref/>
                 @for (item of items; track $index + ref.value) {}
@@ -5740,7 +6167,6 @@ suppress
 
             @Component({
               selector: 'test-cmp',
-              standalone: true,
               template: \`
                 <input #ref/>
 
@@ -5770,7 +6196,6 @@ suppress
 
             @Component({
               selector: 'test-cmp',
-              standalone: true,
               template: \`
                 <ng-template let-foo>
                   @for (item of items; track $index + foo.value) {}
@@ -5798,7 +6223,6 @@ suppress
 
           @Component({
             selector: 'test-cmp',
-            standalone: true,
             template: \`
               @for (parent of items; track $index) {
                 @for (item of parent.items; track parent) {}
@@ -5818,7 +6242,7 @@ suppress
         ]);
       });
 
-      it('should not allow usages of aliased `if` block variables inside the tracking exprssion', () => {
+      it('should not allow usages of aliased `if` block variables inside the tracking expression', () => {
         env.write(
           '/test.ts',
           `
@@ -5826,7 +6250,6 @@ suppress
 
             @Component({
               selector: 'test-cmp',
-              standalone: true,
               template: \`
                 @if (expr; as alias) {
                   @for (item of items; track $index + alias) {}
@@ -5853,7 +6276,7 @@ suppress
           `
           import { Component, Pipe } from '@angular/core';
 
-          @Pipe({name: 'test', standalone: true})
+          @Pipe({name: 'test'})
           export class TestPipe {
             transform(value: any) {
               return value;
@@ -5862,7 +6285,6 @@ suppress
 
           @Component({
             selector: 'test-cmp',
-            standalone: true,
             imports: [TestPipe],
             template: '@for (item of items; track item | test) {}',
           })
@@ -5885,7 +6307,7 @@ suppress
           `
           import {Component, Pipe} from '@angular/core';
 
-          @Pipe({name: 'fakeAsync', standalone: true})
+          @Pipe({name: 'fakeAsync'})
           export class FakeAsyncPipe {
             transform<T>(value: Iterable<T>): Iterable<T> | null | undefined {
               return null;
@@ -5898,7 +6320,6 @@ suppress
                 {{item}}
               }
             \`,
-            standalone: true,
             imports: [FakeAsyncPipe]
           })
           export class Main {
@@ -5945,7 +6366,6 @@ suppress
           import {Component, Directive, Input} from '@angular/core';
 
           @Directive({
-            standalone: true,
             selector: '[dir]'
           })
           export class Dir {
@@ -5953,7 +6373,6 @@ suppress
           }
 
           @Component({
-            standalone: true,
             imports: [Dir],
             template: \`
               @for (document of documents; track document) {
@@ -5984,12 +6403,10 @@ suppress
           @Component({
             selector: 'comp',
             template: '<ng-content/> <ng-content select="bar, [foo]"/>',
-            standalone: true,
           })
           class Comp {}
 
           @Component({
-            standalone: true,
             imports: [Comp],
             template: \`
               <comp>
@@ -6023,12 +6440,10 @@ suppress
           @Component({
             selector: 'comp',
             template: '<ng-content/> <ng-content select="bar, [foo]"/>',
-            standalone: true,
           })
           class Comp {}
 
           @Component({
-            standalone: true,
             imports: [Comp],
             template: \`
               <comp>
@@ -6062,12 +6477,10 @@ suppress
           @Component({
             selector: 'comp',
             template: '<ng-content select="[foo]"/> <ng-content select="[bar]"/>',
-            standalone: true,
           })
           class Comp {}
 
           @Component({
-            standalone: true,
             imports: [Comp],
             template: \`
               <comp>
@@ -6105,12 +6518,10 @@ suppress
           @Component({
             selector: 'comp',
             template: '<ng-content select="[foo]"/> <ng-content select="[bar]"/> <ng-content select="[baz]"/>',
-            standalone: true,
           })
           class Comp {}
 
           @Component({
-            standalone: true,
             imports: [Comp],
             template: \`
               <comp>
@@ -6150,12 +6561,10 @@ suppress
           @Component({
             selector: 'comp',
             template: '<ng-content/> <ng-content select="bar, [foo]"/>',
-            standalone: true,
           })
           class Comp {}
 
           @Component({
-            standalone: true,
             imports: [Comp],
             template: \`
               <comp>
@@ -6189,12 +6598,10 @@ suppress
           @Component({
             selector: 'comp',
             template: '<ng-content/> <ng-content select="bar, [foo]"/>',
-            standalone: true,
           })
           class Comp {}
 
           @Component({
-            standalone: true,
             imports: [Comp],
             template: \`
               <comp>
@@ -6230,12 +6637,10 @@ suppress
           @Component({
             selector: 'comp',
             template: '<ng-content select="[foo]"/> <ng-content select="[bar]"/>',
-            standalone: true,
           })
           class Comp {}
 
           @Component({
-            standalone: true,
             imports: [Comp],
             template: \`
               <comp>
@@ -6271,12 +6676,10 @@ suppress
           @Component({
             selector: 'comp',
             template: '<ng-content select="[foo]"/>',
-            standalone: true,
           })
           class Comp {}
 
           @Component({
-            standalone: true,
             imports: [Comp],
             template: \`
               <comp>
@@ -6312,12 +6715,10 @@ suppress
           @Component({
             selector: 'comp',
             template: '<ng-content select="[foo]"/>',
-            standalone: true,
           })
           class Comp {}
 
           @Component({
-            standalone: true,
             imports: [Comp],
             preserveWhitespaces: true,
             template: \`
@@ -6352,12 +6753,10 @@ suppress
           @Component({
             selector: 'comp',
             template: '<ng-content select="[foo]"/>',
-            standalone: true,
           })
           class Comp {}
 
           @Component({
-            standalone: true,
             imports: [Comp],
             template: \`
               <comp>
@@ -6384,12 +6783,10 @@ suppress
           @Component({
             selector: 'comp',
             template: '<ng-content select="[foo]"/>',
-            standalone: true,
           })
           class Comp {}
 
           @Component({
-            standalone: true,
             imports: [Comp],
             template: \`
               <comp>
@@ -6418,12 +6815,10 @@ suppress
           @Component({
             selector: 'comp',
             template: '<ng-content/>',
-            standalone: true,
           })
           class Comp {}
 
           @Component({
-            standalone: true,
             imports: [Comp],
             template: \`
               <comp>
@@ -6458,12 +6853,10 @@ suppress
           @Component({
             selector: 'comp',
             template: '<ng-content/> <ng-content select="bar, [foo]"/>',
-            standalone: true,
           })
           class Comp {}
 
           @Component({
-            standalone: true,
             imports: [Comp],
             template: \`
               <comp>
@@ -6496,12 +6889,10 @@ suppress
               @Component({
                 selector: 'comp',
                 template: '<ng-content/> <ng-content select="bar, [foo]"/>',
-                standalone: true,
               })
               class Comp {}
 
               @Component({
-                standalone: true,
                 imports: [Comp],
                 template: \`
                   <comp>
@@ -6529,12 +6920,10 @@ suppress
           @Component({
             selector: 'comp',
             template: '<ng-content/> <ng-content select="bar, [foo]"/>',
-            standalone: true,
           })
           class Comp {}
 
           @Component({
-            standalone: true,
             imports: [Comp],
             template: \`
               <comp>
@@ -6572,12 +6961,10 @@ suppress
           @Component({
             selector: 'comp',
             template: '<ng-content select="[foo]"/> <ng-content select="[bar]"/>',
-            standalone: true,
           })
           class Comp {}
 
           @Component({
-            standalone: true,
             imports: [Comp],
             template: \`
               <comp>
@@ -6611,7 +6998,18 @@ suppress
     });
 
     describe('@let declarations', () => {
-      beforeEach(() => env.tsconfig({strictTemplates: true}));
+      beforeEach(() =>
+        env.tsconfig({
+          strictTemplates: true,
+          extendedDiagnostics: {
+            checks: {
+              // Suppress the diagnostic for unused @let since some of the error cases
+              // we're checking for here also qualify as being unused which adds noise.
+              unusedLetDeclaration: 'suppress',
+            },
+          },
+        }),
+      );
 
       it('should infer the type of a let declaration', () => {
         env.write(
@@ -6624,7 +7022,6 @@ suppress
               @let one = 1;
               {{acceptsString(one)}}
             \`,
-            standalone: true,
           })
           export class Main {
             acceptsString(value: string) {}
@@ -6653,7 +7050,6 @@ suppress
                 <span>{{acceptsString(one)}}</span>
               </div>
             \`,
-            standalone: true,
           })
           export class Main {
             acceptsString(value: string) {}
@@ -6679,7 +7075,6 @@ suppress
             template: \`
               @let value = {} + 1;
             \`,
-            standalone: true,
           })
           export class Main {
           }
@@ -6708,7 +7103,6 @@ suppress
                 {{expectsString(value)}}
               }
             \`,
-            standalone: true,
           })
           export class Main {
             cond: boolean = true;
@@ -6739,7 +7133,6 @@ suppress
                 <button (click)="expectsString(value)">Click me</button>
               }
             \`,
-            standalone: true,
           })
           export class Main {
             cond: boolean = true;
@@ -6779,7 +7172,6 @@ suppress
               </ng-template>
 
             \`,
-            standalone: true,
           })
           export class Main {
             expectsString(value: string) {}
@@ -6808,7 +7200,6 @@ suppress
 
               {{value}}
             \`,
-            standalone: true,
           })
           export class Main {
           }
@@ -6836,7 +7227,6 @@ suppress
                 {{value}}
               }
             \`,
-            standalone: true,
           })
           export class Main {
           }
@@ -6859,7 +7249,6 @@ suppress
               @let value = 1;
               {{expectsString(value)}}
             \`,
-            standalone: true,
           })
           export class Main {
             value = 'one';
@@ -6890,7 +7279,6 @@ suppress
                 {{expectsString(value)}}
               }
             \`,
-            standalone: true,
           })
           export class Main {
             expectsString(value: string) {}
@@ -6919,7 +7307,6 @@ suppress
                 {{value}}
               }
             \`,
-            standalone: true,
           })
           export class Main {
           }
@@ -6945,7 +7332,6 @@ suppress
               @let value = 1;
               {{value}}
             \`,
-            standalone: true,
           })
           export class Main {}
         `,
@@ -6970,7 +7356,6 @@ suppress
               <input #value>
               {{value}}
             \`,
-            standalone: true,
           })
           export class Main {}
         `,
@@ -6997,8 +7382,7 @@ suppress
                   {{value}}
                 </div>
               \`,
-              standalone: true,
-              imports: [CommonModule],
+                imports: [CommonModule],
             })
             export class Main {
               x!: unknown;
@@ -7028,7 +7412,6 @@ suppress
                 {{value}}
               }
             \`,
-            standalone: true,
           })
           export class Main {}
         `,
@@ -7049,7 +7432,6 @@ suppress
               {{value}}
               @let value = 1;
             \`,
-            standalone: true,
           })
           export class Main {}
         `,
@@ -7075,7 +7457,6 @@ suppress
                 @let value = 1;
               </ng-template>
             \`,
-            standalone: true,
           })
           export class Main {
           }
@@ -7100,7 +7481,6 @@ suppress
               @let value = 1;
               {{this.value}}
             \`,
-            standalone: true,
           })
           export class Main {
           }
@@ -7122,10 +7502,53 @@ suppress
             template: \`
               @let value = value;
             \`,
-            standalone: true,
           })
           export class Main {
           }
+        `,
+        );
+
+        const diags = env.driveDiagnostics();
+        expect(diags.length).toBe(1);
+        expect(diags[0].messageText).toBe(
+          `Cannot read @let declaration 'value' before it has been defined.`,
+        );
+      });
+
+      it('should produce a single diagnostic if a @let declaration refers to properties on itself', () => {
+        env.write(
+          'test.ts',
+          `
+          import {Component} from '@angular/core';
+
+          @Component({
+            template: \`
+              @let value = value.a.b.c;
+            \`,
+          })
+          export class Main {}
+        `,
+        );
+
+        const diags = env.driveDiagnostics();
+        expect(diags.length).toBe(1);
+        expect(diags[0].messageText).toBe(
+          `Cannot read @let declaration 'value' before it has been defined.`,
+        );
+      });
+
+      it('should produce a single diagnostic if a @let declaration invokes itself', () => {
+        env.write(
+          'test.ts',
+          `
+          import {Component} from '@angular/core';
+
+          @Component({
+            template: \`
+              @let value = value();
+            \`,
+          })
+          export class Main {}
         `,
         );
 
@@ -7147,7 +7570,6 @@ suppress
               <button (click)="expectsString(value)">Click me</button>
               @let value = 1;
             \`,
-            standalone: true,
           })
           export class Main {
             expectsString(value: string) {}
@@ -7176,7 +7598,6 @@ suppress
 
               @let value = 1;
             \`,
-            standalone: true,
           })
           export class Main {
             expectsString(value: string) {}
@@ -7199,7 +7620,6 @@ suppress
               @let value = 1;
               <button (click)="value = 2">Click me</button>
             \`,
-            standalone: true,
           })
           export class Main {
           }
@@ -7222,7 +7642,6 @@ suppress
               @let value = 1;
               <button (click)="this.value = 2">Click me</button>
             \`,
-            standalone: true,
           })
           export class Main {
           }
@@ -7239,10 +7658,8 @@ suppress
           'test.ts',
           `
           import {Component, Directive, Input, Output, EventEmitter} from '@angular/core';
-          @Directive({
-            selector: '[twoWayDir]',
-            standalone: true
-          })
+
+          @Directive({selector: '[twoWayDir]'})
           export class TwoWayDir {
             @Input() value: number = 0;
             @Output() valueChange: EventEmitter<number> = new EventEmitter();
@@ -7252,7 +7669,6 @@ suppress
               @let nonWritable = 1;
               <button twoWayDir [(value)]="nonWritable"></button>
             \`,
-            standalone: true,
             imports: [TwoWayDir]
           })
           export class Main {
@@ -7271,20 +7687,18 @@ suppress
           'test.ts',
           `
           import {Component, Directive, Input, Output, EventEmitter, signal} from '@angular/core';
-          @Directive({
-            selector: '[twoWayDir]',
-            standalone: true
-          })
+
+          @Directive({selector: '[twoWayDir]'})
           export class TwoWayDir {
             @Input() value: number = 0;
             @Output() valueChange: EventEmitter<number> = new EventEmitter();
           }
+
           @Component({
             template: \`
               @let writable = signalValue;
               <button twoWayDir [(value)]="writable"></button>
             \`,
-            standalone: true,
             imports: [TwoWayDir]
           })
           export class Main {
@@ -7295,6 +7709,755 @@ suppress
 
         const diags = env.driveDiagnostics();
         expect(diags.length).toBe(0);
+      });
+
+      it('should report @let declaration used in the expression of a @if block before it is defined', () => {
+        env.write(
+          'test.ts',
+          `
+          import {Component} from '@angular/core';
+
+          @Component({
+            template: \`
+              @if (value) {
+                Hello
+              }
+              @let value = 123;
+            \`,
+          })
+          export class Main {}
+        `,
+        );
+
+        const diags = env.driveDiagnostics();
+        expect(diags.length).toBe(1);
+        expect(diags[0].messageText).toBe(
+          `Cannot read @let declaration 'value' before it has been defined.`,
+        );
+      });
+
+      it('should report @let declaration used in the expression of a @for block before it is defined', () => {
+        env.write(
+          'test.ts',
+          `
+          import {Component} from '@angular/core';
+
+          @Component({
+            template: \`
+              @for (current of value; track $index) {
+                {{current}}
+              }
+
+              @let value = [1, 2, 3];
+            \`,
+          })
+          export class Main {}
+        `,
+        );
+
+        const diags = env.driveDiagnostics();
+        expect(diags.length).toBe(1);
+        expect(diags[0].messageText).toBe(
+          `Cannot read @let declaration 'value' before it has been defined.`,
+        );
+      });
+
+      it('should report @let declaration used in the expression of a @switch block before it is defined', () => {
+        env.write(
+          'test.ts',
+          `
+          import {Component} from '@angular/core';
+
+          @Component({
+            template: \`
+              @switch (value) {
+                @case (123) {
+                  Hello
+                }
+              }
+
+              @let value = [1, 2, 3];
+            \`,
+          })
+          export class Main {}
+        `,
+        );
+
+        const diags = env.driveDiagnostics();
+        expect(diags.length).toBe(1);
+        expect(diags[0].messageText).toBe(
+          `Cannot read @let declaration 'value' before it has been defined.`,
+        );
+      });
+    });
+
+    describe('unused standalone imports', () => {
+      it('should report when a directive is not used within a template', () => {
+        env.write(
+          'used.ts',
+          `
+            import {Directive} from '@angular/core';
+
+            @Directive({selector: '[used]'})
+            export class UsedDir {}
+          `,
+        );
+
+        env.write(
+          'unused.ts',
+          `
+            import {Directive} from '@angular/core';
+
+            @Directive({selector: '[unused]'})
+            export class UnusedDir {}
+          `,
+        );
+
+        env.write(
+          'test.ts',
+          `
+          import {Component} from '@angular/core';
+          import {UsedDir} from './used';
+          import {UnusedDir} from './unused';
+
+          @Component({
+            template: \`
+              <section>
+                <div></div>
+                <span used></span>
+              </section>
+            \`,
+            imports: [UsedDir, UnusedDir]
+          })
+          export class MyComp {}
+        `,
+        );
+
+        const diags = env.driveDiagnostics();
+        expect(diags.length).toBe(1);
+        expect(diags[0].messageText).toBe('UnusedDir is not used within the template of MyComp');
+      });
+
+      it('should report when a pipe is not used within a template', () => {
+        env.write(
+          'used.ts',
+          `
+            import {Pipe} from '@angular/core';
+
+            @Pipe({name: 'used'})
+            export class UsedPipe {
+              transform(value: number) {
+                return value * 2;
+              }
+            }
+          `,
+        );
+
+        env.write(
+          'unused.ts',
+          `
+            import {Pipe} from '@angular/core';
+
+            @Pipe({name: 'unused'})
+            export class UnusedPipe {
+              transform(value: number) {
+                return value * 2;
+              }
+            }
+          `,
+        );
+
+        env.write(
+          'test.ts',
+          `
+          import {Component} from '@angular/core';
+          import {UsedPipe} from './used';
+          import {UnusedPipe} from './unused';
+
+          @Component({
+            template: \`
+              <section>
+                <div></div>
+                <span [attr.id]="1 | used"></span>
+              </section>
+            \`,
+            imports: [UsedPipe, UnusedPipe]
+          })
+          export class MyComp {}
+        `,
+        );
+
+        const diags = env.driveDiagnostics();
+        expect(diags.length).toBe(1);
+        expect(diags[0].messageText).toBe('UnusedPipe is not used within the template of MyComp');
+      });
+
+      it('should not report imports only used inside @defer blocks', () => {
+        env.write(
+          'test.ts',
+          `
+          import {Component, Directive, Pipe} from '@angular/core';
+
+          @Directive({selector: '[used]'})
+          export class UsedDir {}
+
+          @Pipe({name: 'used'})
+          export class UsedPipe {
+            transform(value: number) {
+              return value * 2;
+            }
+          }
+
+          @Component({
+            template: \`
+              <section>
+                @defer (on idle) {
+                  <div used></div>
+                  <span [attr.id]="1 | used"></span>
+                }
+              </section>
+            \`,
+            imports: [UsedDir, UsedPipe]
+          })
+          export class MyComp {}
+        `,
+        );
+
+        const diags = env.driveDiagnostics();
+        expect(diags.length).toBe(0);
+      });
+
+      it('should report when all imports in an import array are not used', () => {
+        env.write(
+          'test.ts',
+          `
+          import {Component, Directive, Pipe} from '@angular/core';
+
+          @Directive({selector: '[unused]'})
+          export class UnusedDir {}
+
+          @Pipe({name: 'unused'})
+          export class UnusedPipe {
+            transform(value: number) {
+              return value * 2;
+            }
+          }
+
+          @Component({
+            template: '',
+            imports: [UnusedDir, UnusedPipe]
+          })
+          export class MyComp {}
+        `,
+        );
+
+        const diags = env.driveDiagnostics();
+        expect(diags.length).toBe(1);
+        expect(diags[0].messageText).toBe('All imports are unused');
+      });
+
+      it('should not report unused imports coming from modules', () => {
+        env.write(
+          'module.ts',
+          `
+            import {Directive, NgModule} from '@angular/core';
+
+            @Directive({
+              selector: '[unused-from-module]',
+              standalone: false,
+            })
+            export class UnusedDirFromModule {}
+
+            @NgModule({
+              declarations: [UnusedDirFromModule],
+              exports: [UnusedDirFromModule]
+            })
+            export class UnusedModule {}
+        `,
+        );
+
+        env.write(
+          'test.ts',
+          `
+          import {Component} from '@angular/core';
+          import {UnusedModule} from './module';
+
+          @Component({
+            template: '',
+            imports: [UnusedModule]
+          })
+          export class MyComp {}
+        `,
+        );
+
+        const diags = env.driveDiagnostics();
+        expect(diags.length).toBe(0);
+      });
+
+      it('should be able to opt out for checking for unused imports via the tsconfig', () => {
+        env.tsconfig({
+          extendedDiagnostics: {
+            checks: {
+              unusedStandaloneImports: DiagnosticCategoryLabel.Suppress,
+            },
+          },
+        });
+
+        env.write(
+          'test.ts',
+          `
+          import {Component, Directive} from '@angular/core';
+
+          @Directive({selector: '[unused]'})
+          export class UnusedDir {}
+
+          @Component({
+            template: '',
+            imports: [UnusedDir]
+          })
+          export class MyComp {}
+        `,
+        );
+
+        const diags = env.driveDiagnostics();
+        expect(diags.length).toBe(0);
+      });
+
+      it('should unused imports from external modules', () => {
+        // Note: we don't use the existing fake `@angular/common`,
+        // because all the declarations there are non-standalone.
+        env.write(
+          'node_modules/fake-common/index.d.ts',
+          `
+          import * as i0 from '@angular/core';
+
+          export declare class NgIf {
+            static ɵdir: i0.ɵɵDirectiveDeclaration<NgIf<any, any>, "[ngIf]", never, {}, {}, never, never, true, never>;
+            static ɵfac: i0.ɵɵFactoryDeclaration<NgIf<any, any>, never>;
+          }
+
+          export declare class NgFor {
+            static ɵdir: i0.ɵɵDirectiveDeclaration<NgFor<any, any>, "[ngFor]", never, {}, {}, never, never, true, never>;
+            static ɵfac: i0.ɵɵFactoryDeclaration<NgFor<any, any>, never>;
+          }
+
+          export class PercentPipe {
+            static ɵfac: i0.ɵɵFactoryDeclaration<PercentPipe, never>;
+            static ɵpipe: i0.ɵɵPipeDeclaration<PercentPipe, "percent", true>;
+          }
+        `,
+        );
+
+        env.write(
+          'test.ts',
+          `
+          import {Component} from '@angular/core';
+          import {NgIf, NgFor, PercentPipe} from 'fake-common';
+
+          @Component({
+            template: \`
+              <section>
+                <div></div>
+                <span *ngIf="true"></span>
+              </section>
+            \`,
+            imports: [NgFor, NgIf, PercentPipe]
+          })
+          export class MyComp {}
+        `,
+        );
+
+        const diags = env.driveDiagnostics();
+        expect(diags.length).toBe(2);
+        expect(diags[0].messageText).toBe('NgFor is not used within the template of MyComp');
+        expect(diags[1].messageText).toBe('PercentPipe is not used within the template of MyComp');
+      });
+
+      it('should report unused imports coming from a nested array from the same file', () => {
+        env.write(
+          'used.ts',
+          `
+            import {Directive} from '@angular/core';
+
+            @Directive({selector: '[used]'})
+            export class UsedDir {}
+          `,
+        );
+
+        env.write(
+          'other-used.ts',
+          `
+            import {Directive} from '@angular/core';
+
+            @Directive({selector: '[other-used]'})
+            export class OtherUsedDir {}
+          `,
+        );
+
+        env.write(
+          'unused.ts',
+          `
+            import {Directive} from '@angular/core';
+
+            @Directive({selector: '[unused]'})
+            export class UnusedDir {}
+          `,
+        );
+
+        env.write(
+          'test.ts',
+          `
+          import {Component} from '@angular/core';
+          import {UsedDir} from './used';
+          import {OtherUsedDir} from './other-used';
+          import {UnusedDir} from './unused';
+
+          const COMMON = [OtherUsedDir, UnusedDir];
+
+          @Component({
+            template: \`
+              <section>
+                <div other-used></div>
+                <span used></span>
+              </section>
+            \`,
+            imports: [UsedDir, COMMON]
+          })
+          export class MyComp {}
+        `,
+        );
+
+        const diags = env.driveDiagnostics();
+        expect(diags.length).toBe(1);
+        expect(diags[0].messageText).toBe('UnusedDir is not used within the template of MyComp');
+      });
+
+      it('should report unused imports coming from an array used as the `imports` initializer', () => {
+        env.write(
+          'used.ts',
+          `
+            import {Directive} from '@angular/core';
+
+            @Directive({selector: '[used]'})
+            export class UsedDir {}
+          `,
+        );
+
+        env.write(
+          'unused.ts',
+          `
+            import {Directive} from '@angular/core';
+
+            @Directive({selector: '[unused]'})
+            export class UnusedDir {}
+          `,
+        );
+
+        env.write(
+          'test.ts',
+          `
+          import {Component} from '@angular/core';
+          import {UsedDir} from './used';
+          import {UnusedDir} from './unused';
+
+          const IMPORTS = [UsedDir, UnusedDir];
+
+          @Component({
+            template: \`
+              <section>
+                <div></div>
+                <span used></span>
+              </section>
+            \`,
+            imports: IMPORTS
+          })
+          export class MyComp {}
+        `,
+        );
+
+        const diags = env.driveDiagnostics();
+        expect(diags.length).toBe(1);
+        expect(diags[0].messageText).toBe('UnusedDir is not used within the template of MyComp');
+      });
+
+      it('should not report unused imports coming from an array through a spread expression from a different file', () => {
+        env.write(
+          'used.ts',
+          `
+            import {Directive} from '@angular/core';
+
+            @Directive({selector: '[used]'})
+            export class UsedDir {}
+          `,
+        );
+
+        env.write(
+          'other-used.ts',
+          `
+            import {Directive} from '@angular/core';
+
+            @Directive({selector: '[other-used]'})
+            export class OtherUsedDir {}
+          `,
+        );
+
+        env.write(
+          'unused.ts',
+          `
+            import {Directive} from '@angular/core';
+
+            @Directive({selector: '[unused]'})
+            export class UnusedDir {}
+          `,
+        );
+
+        env.write(
+          'common.ts',
+          `
+            import {OtherUsedDir} from './other-used';
+            import {UnusedDir} from './unused';
+
+            export const COMMON = [OtherUsedDir, UnusedDir];
+          `,
+        );
+
+        env.write(
+          'test.ts',
+          `
+          import {Component} from '@angular/core';
+          import {UsedDir} from './used';
+          import {COMMON} from './common';
+
+          @Component({
+            template: \`
+              <section>
+                <div other-used></div>
+                <span used></span>
+              </section>
+            \`,
+            imports: [UsedDir, ...COMMON]
+          })
+          export class MyComp {}
+        `,
+        );
+
+        const diags = env.driveDiagnostics();
+        expect(diags.length).toBe(0);
+      });
+
+      it('should not report unused imports coming from a nested array from a different file', () => {
+        env.write(
+          'used.ts',
+          `
+            import {Directive} from '@angular/core';
+
+            @Directive({selector: '[used]'})
+            export class UsedDir {}
+          `,
+        );
+
+        env.write(
+          'other-used.ts',
+          `
+            import {Directive} from '@angular/core';
+
+            @Directive({selector: '[other-used]'})
+            export class OtherUsedDir {}
+          `,
+        );
+
+        env.write(
+          'unused.ts',
+          `
+            import {Directive} from '@angular/core';
+
+            @Directive({selector: '[unused]'})
+            export class UnusedDir {}
+          `,
+        );
+
+        env.write(
+          'common.ts',
+          `
+            import {OtherUsedDir} from './other-used';
+            import {UnusedDir} from './unused';
+
+            export const COMMON = [OtherUsedDir, UnusedDir];
+          `,
+        );
+
+        env.write(
+          'test.ts',
+          `
+          import {Component} from '@angular/core';
+          import {UsedDir} from './used';
+          import {COMMON} from './common';
+
+          @Component({
+            template: \`
+              <section>
+                <div other-used></div>
+                <span used></span>
+              </section>
+            \`,
+            imports: [UsedDir, COMMON]
+          })
+          export class MyComp {}
+        `,
+        );
+
+        const diags = env.driveDiagnostics();
+        expect(diags.length).toBe(0);
+      });
+
+      it('should not report unused imports coming from an exported array in the same file', () => {
+        env.write(
+          'used.ts',
+          `
+            import {Directive} from '@angular/core';
+
+            @Directive({selector: '[used]'})
+            export class UsedDir {}
+          `,
+        );
+
+        env.write(
+          'other-used.ts',
+          `
+            import {Directive} from '@angular/core';
+
+            @Directive({selector: '[other-used]'})
+            export class OtherUsedDir {}
+          `,
+        );
+
+        env.write(
+          'unused.ts',
+          `
+            import {Directive} from '@angular/core';
+
+            @Directive({selector: '[unused]'})
+            export class UnusedDir {}
+          `,
+        );
+
+        env.write(
+          'test.ts',
+          `
+          import {Component} from '@angular/core';
+          import {UsedDir} from './used';
+          import {OtherUsedDir} from './other-used';
+          import {UnusedDir} from './unused';
+
+          export const COMMON = [OtherUsedDir, UnusedDir];
+
+          @Component({
+            template: \`
+              <section>
+                <div other-used></div>
+                <span used></span>
+              </section>
+            \`,
+            imports: [UsedDir, COMMON]
+          })
+          export class MyComp {}
+        `,
+        );
+
+        const diags = env.driveDiagnostics();
+        expect(diags.length).toBe(0);
+      });
+    });
+
+    describe('DOM event target type inference', () => {
+      beforeEach(() => {
+        env.tsconfig({strictTemplates: true});
+      });
+
+      it('should infer the type of the event target when bound on a void element', () => {
+        env.write(
+          'test.ts',
+          `
+          import {Component} from '@angular/core';
+
+          @Component({template: '<input (input)="handleEvent($event.target)">'})
+          export class TestCmp {
+            handleEvent(value: string) {}
+          }
+        `,
+        );
+
+        const diags = env.driveDiagnostics();
+        expect(diags.length).toBe(1);
+        expect(diags[0].messageText).toBe(
+          `Argument of type 'HTMLInputElement' is not assignable to parameter of type 'string'.`,
+        );
+      });
+
+      it('should not infer the type of the event target when bound on a non-void element', () => {
+        env.write(
+          'test.ts',
+          `
+          import {Component} from '@angular/core';
+
+          @Component({template: '<div (click)="handleEvent($event.target)"></div>'})
+          export class TestCmp {
+            handleEvent(value: string) {}
+          }
+        `,
+        );
+
+        const diags = env.driveDiagnostics();
+        expect(diags.length).toBe(1);
+        expect((diags[0].messageText as ts.DiagnosticMessageChain).messageText).toBe(
+          `Argument of type 'EventTarget | null' is not assignable to parameter of type 'string'.`,
+        );
+      });
+    });
+
+    describe('regular expressions', () => {
+      it('should infer the type of a regular expression literal', () => {
+        env.write(
+          'test.ts',
+          `
+            import {Component} from '@angular/core';
+
+            @Component({
+              template: '{{acceptsNumber(/123/)}}',
+            })
+            class TestCmp {
+              acceptsNumber(value: number) {}
+            }
+          `,
+        );
+
+        const diags = env.driveDiagnostics();
+        expect(diags.length).toBe(1);
+        expect(diags[0].messageText).toBe(
+          `Argument of type 'RegExp' is not assignable to parameter of type 'number'.`,
+        );
+      });
+
+      it('should infer the type of methods on a regular expression literal', () => {
+        env.write(
+          'test.ts',
+          `
+            import {Component} from '@angular/core';
+
+            @Component({
+              template: '{{acceptsNumber(/123/.test("hello"))}}',
+            })
+            class TestCmp {
+              acceptsNumber(value: number) {}
+            }
+          `,
+        );
+
+        const diags = env.driveDiagnostics();
+        expect(diags.length).toBe(1);
+        expect(diags[0].messageText).toBe(
+          `Argument of type 'boolean' is not assignable to parameter of type 'number'.`,
+        );
       });
     });
   });

@@ -23,7 +23,6 @@
     {
       "name": "app-shell",
       "type": "boolean",
-      "default": false,
       "description": "Generates an application shell during build time."
     },
     {
@@ -43,6 +42,11 @@
       "description": "Automatically clear the terminal screen during rebuilds."
     },
     {
+      "name": "conditions",
+      "type": "array",
+      "description": "Custom package resolution conditions used to resolve conditional exports/imports. Defaults to ['module', 'development'/'production']. The following special conditions are always present if the requirements are satisfied: 'default', 'import', 'require', 'browser', 'node'."
+    },
+    {
       "name": "configuration",
       "type": "string",
       "aliases": [
@@ -55,11 +59,16 @@
       "type": "string",
       "default": "none",
       "enum": [
-        "none",
         "anonymous",
+        "none",
         "use-credentials"
       ],
       "description": "Define the crossorigin attribute setting of elements that provide CORS support."
+    },
+    {
+      "name": "define",
+      "type": "array",
+      "description": "Defines global identifiers that will be replaced with a specified constant value when found in any JavaScript or TypeScript code including libraries. The value will be used directly. String values must be put in quotes. Identifiers within Angular metadata such as Component Decorators will not be replaced."
     },
     {
       "name": "delete-output-path",
@@ -75,7 +84,7 @@
     {
       "name": "external-dependencies",
       "type": "array",
-      "description": "Exclude the listed external dependencies from being bundled into the bundle. Instead, the created bundle relies on these dependencies to be available during runtime."
+      "description": "Exclude the listed external dependencies from being bundled into the bundle. Instead, the created bundle relies on these dependencies to be available during runtime. Note: `@foo/bar` marks all paths within the `@foo/bar` package as external, including sub-paths like `@foo/bar/baz`."
     },
     {
       "name": "extract-licenses",
@@ -93,9 +102,9 @@
       "type": "string",
       "default": "warning",
       "enum": [
-        "warning",
         "error",
-        "ignore"
+        "ignore",
+        "warning"
       ],
       "description": "How to handle duplicate translations for i18n."
     },
@@ -104,9 +113,9 @@
       "type": "string",
       "default": "warning",
       "enum": [
-        "warning",
         "error",
-        "ignore"
+        "ignore",
+        "warning"
       ],
       "description": "How to handle missing translations for i18n."
     },
@@ -149,12 +158,21 @@
       "type": "string",
       "default": "none",
       "enum": [
-        "none",
         "all",
+        "bundles",
         "media",
-        "bundles"
+        "none"
       ],
       "description": "Define the output filename cache-busting hashing mode."
+    },
+    {
+      "name": "output-mode",
+      "type": "string",
+      "enum": [
+        "server",
+        "static"
+      ],
+      "description": "Defines the build output target. 'static': Generates a static site for deployment on any static hosting service. 'server': Produces an application designed for deployment on a server that supports server-side rendering (SSR)."
     },
     {
       "name": "output-path",
@@ -174,7 +192,6 @@
     {
       "name": "prerender",
       "type": "boolean",
-      "default": false,
       "description": "Prerender (SSG) pages of your application during build time."
     },
     {
@@ -193,6 +210,11 @@
       "type": "string",
       "description": "The name of the project to build. Can be an application or a library.",
       "positional": 0
+    },
+    {
+      "name": "scripts",
+      "type": "array",
+      "description": "Global scripts to be included in the build."
     },
     {
       "name": "server",
@@ -221,6 +243,11 @@
       "type": "boolean",
       "default": false,
       "description": "Generates a 'stats.json' file which can be analyzed with https://esbuild.github.io/analyze/."
+    },
+    {
+      "name": "styles",
+      "type": "array",
+      "description": "Global styles to be included in the build."
     },
     {
       "name": "subresource-integrity",

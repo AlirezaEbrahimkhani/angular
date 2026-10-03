@@ -1,15 +1,15 @@
-load("//tools:defaults.bzl", "ts_library")
+load("//tools:defaults.bzl", "ts_project")
 
 package(default_visibility = ["//visibility:public"])
 
-ts_library(
+ts_project(
     name = "xi18n",
     srcs = glob([
         "*.ts",
         "src/**/*.ts",
     ]),
     deps = [
+        "//:node_modules/typescript",
         "//packages/compiler",
-        "@npm//typescript",
     ],
 )

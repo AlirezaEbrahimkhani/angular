@@ -1,3 +1,1 @@
-exports_files([
-    "bazel-karma-local-config.js",
-])
+# Empty BUILD file to create a package location for importing.

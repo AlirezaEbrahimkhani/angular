@@ -3,14 +3,14 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 import {
   AbsoluteFsPath,
   getFileSystem,
   PathManipulation,
 } from '@angular/compiler-cli/private/localize';
-import {ɵParsedMessage, ɵSourceLocation} from '@angular/localize';
+import {ɵParsedMessage, ɵSourceLocation} from '../../../../index';
 
 import {FormatOptions, validateOptions} from './format_options';
 import {extractIcuPlaceholders} from './icu_parsing';

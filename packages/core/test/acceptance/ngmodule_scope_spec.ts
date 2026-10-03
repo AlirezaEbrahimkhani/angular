@@ -3,12 +3,11 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {Component, destroyPlatform, NgModule, Pipe, PipeTransform} from '@angular/core';
-import {BrowserModule} from '@angular/platform-browser';
-import {platformBrowserDynamic} from '@angular/platform-browser-dynamic';
+import {Component, destroyPlatform, NgModule, Pipe, PipeTransform} from '../../src/core';
+import {BrowserModule, platformBrowser} from '@angular/platform-browser';
 import {withBody} from '@angular/private/testing';
 
 describe('NgModule scopes', () => {
@@ -29,17 +28,27 @@ describe('NgModule scopes', () => {
       // The scenario cannot be tested using TestBed as it influences how NgModule
       // scopes are applied, preventing the issue from occurring.
 
-      @Pipe({name: 'multiply'})
+      @Pipe({
+        name: 'multiply',
+        standalone: false,
+      })
       class MultiplyPipe implements PipeTransform {
         transform(value: number, factor: number): number {
           return value * factor;
         }
       }
 
-      @Component({template: '...'})
+      @Component({
+        template: '...',
+        standalone: false,
+      })
       class BaseComponent {}
 
-      @Component({selector: 'my-app', template: 'App - {{ 3 | multiply:2 }}'})
+      @Component({
+        selector: 'my-app',
+        template: 'App - {{ 3 | multiply:2 }}',
+        standalone: false,
+      })
       class App extends BaseComponent {}
 
       @NgModule({
@@ -49,7 +58,7 @@ describe('NgModule scopes', () => {
       })
       class Mod {}
 
-      const ngModuleRef = await platformBrowserDynamic().bootstrapModule(Mod);
+      const ngModuleRef = await platformBrowser().bootstrapModule(Mod);
       expect(document.body.textContent).toContain('App - 6');
       ngModuleRef.destroy();
     }),

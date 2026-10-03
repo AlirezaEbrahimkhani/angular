@@ -3,10 +3,10 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {Component, NgModule} from '@angular/core';
+import {Component, NgModule, provideZoneChangeDetection} from '@angular/core';
 import {RouterModule} from '@angular/router';
 
 import * as animationDslExample from './animation/ts/dsl/module';
@@ -16,7 +16,11 @@ import * as diViewChildExample from './di/ts/viewChild/module';
 import * as diViewChildrenExample from './di/ts/viewChildren/module';
 import * as testabilityWhenStableExample from './testability/ts/whenStable/module';
 
-@Component({selector: 'example-app', template: '<router-outlet></router-outlet>'})
+@Component({
+  selector: 'example-app',
+  template: '<router-outlet></router-outlet>',
+  standalone: false,
+})
 export class TestsAppComponent {}
 
 @NgModule({
@@ -41,5 +45,6 @@ export class TestsAppComponent {}
   ],
   declarations: [TestsAppComponent],
   bootstrap: [TestsAppComponent],
+  providers: [provideZoneChangeDetection()],
 })
 export class TestsAppModule {}

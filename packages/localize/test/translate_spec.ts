@@ -3,12 +3,12 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 // Ensure that `$localize` is loaded to the global scope.
-import '@angular/localize/init';
+import '../init';
 
-import {clearTranslations, loadTranslations} from '../localize';
+import {clearTranslations, loadTranslations} from '../index';
 import {computeMsgId, MessageId, TargetMessage} from '../src/utils';
 
 describe('$localize tag with translations', () => {

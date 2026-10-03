@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {
@@ -16,19 +16,24 @@ import {
   ImplicitReceiver,
   Interpolation,
   KeyedRead,
-  KeyedWrite,
   LiteralArray,
   LiteralMap,
   LiteralPrimitive,
+  ParenthesizedExpression,
   ParseSpan,
   PrefixNot,
   PropertyRead,
-  PropertyWrite,
   RecursiveAstVisitor,
+  RegularExpressionLiteral,
   SafeCall,
   SafeKeyedRead,
   SafePropertyRead,
+  TaggedTemplateLiteral,
+  TemplateLiteral,
+  TemplateLiteralElement,
+  TypeofExpression,
   Unary,
+  VoidExpression,
 } from '../../../src/expression_parser/ast';
 
 import {unparse} from './unparser';
@@ -88,10 +93,6 @@ class ASTValidator extends RecursiveAstVisitor {
     this.validate(ast, () => super.visitKeyedRead(ast, context));
   }
 
-  override visitKeyedWrite(ast: KeyedWrite, context: any): any {
-    this.validate(ast, () => super.visitKeyedWrite(ast, context));
-  }
-
   override visitLiteralArray(ast: LiteralArray, context: any): any {
     this.validate(ast, () => super.visitLiteralArray(ast, context));
   }
@@ -112,12 +113,16 @@ class ASTValidator extends RecursiveAstVisitor {
     this.validate(ast, () => super.visitPrefixNot(ast, context));
   }
 
-  override visitPropertyRead(ast: PropertyRead, context: any): any {
-    this.validate(ast, () => super.visitPropertyRead(ast, context));
+  override visitTypeofExpression(ast: TypeofExpression, context: any): any {
+    this.validate(ast, () => super.visitTypeofExpression(ast, context));
   }
 
-  override visitPropertyWrite(ast: PropertyWrite, context: any): any {
-    this.validate(ast, () => super.visitPropertyWrite(ast, context));
+  override visitVoidExpression(ast: VoidExpression, context: any): any {
+    this.validate(ast, () => super.visitVoidExpression(ast, context));
+  }
+
+  override visitPropertyRead(ast: PropertyRead, context: any): any {
+    this.validate(ast, () => super.visitPropertyRead(ast, context));
   }
 
   override visitSafePropertyRead(ast: SafePropertyRead, context: any): any {
@@ -134,6 +139,26 @@ class ASTValidator extends RecursiveAstVisitor {
 
   override visitSafeCall(ast: SafeCall, context: any): any {
     this.validate(ast, () => super.visitSafeCall(ast, context));
+  }
+
+  override visitTemplateLiteral(ast: TemplateLiteral, context: any): any {
+    this.validate(ast, () => super.visitTemplateLiteral(ast, context));
+  }
+
+  override visitTemplateLiteralElement(ast: TemplateLiteralElement, context: any): any {
+    this.validate(ast, () => super.visitTemplateLiteralElement(ast, context));
+  }
+
+  override visitTaggedTemplateLiteral(ast: TaggedTemplateLiteral, context: any): void {
+    this.validate(ast, () => super.visitTaggedTemplateLiteral(ast, context));
+  }
+
+  override visitParenthesizedExpression(ast: ParenthesizedExpression, context: any): void {
+    this.validate(ast, () => super.visitParenthesizedExpression(ast, context));
+  }
+
+  override visitRegularExpressionLiteral(ast: RegularExpressionLiteral, context: any): void {
+    this.validate(ast, () => super.visitRegularExpressionLiteral(ast, context));
   }
 }
 

@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import ts from 'typescript';
@@ -13,6 +13,9 @@ import {ReflectionHost} from '../../reflection';
 
 import {SourceFileValidatorRule} from './rules/api';
 import {InitializerApiUsageRule} from './rules/initializer_api_usage_rule';
+import {UnusedStandaloneImportsRule} from './rules/unused_standalone_imports_rule';
+import {TemplateTypeChecker, TypeCheckingConfig} from '../../typecheck/api';
+import {ForbiddenRequiredInitializersInvocationRule} from './rules/forbidden_required_initializer_invocation_rule';
 
 /**
  * Validates that TypeScript files match a specific set of rules set by the Angular compiler.
@@ -20,8 +23,25 @@ import {InitializerApiUsageRule} from './rules/initializer_api_usage_rule';
 export class SourceFileValidator {
   private rules: SourceFileValidatorRule[];
 
-  constructor(reflector: ReflectionHost, importedSymbolsTracker: ImportedSymbolsTracker) {
+  constructor(
+    reflector: ReflectionHost,
+    importedSymbolsTracker: ImportedSymbolsTracker,
+    templateTypeChecker: TemplateTypeChecker,
+    typeCheckingConfig: TypeCheckingConfig,
+  ) {
     this.rules = [new InitializerApiUsageRule(reflector, importedSymbolsTracker)];
+
+    this.rules.push(
+      new UnusedStandaloneImportsRule(
+        templateTypeChecker,
+        typeCheckingConfig,
+        importedSymbolsTracker,
+      ),
+    );
+
+    this.rules.push(
+      new ForbiddenRequiredInitializersInvocationRule(reflector, importedSymbolsTracker),
+    );
   }
 
   /**

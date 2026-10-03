@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 import {
   AbsoluteFsPath,
@@ -12,7 +12,7 @@ import {
   SourceFile,
   SourceFileLoader,
 } from '@angular/compiler-cli/private/localize';
-import {ɵParsedMessage, ɵSourceLocation} from '@angular/localize';
+import {ɵParsedMessage, ɵSourceLocation} from '../../../index';
 import {transformSync} from '@babel/core';
 
 import {makeEs2015ExtractPlugin} from './source_files/es2015_extract_plugin';

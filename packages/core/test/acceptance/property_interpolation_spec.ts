@@ -3,10 +3,10 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
-import {Component} from '@angular/core';
-import {TestBed} from '@angular/core/testing';
+import {Component} from '../../src/core';
+import {TestBed} from '../../testing';
 import {By} from '@angular/platform-browser';
 import {of} from 'rxjs';
 
@@ -25,6 +25,7 @@ describe('property interpolation', () => {
         <div title="a{{one}}b"></div>
         <div title="{{one}}"></div>
       `,
+      standalone: false,
     })
     class App {
       one = 1;
@@ -65,6 +66,7 @@ describe('property interpolation', () => {
       template: `
         <img title="{{(details | async)?.title}}" src="{{(details | async)?.url}}" />
       `,
+      standalone: false,
     })
     class App {
       details = of({
@@ -88,6 +90,7 @@ describe('property interpolation', () => {
       template: `
         <img src="{{leadSurgeon?.getCommonInfo()?.getPhotoUrl() }}">
       `,
+      standalone: false,
     })
     class App {
       /** Clearly this is a doctor of heavy metals. */
@@ -115,6 +118,7 @@ describe('property interpolation', () => {
       template: `
         <img src="{{naughty}}">
       `,
+      standalone: false,
     })
     class App {
       naughty = 'javascript:alert("haha, I am taking over your computer!!!");';
@@ -133,6 +137,7 @@ describe('property interpolation', () => {
       template: `
         <img src="{{ja}}{{va}}script:{{naughty}}">
       `,
+      standalone: false,
     })
     class App {
       ja = 'ja';
@@ -153,6 +158,7 @@ describe('property interpolation', () => {
       selector: 'app-comp',
       template: `
         <a href="http://g.com/?one={{'1'}}&two={{'2'}}&three={{'3'}}&four={{'4'}}&five={{'5'}}&six={{'6'}}&seven={{'7'}}&eight={{'8'}}&nine={{'9'}}&ten={{'10'}}">link2</a>`,
+      standalone: false,
     })
     class AppComp {}
 
@@ -165,7 +171,7 @@ describe('property interpolation', () => {
     );
   });
 
-  it('should support the chained use cases of propertyInterpolate instructions', () => {
+  it('should support the chained use cases of property interpolations', () => {
     // The below *just happens* to have two attributes in a row that have the same interpolation
     // count.
     @Component({
@@ -181,6 +187,7 @@ describe('property interpolation', () => {
       <img title="a{{one}}b" alt="a{{one}}b"/>
       <img title="{{one}}" alt="{{one}}"/>
       `,
+      standalone: false,
     })
     class AppComp {
       one = 1;

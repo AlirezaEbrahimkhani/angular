@@ -3,14 +3,18 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {ActionResolver} from './action_resolver';
 import {Dispatcher} from './dispatcher';
 import {EventInfo, EventInfoWrapper} from './event_info';
+import {isCaptureEventType} from './event_type';
 import {UnrenamedEventContract} from './eventcontract';
 import {Restriction} from './restriction';
+
+// Necessary to make the `ngDevMode` global types available.
+import '../../../src/util/ng_dev_mode';
 
 /**
  * A replayer is a function that is called when there are queued events, from the `EventContract`.
@@ -18,7 +22,8 @@ import {Restriction} from './restriction';
 export type Replayer = (eventInfoWrappers: Event[]) => void;
 
 /** An internal symbol used to indicate whether propagation should be stopped or not. */
-export const PROPAGATION_STOPPED_SYMBOL = Symbol.for('propagationStopped');
+export const PROPAGATION_STOPPED_SYMBOL: unique symbol =
+  /* @__PURE__ */ Symbol.for('propagationStopped');
 
 /** Extra event phases beyond what the browser provides. */
 export const EventPhase = {
@@ -51,8 +56,11 @@ export class EventDispatcher {
 
   private readonly dispatcher: Dispatcher;
 
-  constructor(private readonly dispatchDelegate: (event: Event, actionName: string) => void) {
-    this.actionResolver = new ActionResolver();
+  constructor(
+    private readonly dispatchDelegate: (event: Event, actionName: string) => void,
+    private readonly clickModSupport = true,
+  ) {
+    this.actionResolver = new ActionResolver({clickModSupport});
     this.dispatcher = new Dispatcher(
       (eventInfoWrapper: EventInfoWrapper) => {
         this.dispatchToDelegate(eventInfoWrapper);
@@ -78,6 +86,13 @@ export class EventDispatcher {
     prepareEventForBubbling(eventInfoWrapper);
     while (eventInfoWrapper.getAction()) {
       prepareEventForDispatch(eventInfoWrapper);
+      // If this is a capture event, ONLY dispatch if the action element is the target.
+      if (
+        isCaptureEventType(eventInfoWrapper.getEventType()) &&
+        eventInfoWrapper.getAction()!.element !== eventInfoWrapper.getTargetElement()
+      ) {
+        return;
+      }
       this.dispatchDelegate(eventInfoWrapper.getEvent(), eventInfoWrapper.getAction()!.name);
       if (propagationStopped(eventInfoWrapper)) {
         return;
@@ -89,8 +104,10 @@ export class EventDispatcher {
 
 function prepareEventForBubbling(eventInfoWrapper: EventInfoWrapper) {
   const event = eventInfoWrapper.getEvent();
+  const originalStopPropagation = eventInfoWrapper.getEvent().stopPropagation.bind(event);
   const stopPropagation = () => {
     event[PROPAGATION_STOPPED_SYMBOL] = true;
+    originalStopPropagation();
   };
   patchEventInstance(event, 'stopPropagation', stopPropagation);
   patchEventInstance(event, 'stopImmediatePropagation', stopPropagation);
@@ -104,9 +121,11 @@ function propagationStopped(eventInfoWrapper: EventInfoWrapper) {
 function prepareEventForReplay(eventInfoWrapper: EventInfoWrapper) {
   const event = eventInfoWrapper.getEvent();
   const target = eventInfoWrapper.getTargetElement();
+  const originalPreventDefault = event.preventDefault.bind(event);
   patchEventInstance(event, 'target', target);
   patchEventInstance(event, 'eventPhase', EventPhase.REPLAY);
   patchEventInstance(event, 'preventDefault', () => {
+    originalPreventDefault();
     throw new Error(
       PREVENT_DEFAULT_ERROR_MESSAGE + (ngDevMode ? PREVENT_DEFAULT_ERROR_MESSAGE_DETAILS : ''),
     );

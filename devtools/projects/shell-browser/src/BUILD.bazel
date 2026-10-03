@@ -1,92 +1,71 @@
-load("@io_bazel_rules_sass//:defs.bzl", "sass_binary")
-load("@build_bazel_rules_nodejs//:index.bzl", "js_library", "pkg_web")
-load("//devtools/tools:ng_module.bzl", "ng_module")
-load("//devtools/tools:typescript.bzl", "ts_library")
-load("//tools:defaults.bzl", "esbuild")
-load("//devtools/tools/esbuild:index.bzl", "LINKER_PROCESSED_FW_PACKAGES")
-load("@bazel_skylib//rules:common_settings.bzl", "string_flag")
+load("//devtools/tools:defaults.bzl", "esbuild", "extension_package", "ng_project", "sass_binary", "string_flag", "ts_project")
 
 package(default_visibility = ["//visibility:public"])
 
 sass_binary(
     name = "shell_common_styles",
     src = "styles.scss",
-    include_paths = ["external/npm/node_modules"],
+    include_paths = ["external/_main/node_modules"],
     sourcemap = False,
-    deps = ["//devtools:global_styles"],
+    deps = ["//devtools/projects/ng-devtools/src/styles:global"],
 )
 
-sass_binary(
-    name = "shell_firefox_styles",
-    src = "styles/firefox_styles.scss",
-)
-
-sass_binary(
-    name = "shell_chrome_styles",
-    src = "styles/chrome_styles.scss",
-)
-
-ts_library(
-    name = "devtools_ts",
+ts_project(
+    name = "devtools",
     srcs = [
         "devtools.ts",
     ],
     deps = [
-        "@npm//@types/chrome",
+        "//:node_modules/@types/chrome",
     ],
 )
 
-js_library(
-    name = "devtools",
-    deps = [":devtools_ts"],
-)
-
-ng_module(
+ng_project(
     name = "src",
     srcs = [
         "main.ts",
     ],
     deps = [
+        "//:node_modules/@angular/common",
+        "//:node_modules/@angular/core",
         "//devtools/projects/ng-devtools",
         "//devtools/projects/shell-browser/src/app",
         "//devtools/projects/shell-browser/src/environments:environment",
-        "//packages/common",
-        "//packages/common/http",
-        "//packages/core",
-        "//packages/platform-browser-dynamic",
     ],
 )
 
 esbuild(
     name = "bundle",
-    config = "//devtools/tools/esbuild:esbuild_config_esm_prod",
+    srcs = [
+        "//devtools/tools/esbuild:esbuild_base",
+        "//devtools/tools/esbuild:esbuild_config_esm_prod",
+    ],
+    config = "//devtools/tools/esbuild:esbuild-esm-prod.config.mjs",
     entry_points = [":main.ts"],
     minify = True,
     platform = "browser",
     splitting = False,
-    # todo(aleksanderbodurri): here we target es2020 explicitly.
-    # We do this because of a bug caused by https://github.com/evanw/esbuild/issues/2950 and an Angular v16 change
-    # to how angular static properties are attached to class constructors.
-    # Targeting esnext or es2022 will cause the static initializer blocks that attach these static properties on class
-    # constructors to reference a class constructor variable that they do not have access to.
-    target = "es2020",
-    deps = LINKER_PROCESSED_FW_PACKAGES + [":src"],
+    target = "es2022",
+    deps = [
+        ":src",
+        "//:node_modules/@angular/cdk",
+    ],
 )
 
 esbuild(
     name = "devtools_bundle",
-    config = "//devtools/tools/esbuild:esbuild_config_esm",
+    srcs = [
+        "//:node_modules/tslib",
+        "//devtools/tools/esbuild:esbuild_base",
+        "//devtools/tools/esbuild:esbuild_config_esm",
+    ],
+    config = "//devtools/tools/esbuild:esbuild-esm.config.mjs",
     entry_point = "devtools.ts",
     format = "iife",
     minify = True,
     platform = "browser",
     splitting = False,
-    # todo(aleksanderbodurri): here we target es2020 explicitly.
-    # We do this because of a bug caused by https://github.com/evanw/esbuild/issues/2950 and an Angular v16 change
-    # to how angular static properties are attached to class constructors.
-    # Targeting esnext or es2022 will cause the static initializer blocks that attach these static properties on class
-    # constructors to reference a class constructor variable that they do not have access to.
-    target = "es2020",
+    target = "es2022",
     deps = [":devtools"],
 )
 
@@ -96,10 +75,7 @@ filegroup(
     name = "prod_app_static_files",
     srcs = [
         ":index.html",
-        ":shell_chrome_styles",
         ":shell_common_styles",
-        ":shell_firefox_styles",
-        "//packages/zone.js/bundles:zone.umd.js",
     ],
 )
 
@@ -132,7 +108,7 @@ genrule(
     cmd = "cp $< $@",
 )
 
-pkg_web(
+extension_package(
     name = "prodapp",
     srcs = [
         ":bundle",
@@ -147,8 +123,5 @@ pkg_web(
         "//devtools/projects/shell-browser/src/app:ng_validate_bundle",
         "//devtools/projects/shell-browser/src/assets",
         "//devtools/projects/shell-browser/src/popups",
-    ],
-    additional_root_paths = [
-        "projects/ng-devtools/src/lib",
     ],
 )

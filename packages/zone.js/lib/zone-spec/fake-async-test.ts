@@ -3,10 +3,11 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {ZoneType} from '../zone-impl';
+import {type ProxyZoneSpec} from './proxy';
 
 const global: any =
   (typeof window === 'object' && window) || (typeof self === 'object' && self) || globalThis.global;
@@ -33,6 +34,9 @@ interface MacroTaskOptions {
   callbackArgs?: any;
 }
 
+// Need this because mock clocks might be installed (other than fakeAsync!)
+const originalSetImmediate = global.setImmediate;
+const originalTimeout = global.setTimeout;
 const OriginalDate = global.Date;
 // Since when we compile this file to `es2015`, and if we define
 // this `FakeDate` as `class FakeDate`, and then set `FakeDate.prototype`
@@ -271,6 +275,19 @@ class Scheduler {
     if (doTick) {
       doTick(this._currentTickTime - lastCurrentTime);
     }
+  }
+
+  executeNextTask(doTick?: (elapsed: number) => void): void {
+    const current = this._schedulerQueue.shift();
+    if (current === undefined) {
+      return;
+    }
+    doTick?.(current.endTime - this._currentTickTime);
+    this._currentTickTime = current.endTime;
+    current.func.apply(
+      global,
+      current.isRequestAnimationFrame ? [this._currentTickTime] : current.args,
+    );
   }
 
   flushOnlyPendingTimers(doTick?: (elapsed: number) => void): number {
@@ -546,6 +563,99 @@ class FakeAsyncTestZoneSpec implements ZoneSpec {
     FakeAsyncTestZoneSpec.resetDate();
   }
 
+  private tickMode: {counter: number; mode: 'manual' | 'automatic'} = {
+    counter: 0,
+    mode: 'manual',
+  };
+
+  /** @experimental */
+  setTickMode(mode: 'manual' | 'automatic', doTick?: (elapsed: number) => void) {
+    if (mode === this.tickMode.mode) {
+      return;
+    }
+    this.tickMode.counter++;
+    this.tickMode.mode = mode;
+    if (mode === 'automatic') {
+      this.advanceUntilModeChanges(doTick);
+    }
+  }
+
+  private advanceUntilModeChanges(doTick?: (elapsed: number) => void): void {
+    FakeAsyncTestZoneSpec.assertInZone();
+    const specZone = Zone.current;
+    const {counter} = this.tickMode;
+
+    Zone.root.run(async () => {
+      // autoTick with fakeAsync is a bit awkward because microtasks are
+      // controlled by the scheduler as well. This means that we have to
+      // manually flush microtasks before allowing real macrotasks to execute.
+      // Waiting for a macrotask would otherwise allow the browser to execute
+      // other macrotasks before the currently scheduled microtasks are flushed.
+      await safeAsync(async () => {
+        await void 0;
+        specZone.run(() => {
+          this.flushMicrotasks();
+        });
+      });
+
+      if (this.tickMode.counter !== counter) {
+        return;
+      }
+
+      while (true) {
+        await safeAsync(() => this.newMacrotask(specZone));
+
+        if (this.tickMode.counter !== counter) {
+          return;
+        }
+
+        await safeAsync(() =>
+          specZone.run(() => {
+            this._scheduler.executeNextTask(doTick);
+          }),
+        );
+      }
+    });
+  }
+
+  // Waits until a new macro task.
+  //
+  // Used with autoTick(), which is meant to act when the test is waiting, we
+  // need to insert ourselves in the macro task queue.
+  //
+  // @return {!Promise<undefined>}
+  private async newMacrotask(specZone: Zone) {
+    if (originalSetImmediate) {
+      // setImmediate is much faster than setTimeout in node
+      await new Promise((resolve) => {
+        originalSetImmediate(resolve);
+      });
+    } else {
+      // MessageChannel ensures that setTimeout is not throttled to 4ms.
+      // https://developer.mozilla.org/en-US/docs/Web/API/setTimeout#reasons_for_delays_longer_than_specified
+      // https://stackblitz.com/edit/stackblitz-starters-qtlpcc
+      // Note: This trick does not work in Safari, which will still throttle the
+      // setTimeout
+      const channel = new MessageChannel();
+      await new Promise((resolve) => {
+        channel.port1.onmessage = resolve;
+        channel.port2.postMessage(undefined);
+      });
+      channel.port1.close();
+      channel.port2.close();
+      // setTimeout ensures that we interleave with other setTimeouts.
+      await new Promise((resolve) => {
+        originalTimeout(resolve);
+      });
+    }
+
+    // flush any microtasks that were scheduled from the tasks that ran during
+    // the timeout.
+    specZone.run(() => {
+      this.flushMicrotasks();
+    });
+  }
+
   tickToNext(
     steps: number = 1,
     doTick?: (elapsed: number) => void,
@@ -675,10 +785,16 @@ class FakeAsyncTestZoneSpec implements ZoneSpec {
             );
             break;
           case 'XMLHttpRequest.send':
-            throw new Error(
-              'Cannot make XHRs from within a fake async test. Request URL: ' +
-                (task.data as any)['url'],
-            );
+            if (this.tickMode.mode === 'manual') {
+              throw new Error(
+                'Cannot make XHRs from within a fake async test. Request URL: ' +
+                  (task.data as any)['url'],
+              );
+            }
+            // When using automatic ticking, we allow the XHR to be handled in a truly async form
+            // by the parent/delegate Zone because auto ticking FakeAsync is not strictly synchronous.
+            task = delegate.scheduleTask(target, task);
+            break;
           case 'requestAnimationFrame':
           case 'webkitRequestAnimationFrame':
           case 'mozRequestAnimationFrame':
@@ -780,21 +896,21 @@ class FakeAsyncTestZoneSpec implements ZoneSpec {
     targetZone: Zone,
     error: any,
   ): boolean {
+    // ComponentFixture has a special-case handling to detect FakeAsyncTestZoneSpec
+    // and prevent rethrowing the error from the onError subscription since it's handled here.
     this._lastError = error;
     return false; // Don't propagate error to parent zone.
   }
 }
 
-let _fakeAsyncTestZoneSpec: any = null;
+let _fakeAsyncTestZoneSpec: FakeAsyncTestZoneSpec | null = null;
 
-type ProxyZoneSpecType = {
-  setDelegate(delegateSpec: ZoneSpec): void;
-  getDelegate(): ZoneSpec;
-  resetDelegate(): void;
-};
-function getProxyZoneSpec(): {get(): ProxyZoneSpecType; assertPresent: () => ProxyZoneSpecType} {
+function getProxyZoneSpec(): typeof ProxyZoneSpec | undefined {
   return Zone && (Zone as any)['ProxyZoneSpec'];
 }
+
+let _sharedProxyZoneSpec: ProxyZoneSpec | null = null;
+let _sharedProxyZone: Zone | null = null;
 
 /**
  * Clears out the shared fake async zone for a test.
@@ -807,8 +923,8 @@ export function resetFakeAsyncZone() {
     _fakeAsyncTestZoneSpec.unlockDatePatch();
   }
   _fakeAsyncTestZoneSpec = null;
-  // in node.js testing we may not have ProxyZoneSpec in which case there is nothing to reset.
-  getProxyZoneSpec() && getProxyZoneSpec().assertPresent().resetDelegate();
+  getProxyZoneSpec()?.get()?.resetDelegate();
+  _sharedProxyZoneSpec?.resetDelegate();
 }
 
 /**
@@ -816,7 +932,8 @@ export function resetFakeAsyncZone() {
  * - microtasks are manually executed by calling `flushMicrotasks()`,
  * - timers are synchronous, `tick()` simulates the asynchronous passage of time.
  *
- * If there are any pending timers at the end of the function, an exception will be thrown.
+ * When flush is `false`, if there are any pending timers at the end of the function,
+ * an exception will be thrown.
  *
  * Can be used to wrap inject() calls.
  *
@@ -825,18 +942,21 @@ export function resetFakeAsyncZone() {
  * {@example core/testing/ts/fake_async.ts region='basic'}
  *
  * @param fn
+ * @param options
+ *     flush: when true, will drain the macrotask queue after the test function completes.
  * @returns The function wrapped to be executed in the fakeAsync zone
  *
  * @experimental
  */
-export function fakeAsync(fn: Function): (...args: any[]) => any {
+export function fakeAsync(fn: Function, options: {flush?: boolean} = {}): (...args: any[]) => any {
+  const {flush = true} = options;
   // Not using an arrow function to preserve context passed from call site
   const fakeAsyncFn: any = function (this: unknown, ...args: any[]) {
     const ProxyZoneSpec = getProxyZoneSpec();
     if (!ProxyZoneSpec) {
       throw new Error(
-        'ProxyZoneSpec is needed for the async() test helper but could not be found. ' +
-          'Please make sure that your environment includes zone.js/plugins/proxy',
+        'ProxyZoneSpec is needed for the fakeAsync() test helper but could not be found. ' +
+          'Make sure that your environment includes zone-testing.js',
       );
     }
     const proxyZoneSpec = ProxyZoneSpec.assertPresent();
@@ -851,7 +971,7 @@ export function fakeAsync(fn: Function): (...args: any[]) => any {
           throw new Error('fakeAsync() calls can not be nested');
         }
 
-        _fakeAsyncTestZoneSpec = new FakeAsyncTestZoneSpec();
+        _fakeAsyncTestZoneSpec = new FakeAsyncTestZoneSpec() as FakeAsyncTestZoneSpec;
       }
 
       let res: any;
@@ -860,29 +980,35 @@ export function fakeAsync(fn: Function): (...args: any[]) => any {
       _fakeAsyncTestZoneSpec.lockDatePatch();
       try {
         res = fn.apply(this, args);
-        flushMicrotasks();
+        if (flush) {
+          _fakeAsyncTestZoneSpec.flush(20, true);
+        } else {
+          flushMicrotasks();
+        }
       } finally {
         proxyZoneSpec.setDelegate(lastProxyZoneSpec);
       }
 
-      if (_fakeAsyncTestZoneSpec.pendingPeriodicTimers.length > 0) {
-        throw new Error(
-          `${_fakeAsyncTestZoneSpec.pendingPeriodicTimers.length} ` +
-            `periodic timer(s) still in the queue.`,
-        );
-      }
+      if (!flush) {
+        if (_fakeAsyncTestZoneSpec.pendingPeriodicTimers.length > 0) {
+          throw new Error(
+            `${_fakeAsyncTestZoneSpec.pendingPeriodicTimers.length} ` +
+              `periodic timer(s) still in the queue.`,
+          );
+        }
 
-      if (_fakeAsyncTestZoneSpec.pendingTimers.length > 0) {
-        throw new Error(
-          `${_fakeAsyncTestZoneSpec.pendingTimers.length} timer(s) still in the queue.`,
-        );
+        if (_fakeAsyncTestZoneSpec.pendingTimers.length > 0) {
+          throw new Error(
+            `${_fakeAsyncTestZoneSpec.pendingTimers.length} timer(s) still in the queue.`,
+          );
+        }
       }
       return res;
     } finally {
       resetFakeAsyncZone();
     }
   };
-  (fakeAsyncFn as any).isFakeAsync = true;
+  fakeAsyncFn.isFakeAsync = true;
   return fakeAsyncFn;
 }
 
@@ -938,6 +1064,51 @@ export function discardPeriodicTasks(): void {
 }
 
 /**
+ * Wraps a function to be executed in a shared ProxyZone.
+ *
+ * If no shared ProxyZone exists, one is created and reused for subsequent calls.
+ * Useful for wrapping test setup (beforeEach) and test execution (it) when test
+ * runner patching isn't available or desired for setting up the ProxyZone.
+ *
+ * @param fn The function to wrap.
+ * @returns A function that executes the original function within the shared ProxyZone.
+ *
+ * @experimental
+ */
+export function withProxyZone<T extends Function>(fn: T): T {
+  const autoProxyFn: any = function (this: unknown, ...args: any[]) {
+    const proxyZoneSpec = getProxyZoneSpec();
+    if (proxyZoneSpec === undefined) {
+      throw new Error(
+        'ProxyZoneSpec is needed for the withProxyZone() test helper but could not be found. ' +
+          'Make sure that your environment includes zone-testing.js',
+      );
+    }
+
+    const proxyZone = proxyZoneSpec.get() !== undefined ? Zone.current : getOrCreateRootProxy();
+    return proxyZone.run(fn, this, args);
+  };
+  return autoProxyFn as T;
+}
+
+function getOrCreateRootProxy() {
+  const ProxyZoneSpec = getProxyZoneSpec();
+  if (ProxyZoneSpec === undefined) {
+    throw new Error(
+      'ProxyZoneSpec is needed for withProxyZone but could not be found. ' +
+        'Make sure that your environment includes zone-testing.js',
+    );
+  }
+  // Ensure the shared ProxyZoneSpec instance exists
+  if (_sharedProxyZoneSpec === null) {
+    _sharedProxyZoneSpec = new ProxyZoneSpec() as ProxyZoneSpec;
+  }
+
+  _sharedProxyZone = Zone.root.fork(_sharedProxyZoneSpec);
+  return _sharedProxyZone;
+}
+
+/**
  * Flush any pending microtasks.
  *
  * @experimental
@@ -961,6 +1132,7 @@ export function patchFakeAsyncTest(Zone: ZoneType): void {
         tick,
         flush,
         fakeAsync,
+        withProxyZone,
       };
     },
     true,
@@ -976,4 +1148,20 @@ export function patchFakeAsyncTest(Zone: ZoneType): void {
   };
 
   Scheduler.nextId = Scheduler.getNextId();
+}
+
+async function safeAsync(fn: () => Promise<void>): Promise<void> {
+  try {
+    return await fn();
+  } catch (e) {
+    hostReportError(e);
+  }
+}
+
+function hostReportError(e: unknown) {
+  Zone.root.run(() => {
+    originalTimeout(() => {
+      throw e;
+    });
+  });
 }

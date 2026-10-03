@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {Component} from '@angular/core';
@@ -20,13 +20,12 @@ describe('createCustomElement with env injector', () => {
   });
 
   afterEach(() => {
-    document.body.removeChild(testContainer);
+    testContainer.remove();
     (testContainer as any) = null;
   });
 
   it('should use provided EnvironmentInjector to create a custom element', async () => {
     @Component({
-      standalone: true,
       template: `Hello, standalone element!`,
     })
     class TestStandaloneCmp {}

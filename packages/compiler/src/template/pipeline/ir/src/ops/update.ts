@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {SecurityContext} from '../../../../../core';
@@ -11,7 +11,10 @@ import * as i18n from '../../../../../i18n/i18n_ast';
 import * as o from '../../../../../output/output_ast';
 import {ParseSourceSpan} from '../../../../../parse_util';
 import {
+  AnimationBindingKind,
+  AnimationKind,
   BindingKind,
+  DeferOpModifierKind,
   I18nExpressionFor,
   I18nParamResolutionTime,
   OpKind,
@@ -26,7 +29,7 @@ import {
   TRAIT_CONSUMES_VARS,
   TRAIT_DEPENDS_ON_SLOT_CONTEXT,
 } from '../traits';
-import type {HostPropertyOp} from './host';
+import type {DomPropertyOp} from './host';
 import {ListEndOp, NEW_OP, StatementOp, VariableOp} from './shared';
 
 /**
@@ -46,12 +49,13 @@ export type UpdateOp =
   | AdvanceOp
   | VariableOp<UpdateOp>
   | BindingOp
-  | HostPropertyOp
+  | DomPropertyOp
   | ConditionalOp
   | I18nExpressionOp
   | I18nApplyOp
   | RepeaterOp
   | DeferWhenOp
+  | AnimationBindingOp
   | StoreLetOp;
 
 /**
@@ -226,7 +230,7 @@ export interface PropertyOp extends Op<UpdateOp>, ConsumesVarsTrait, DependsOnSl
   /**
    * Whether this property is an animation trigger.
    */
-  isAnimationTrigger: boolean;
+  bindingKind: BindingKind;
 
   /**
    * The security context of the binding.
@@ -259,7 +263,7 @@ export function createPropertyOp(
   target: XrefId,
   name: string,
   expression: o.Expression | Interpolation,
-  isAnimationTrigger: boolean,
+  bindingKind: BindingKind,
   securityContext: SecurityContext | SecurityContext[],
   isStructuralTemplateAttribute: boolean,
   templateKind: TemplateKind | null,
@@ -272,7 +276,7 @@ export function createPropertyOp(
     target,
     name,
     expression,
-    isAnimationTrigger,
+    bindingKind,
     securityContext,
     sanitizer: null,
     isStructuralTemplateAttribute,
@@ -759,6 +763,76 @@ export function createRepeaterOp(
   };
 }
 
+/**
+ * A logical operation representing binding to an animation in the update IR.
+ */
+export interface AnimationBindingOp extends Op<UpdateOp> {
+  kind: OpKind.AnimationBinding;
+
+  /**
+   * The name of the extracted attribute.
+   */
+  name: string;
+
+  /**
+   * Reference to the element on which the property is bound.
+   */
+  target: XrefId;
+
+  /**
+   * Name of the bound property.
+   */
+  animationKind: AnimationKind;
+
+  /**
+   * Expression which is bound to the property.
+   */
+  expression: o.Expression | Interpolation;
+
+  i18nMessage: XrefId | null;
+
+  /**
+   * The security context of the binding.
+   */
+  securityContext: SecurityContext | SecurityContext[];
+
+  /**
+   * The sanitizer for this property.
+   */
+  sanitizer: o.Expression | null;
+
+  sourceSpan: ParseSourceSpan;
+
+  animationBindingKind: AnimationBindingKind;
+}
+
+/**
+ * Create an `AnimationBindingOp`.
+ */
+export function createAnimationBindingOp(
+  name: string,
+  target: XrefId,
+  animationKind: AnimationKind,
+  expression: o.Expression | Interpolation,
+  securityContext: SecurityContext | SecurityContext[],
+  sourceSpan: ParseSourceSpan,
+  animationBindingKind: AnimationBindingKind,
+): AnimationBindingOp {
+  return {
+    kind: OpKind.AnimationBinding,
+    name,
+    target,
+    animationKind,
+    expression,
+    i18nMessage: null,
+    securityContext,
+    sanitizer: null,
+    sourceSpan,
+    animationBindingKind,
+    ...NEW_OP,
+  };
+}
+
 export interface DeferWhenOp extends Op<UpdateOp>, DependsOnSlotContextOpTrait, ConsumesVarsTrait {
   kind: OpKind.DeferWhen;
 
@@ -773,9 +847,9 @@ export interface DeferWhenOp extends Op<UpdateOp>, DependsOnSlotContextOpTrait, 
   expr: o.Expression;
 
   /**
-   * Whether to emit the prefetch version of the instruction.
+   * Modifier set on the trigger by the user (e.g. `hydrate`, `prefetch` etc).
    */
-  prefetch: boolean;
+  modifier: DeferOpModifierKind;
 
   sourceSpan: ParseSourceSpan;
 }
@@ -783,14 +857,14 @@ export interface DeferWhenOp extends Op<UpdateOp>, DependsOnSlotContextOpTrait, 
 export function createDeferWhenOp(
   target: XrefId,
   expr: o.Expression,
-  prefetch: boolean,
+  modifier: DeferOpModifierKind,
   sourceSpan: ParseSourceSpan,
 ): DeferWhenOp {
   return {
     kind: OpKind.DeferWhen,
     target,
     expr,
-    prefetch,
+    modifier,
     sourceSpan,
     ...NEW_OP,
     ...TRAIT_DEPENDS_ON_SLOT_CONTEXT,

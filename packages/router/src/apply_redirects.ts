@@ -3,59 +3,59 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {Injector, runInInjectionContext, ɵRuntimeError as RuntimeError} from '@angular/core';
-import {Observable, of, throwError} from 'rxjs';
 
 import {RuntimeErrorCode} from './errors';
 import {NavigationCancellationCode} from './events';
-import {LoadedRouterConfig, RedirectFunction, Route} from './models';
+import {RedirectFunction, Route} from './models';
 import {navigationCancelingError} from './navigation_canceling_error';
 import {ActivatedRouteSnapshot} from './router_state';
 import {Params, PRIMARY_OUTLET} from './shared';
 import {UrlSegment, UrlSegmentGroup, UrlSerializer, UrlTree} from './url_tree';
+import {wrapIntoObservable} from './utils/collection';
+import {firstValueFrom} from './utils/first_value_from';
 
-export class NoMatch {
+export class NoMatch extends Error {
   public segmentGroup: UrlSegmentGroup | null;
 
   constructor(segmentGroup?: UrlSegmentGroup) {
+    super();
     this.segmentGroup = segmentGroup || null;
+
+    // Extending `Error` ends up breaking some internal tests. This appears to be a known issue
+    // when extending errors in TS and the workaround is to explicitly set the prototype.
+    // https://stackoverflow.com/questions/41102060/typescript-extending-error-class
+    Object.setPrototypeOf(this, NoMatch.prototype);
   }
 }
 
 export class AbsoluteRedirect extends Error {
   constructor(public urlTree: UrlTree) {
     super();
+
+    // Extending `Error` ends up breaking some internal tests. This appears to be a known issue
+    // when extending errors in TS and the workaround is to explicitly set the prototype.
+    // https://stackoverflow.com/questions/41102060/typescript-extending-error-class
+    Object.setPrototypeOf(this, AbsoluteRedirect.prototype);
   }
 }
 
-export function noMatch(segmentGroup: UrlSegmentGroup): Observable<any> {
-  return throwError(new NoMatch(segmentGroup));
-}
-
-export function absoluteRedirect(newTree: UrlTree): Observable<any> {
-  return throwError(new AbsoluteRedirect(newTree));
-}
-
-export function namedOutletsRedirect(redirectTo: string): Observable<any> {
-  return throwError(
-    new RuntimeError(
-      RuntimeErrorCode.NAMED_OUTLET_REDIRECT,
-      (typeof ngDevMode === 'undefined' || ngDevMode) &&
-        `Only absolute redirects can have named outlets. redirectTo: '${redirectTo}'`,
-    ),
+export function namedOutletsRedirect(redirectTo: string): never {
+  throw new RuntimeError(
+    RuntimeErrorCode.NAMED_OUTLET_REDIRECT,
+    (typeof ngDevMode === 'undefined' || ngDevMode) &&
+      `Only absolute redirects can have named outlets. redirectTo: '${redirectTo}'`,
   );
 }
 
-export function canLoadFails(route: Route): Observable<LoadedRouterConfig> {
-  return throwError(
-    navigationCancelingError(
-      (typeof ngDevMode === 'undefined' || ngDevMode) &&
-        `Cannot load children because the guard of the route "path: '${route.path}'" returned false`,
-      NavigationCancellationCode.GuardRejected,
-    ),
+export function canLoadFails(route: Route): never {
+  throw navigationCancelingError(
+    (typeof ngDevMode === 'undefined' || ngDevMode) &&
+      `Cannot load children because the guard of the route "path: '${route.path}'" returned false`,
+    NavigationCancellationCode.GuardRejected,
   );
 }
 
@@ -65,51 +65,43 @@ export class ApplyRedirects {
     private urlTree: UrlTree,
   ) {}
 
-  lineralizeSegments(route: Route, urlTree: UrlTree): Observable<UrlSegment[]> {
+  async lineralizeSegments(route: Route, urlTree: UrlTree): Promise<UrlSegment[]> {
     let res: UrlSegment[] = [];
     let c = urlTree.root;
     while (true) {
       res = res.concat(c.segments);
       if (c.numberOfChildren === 0) {
-        return of(res);
+        return res;
       }
 
       if (c.numberOfChildren > 1 || !c.children[PRIMARY_OUTLET]) {
-        return namedOutletsRedirect(`${route.redirectTo!}`);
+        throw namedOutletsRedirect(`${route.redirectTo!}`);
       }
 
       c = c.children[PRIMARY_OUTLET];
     }
   }
 
-  applyRedirectCommands(
+  async applyRedirectCommands(
     segments: UrlSegment[],
     redirectTo: string | RedirectFunction,
     posParams: {[k: string]: UrlSegment},
     currentSnapshot: ActivatedRouteSnapshot,
     injector: Injector,
-  ): UrlTree {
-    if (typeof redirectTo !== 'string') {
-      const redirectToFn = redirectTo;
-      const {queryParams, fragment, routeConfig, url, outlet, params, data, title} =
-        currentSnapshot;
-      const newRedirect = runInInjectionContext(injector, () =>
-        redirectToFn({params, data, queryParams, fragment, routeConfig, url, outlet, title}),
-      );
-      if (newRedirect instanceof UrlTree) {
-        throw new AbsoluteRedirect(newRedirect);
-      }
-
-      redirectTo = newRedirect;
+  ): Promise<UrlTree> {
+    const redirect = await getRedirectResult(redirectTo, currentSnapshot, injector);
+    if (redirect instanceof UrlTree) {
+      throw new AbsoluteRedirect(redirect);
     }
 
     const newTree = this.applyRedirectCreateUrlTree(
-      redirectTo,
-      this.urlSerializer.parse(redirectTo),
+      redirect,
+      this.urlSerializer.parse(redirect),
       segments,
       posParams,
     );
-    if (redirectTo[0] === '/') {
+
+    if (redirect[0] === '/') {
       throw new AbsoluteRedirect(newTree);
     }
     return newTree;
@@ -198,4 +190,23 @@ export class ApplyRedirects {
     }
     return redirectToUrlSegment;
   }
+}
+
+function getRedirectResult(
+  redirectTo: string | RedirectFunction,
+  currentSnapshot: ActivatedRouteSnapshot,
+  injector: Injector,
+): Promise<string | UrlTree> {
+  if (typeof redirectTo === 'string') {
+    return Promise.resolve(redirectTo);
+  }
+  const redirectToFn = redirectTo;
+  const {queryParams, fragment, routeConfig, url, outlet, params, data, title} = currentSnapshot;
+  return firstValueFrom(
+    wrapIntoObservable(
+      runInInjectionContext(injector, () =>
+        redirectToFn({params, data, queryParams, fragment, routeConfig, url, outlet, title}),
+      ),
+    ),
+  );
 }

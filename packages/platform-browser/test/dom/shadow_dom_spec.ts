@@ -3,13 +3,14 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {Component, NgModule, ViewEncapsulation} from '@angular/core';
 import {TestBed} from '@angular/core/testing';
-import {BrowserModule} from '@angular/platform-browser';
-import {expect} from '@angular/platform-browser/testing/src/matchers';
+import {BrowserModule} from '../../index';
+import {expect} from '@angular/private/testing/matchers';
+import {isNode} from '@angular/private/testing';
 
 describe('ShadowDOM Support', () => {
   if (isNode) {
@@ -86,6 +87,7 @@ describe('ShadowDOM Support', () => {
   selector: 'shadow-comp',
   template: 'Hello World',
   encapsulation: ViewEncapsulation.ShadowDom,
+  standalone: false,
 })
 class ShadowComponent {}
 
@@ -94,6 +96,7 @@ class ShadowComponent {}
   template: '<div class="red"></div>',
   encapsulation: ViewEncapsulation.ShadowDom,
   styles: [`:host { background: black; } .red { background: red; }`],
+  standalone: false,
 })
 class StyledShadowComponent {}
 
@@ -101,6 +104,7 @@ class StyledShadowComponent {}
   selector: 'shadow-slot-comp',
   template: '<slot></slot>',
   encapsulation: ViewEncapsulation.ShadowDom,
+  standalone: false,
 })
 class ShadowSlotComponent {}
 
@@ -109,6 +113,7 @@ class ShadowSlotComponent {}
   template:
     '<header><slot name="header"></slot></header><article><slot name="article"></slot></article>',
   encapsulation: ViewEncapsulation.ShadowDom,
+  standalone: false,
 })
 class ShadowSlotsComponent {}
 

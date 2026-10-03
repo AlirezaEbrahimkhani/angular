@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {DefaultIterableDifferFactory} from './differs/default_iterable_differ';
@@ -36,6 +36,7 @@ export {
   KeyValueDifferFactory,
   KeyValueDiffers,
 } from './differs/keyvalue_differs';
+
 export {PipeTransform} from './pipe_transform';
 
 /**

@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {ViewEncapsulation} from '@angular/compiler';
@@ -15,19 +15,23 @@ import {EnumValue, PartialEvaluator, ResolvedValue} from '../../../partial_evalu
 import {ClassDeclaration, Decorator} from '../../../reflection';
 
 import {createValueHasWrongTypeError} from './diagnostics';
-import {isAngularCoreReference, unwrapExpression} from './util';
+import {isAngularCoreReferenceWithPotentialAliasing, unwrapExpression} from './util';
 
 export function resolveEnumValue(
   evaluator: PartialEvaluator,
   metadata: Map<string, ts.Expression>,
   field: string,
   enumSymbolName: string,
+  isCore: boolean,
 ): number | null {
   let resolved: number | null = null;
   if (metadata.has(field)) {
     const expr = metadata.get(field)!;
     const value = evaluator.evaluate(expr) as any;
-    if (value instanceof EnumValue && isAngularCoreReference(value.enumRef, enumSymbolName)) {
+    if (
+      value instanceof EnumValue &&
+      isAngularCoreReferenceWithPotentialAliasing(value.enumRef, enumSymbolName, isCore)
+    ) {
       resolved = value.resolved as number;
     } else {
       throw createValueHasWrongTypeError(

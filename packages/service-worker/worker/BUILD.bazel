@@ -1,9 +1,9 @@
-load("@npm//@bazel/esbuild:index.bzl", "esbuild")
-load("//tools:defaults.bzl", "ts_library")
+load("@aspect_rules_esbuild//esbuild:defs.bzl", "esbuild")
+load("//tools:defaults.bzl", "ts_project")
 
 package(default_visibility = ["//visibility:public"])
 
-ts_library(
+ts_project(
     name = "worker",
     srcs = glob(
         [
@@ -14,10 +14,9 @@ ts_library(
             "main.ts",
         ],
     ),
-    deps = ["@npm//@types/node"],
 )
 
-ts_library(
+ts_project(
     name = "main",
     srcs = ["main.ts"],
     deps = [":worker"],
@@ -25,9 +24,6 @@ ts_library(
 
 esbuild(
     name = "ngsw_worker",
-    args = {
-        "resolveExtensions": [".mjs"],
-    },
     entry_point = ":main.ts",
     format = "iife",
     platform = "browser",

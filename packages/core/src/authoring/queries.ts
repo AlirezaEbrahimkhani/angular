@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {assertInInjectionContext} from '../di';
@@ -12,23 +12,23 @@ import {
   createMultiResultQuerySignalFn,
   createSingleResultOptionalQuerySignalFn,
   createSingleResultRequiredQuerySignalFn,
-} from '../render3/query_reactive';
+} from '../render3/queries/query_reactive';
 import {Signal} from '../render3/reactivity/api';
 
 function viewChildFn<LocatorT, ReadT>(
   locator: ProviderToken<LocatorT> | string,
-  opts?: {read?: ProviderToken<ReadT>},
+  opts?: {read?: ProviderToken<ReadT>; debugName?: string},
 ): Signal<ReadT | undefined> {
   ngDevMode && assertInInjectionContext(viewChild);
-  return createSingleResultOptionalQuerySignalFn<ReadT>();
+  return createSingleResultOptionalQuerySignalFn<ReadT>(opts);
 }
 
 function viewChildRequiredFn<LocatorT, ReadT>(
   locator: ProviderToken<LocatorT> | string,
-  opts?: {read?: ProviderToken<ReadT>},
+  opts?: {read?: ProviderToken<ReadT>; debugName?: string},
 ): Signal<ReadT> {
   ngDevMode && assertInInjectionContext(viewChild);
-  return createSingleResultRequiredQuerySignalFn<ReadT>();
+  return createSingleResultRequiredQuerySignalFn<ReadT>(opts);
 }
 
 /**
@@ -37,7 +37,7 @@ function viewChildRequiredFn<LocatorT, ReadT>(
  * It is a special function that also provides access to required query results via the `.required`
  * property.
  *
- * @developerPreview
+ * @publicApi
  * @docsPrivate Ignored because `viewChild` is the canonical API entry.
  */
 export interface ViewChildFunction {
@@ -45,25 +45,43 @@ export interface ViewChildFunction {
    * Initializes a view child query. Consider using `viewChild.required` for queries that should
    * always match.
    *
-   * @developerPreview
+   * @publicAPI
    */
-  <LocatorT>(locator: ProviderToken<LocatorT> | string): Signal<LocatorT | undefined>;
+
   <LocatorT, ReadT>(
     locator: ProviderToken<LocatorT> | string,
-    opts: {read: ProviderToken<ReadT>},
+    opts: {
+      read: ProviderToken<ReadT>;
+      debugName?: string;
+    },
   ): Signal<ReadT | undefined>;
+
+  <LocatorT>(
+    locator: ProviderToken<LocatorT> | string,
+    opts?: {
+      debugName?: string;
+    },
+  ): Signal<LocatorT | undefined>;
 
   /**
    * Initializes a view child query that is expected to always match an element.
    *
-   * @developerPreview
+   * @publicAPI
    */
   required: {
-    <LocatorT>(locator: ProviderToken<LocatorT> | string): Signal<LocatorT>;
+    <LocatorT>(
+      locator: ProviderToken<LocatorT> | string,
+      opts?: {
+        debugName?: string;
+      },
+    ): Signal<LocatorT>;
 
     <LocatorT, ReadT>(
       locator: ProviderToken<LocatorT> | string,
-      opts: {read: ProviderToken<ReadT>},
+      opts: {
+        read: ProviderToken<ReadT>;
+        debugName?: string;
+      },
     ): Signal<ReadT>;
   };
 }
@@ -77,7 +95,7 @@ export interface ViewChildFunction {
  * Create a child query in your component by declaring a
  * class field and initializing it with the `viewChild()` function.
  *
- * ```ts
+ * ```angular-ts
  * @Component({template: '<div #el></div><my-component #cmp />'})
  * export class TestComponent {
  *   divEl = viewChild<ElementRef>('el');                   // Signal<ElementRef|undefined>
@@ -87,7 +105,7 @@ export interface ViewChildFunction {
  * }
  * ```
  *
- * @developerPreview
+ * @publicApi 19.0
  * @initializerApiFunction
  */
 export const viewChild: ViewChildFunction = (() => {
@@ -100,10 +118,14 @@ export const viewChild: ViewChildFunction = (() => {
 
 export function viewChildren<LocatorT>(
   locator: ProviderToken<LocatorT> | string,
+  opts?: {debugName?: string},
 ): Signal<ReadonlyArray<LocatorT>>;
 export function viewChildren<LocatorT, ReadT>(
   locator: ProviderToken<LocatorT> | string,
-  opts: {read: ProviderToken<ReadT>},
+  opts: {
+    read: ProviderToken<ReadT>;
+    debugName?: string;
+  },
 ): Signal<ReadonlyArray<ReadT>>;
 
 /**
@@ -124,30 +146,41 @@ export function viewChildren<LocatorT, ReadT>(
  * ```
  *
  * @initializerApiFunction
- * @developerPreview
+ * @publicApi 19.0
  */
 export function viewChildren<LocatorT, ReadT>(
   locator: ProviderToken<LocatorT> | string,
-  opts?: {read?: ProviderToken<ReadT>},
+  opts?: {
+    read?: ProviderToken<ReadT>;
+    debugName?: string;
+  },
 ): Signal<ReadonlyArray<ReadT>> {
   ngDevMode && assertInInjectionContext(viewChildren);
-  return createMultiResultQuerySignalFn<ReadT>();
+  return createMultiResultQuerySignalFn<ReadT>(opts);
 }
 
 export function contentChildFn<LocatorT, ReadT>(
   locator: ProviderToken<LocatorT> | string,
-  opts?: {descendants?: boolean; read?: ProviderToken<ReadT>},
+  opts?: {
+    descendants?: boolean;
+    read?: ProviderToken<ReadT>;
+    debugName?: string;
+  },
 ): Signal<ReadT | undefined> {
   ngDevMode && assertInInjectionContext(contentChild);
-  return createSingleResultOptionalQuerySignalFn<ReadT>();
+  return createSingleResultOptionalQuerySignalFn<ReadT>(opts);
 }
 
 function contentChildRequiredFn<LocatorT, ReadT>(
   locator: ProviderToken<LocatorT> | string,
-  opts?: {descendants?: boolean; read?: ProviderToken<ReadT>},
+  opts?: {
+    descendants?: boolean;
+    read?: ProviderToken<ReadT>;
+    debugName?: string;
+  },
 ): Signal<ReadT> {
   ngDevMode && assertInInjectionContext(contentChildren);
-  return createSingleResultRequiredQuerySignalFn<ReadT>();
+  return createSingleResultRequiredQuerySignalFn<ReadT>(opts);
 }
 
 /**
@@ -156,7 +189,7 @@ function contentChildRequiredFn<LocatorT, ReadT>(
  * The contentChild function creates a singular content query. It is a special function that also
  * provides access to required query results via the `.required` property.
  *
- * @developerPreview
+ * @publicApi 19.0
  * @docsPrivate Ignored because `contentChild` is the canonical API entry.
  */
 export interface ContentChildFunction {
@@ -164,13 +197,14 @@ export interface ContentChildFunction {
    * Initializes a content child query.
    *
    * Consider using `contentChild.required` for queries that should always match.
-   * @developerPreview
+   * @publicAPI
    */
   <LocatorT>(
     locator: ProviderToken<LocatorT> | string,
     opts?: {
       descendants?: boolean;
       read?: undefined;
+      debugName?: string;
     },
   ): Signal<LocatorT | undefined>;
 
@@ -179,6 +213,7 @@ export interface ContentChildFunction {
     opts: {
       descendants?: boolean;
       read: ProviderToken<ReadT>;
+      debugName?: string;
     },
   ): Signal<ReadT | undefined>;
 
@@ -191,12 +226,17 @@ export interface ContentChildFunction {
       opts?: {
         descendants?: boolean;
         read?: undefined;
+        debugName?: string;
       },
     ): Signal<LocatorT>;
 
     <LocatorT, ReadT>(
       locator: ProviderToken<LocatorT> | string,
-      opts: {descendants?: boolean; read: ProviderToken<ReadT>},
+      opts: {
+        descendants?: boolean;
+        read: ProviderToken<ReadT>;
+        debugName?: string;
+      },
     ): Signal<ReadT>;
   };
 }
@@ -219,8 +259,10 @@ export interface ContentChildFunction {
  * }
  * ```
  *
+ * Note: By default `descendants` is `true` which means the query will traverse all descendants in the same template.
+ *
  * @initializerApiFunction
- * @developerPreview
+ * @publicApi 19.0
  */
 export const contentChild: ContentChildFunction = (() => {
   // Note: This may be considered a side-effect, but nothing will depend on
@@ -232,11 +274,19 @@ export const contentChild: ContentChildFunction = (() => {
 
 export function contentChildren<LocatorT>(
   locator: ProviderToken<LocatorT> | string,
-  opts?: {descendants?: boolean; read?: undefined},
+  opts?: {
+    descendants?: boolean;
+    read?: undefined;
+    debugName?: string;
+  },
 ): Signal<ReadonlyArray<LocatorT>>;
 export function contentChildren<LocatorT, ReadT>(
   locator: ProviderToken<LocatorT> | string,
-  opts: {descendants?: boolean; read: ProviderToken<ReadT>},
+  opts: {
+    descendants?: boolean;
+    read: ProviderToken<ReadT>;
+    debugName?: string;
+  },
 ): Signal<ReadonlyArray<ReadT>>;
 
 /**
@@ -256,12 +306,18 @@ export function contentChildren<LocatorT, ReadT>(
  * }
  * ```
  *
+ * Note: By default `descendants` is `false` which means the query will not traverse all descendants in the same template.
+ *
  * @initializerApiFunction
- * @developerPreview
+ * @publicApi 19.0
  */
 export function contentChildren<LocatorT, ReadT>(
   locator: ProviderToken<LocatorT> | string,
-  opts?: {descendants?: boolean; read?: ProviderToken<ReadT>},
+  opts?: {
+    descendants?: boolean;
+    read?: ProviderToken<ReadT>;
+    debugName?: string;
+  },
 ): Signal<ReadonlyArray<ReadT>> {
-  return createMultiResultQuerySignalFn<ReadT>();
+  return createMultiResultQuerySignalFn<ReadT>(opts);
 }

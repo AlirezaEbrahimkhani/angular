@@ -24,18 +24,20 @@
       "selenium-webdriver": ["./node_modules/@types/selenium-webdriver/index.d.ts"],
       "rxjs/*": ["./node_modules/rxjs/*"],
       "@angular/*": ["./packages/*"],
-      "zone.js/*": ["./packages/zone.js/*"],
       "angular-in-memory-web-api": ["./packages/misc/angular-in-memory-web-api/index.ts"]
     },
     "rootDir": ".",
     "inlineSourceMap": true,
-    "lib": ["es2020", "dom", "dom.iterable"],
+    "lib": ["es2022", "dom", "dom.iterable"],
     "skipDefaultLibCheck": true,
     "skipLibCheck": true,
     "types": ["angular"]
   },
   "bazelOptions": {
     "suppressTsconfigOverrideWarnings": true
+  },
+  "angularCompilerOptions": {
+    "strictTemplates": true
   },
   "exclude": [
     "common/locales",
@@ -50,6 +52,6 @@
     // will be removed eventually. See: FW-1392.
     "http/**",
     "language-service/ivy/test/legacy/project",
-    "platform-server/integrationtest",
+    "platform-server/integrationtest"
   ]
 }

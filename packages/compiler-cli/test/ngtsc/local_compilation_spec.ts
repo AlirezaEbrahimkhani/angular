@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import ts from 'typescript';
@@ -140,7 +140,7 @@ runInEachFileSystem(() => {
           `
         import {NgModule, Component} from '@angular/core';
 
-        @Component({template:'', standalone: true})
+        @Component({template: ''})
         export class Comp3 {
         }
 
@@ -154,7 +154,7 @@ runInEachFileSystem(() => {
           `
         import {Component} from '@angular/core';
 
-        @Component({template:'', standalone: true})
+        @Component({template: ''})
         export class Comp2 {
         }
         `,
@@ -417,7 +417,11 @@ runInEachFileSystem(() => {
           `
         import {Component} from '@angular/core';
 
-        @Component({template: '...', selector: 'internal-comp'})
+        @Component({
+          template: '...',
+          selector: 'internal-comp',
+          standalone: false,
+        })
         export class InternalComp {
         }
         `,
@@ -427,7 +431,10 @@ runInEachFileSystem(() => {
           `
         import {Directive} from '@angular/core';
 
-        @Directive({selector: '[internal-dir]'})
+        @Directive({
+          selector: '[internal-dir]',
+          standalone: false,
+        })
         export class InternalDir {
         }
         `,
@@ -437,7 +444,10 @@ runInEachFileSystem(() => {
           `
         import {Pipe, PipeTransform} from '@angular/core';
 
-        @Pipe({name: 'internalPipe'})
+        @Pipe({
+          name: 'internalPipe',
+          standalone: false,
+        })
         export class InternalPipe implements PipeTransform {
           transform(value: number): number {
             return value*2;
@@ -749,6 +759,7 @@ runInEachFileSystem(() => {
           @Component({
             selector: 'test-main',
             template: '<span>Hello world!</span>',
+            standalone: false,
           })
           export class MainComponent {
           }
@@ -776,7 +787,6 @@ runInEachFileSystem(() => {
           import {SomeThing2} from 'some-where2';
 
           @Component({
-            standalone: true,
             imports: [SomeThing, forwardRef(()=>SomeThing2)],
             selector: 'test-main',
             template: '<span>Hello world!</span>',
@@ -805,7 +815,6 @@ runInEachFileSystem(() => {
           const NG_IMPORTS = [SomeThing, forwardRef(()=>SomeThing2)];
 
           @Component({
-            standalone: true,
             imports: NG_IMPORTS,
             selector: 'test-main',
             template: '<span>Hello world!</span>',
@@ -830,7 +839,6 @@ runInEachFileSystem(() => {
       import {Component} from '@angular/core';
 
       @Component({
-        standalone: true,
         imports: [],
         selector: 'test-main',
         template: '<span>Hello world!</span>',
@@ -855,7 +863,6 @@ runInEachFileSystem(() => {
           import {Component} from '@angular/core';
 
           @Component({
-            standalone: true,
             selector: 'test-main',
             template: '<span>Hello world!</span>',
           })
@@ -1045,7 +1052,7 @@ runInEachFileSystem(() => {
         const jsContents = env.getContents('test.js');
 
         expect(jsContents).toContain(
-          `MainComponent.ɵfac = function MainComponent_Factory(t) { return new (t || MainComponent)(i0.ɵɵdirectiveInject(i1.SomeService1), i0.ɵɵdirectiveInject(SomeService2), i0.ɵɵdirectiveInject(i2.SomeService3), i0.ɵɵdirectiveInject(i3.nested.SomeService4), i0.ɵɵinjectAttribute('title'), i0.ɵɵdirectiveInject(MESSAGE_TOKEN)); };`,
+          `MainComponent.ɵfac = function MainComponent_Factory(__ngFactoryType__) { return new (__ngFactoryType__ || MainComponent)(i0.ɵɵdirectiveInject(i1.SomeService1), i0.ɵɵdirectiveInject(SomeService2), i0.ɵɵdirectiveInject(i2.SomeService3), i0.ɵɵdirectiveInject(i3.nested.SomeService4), i0.ɵɵinjectAttribute('title'), i0.ɵɵdirectiveInject(MESSAGE_TOKEN)); };`,
         );
       });
 
@@ -1061,7 +1068,6 @@ runInEachFileSystem(() => {
           import * as SomeWhere4 from './some-where4'
 
           @Component({
-            standalone: true,
             selector: 'test-main',
             template: '<span>Hello world</span>',
           })
@@ -1082,7 +1088,7 @@ runInEachFileSystem(() => {
         const jsContents = env.getContents('test.js');
 
         expect(jsContents).toContain(
-          `MainComponent.ɵfac = function MainComponent_Factory(t) { return new (t || MainComponent)(i0.ɵɵdirectiveInject(i1.SomeService1), i0.ɵɵdirectiveInject(SomeService2), i0.ɵɵdirectiveInject(i2.SomeService3), i0.ɵɵdirectiveInject(i3.nested.SomeService4), i0.ɵɵinjectAttribute('title'), i0.ɵɵdirectiveInject(MESSAGE_TOKEN)); };`,
+          `MainComponent.ɵfac = function MainComponent_Factory(__ngFactoryType__) { return new (__ngFactoryType__ || MainComponent)(i0.ɵɵdirectiveInject(i1.SomeService1), i0.ɵɵdirectiveInject(SomeService2), i0.ɵɵdirectiveInject(i2.SomeService3), i0.ɵɵdirectiveInject(i3.nested.SomeService4), i0.ɵɵinjectAttribute('title'), i0.ɵɵdirectiveInject(MESSAGE_TOKEN)); };`,
         );
       });
 
@@ -1122,7 +1128,7 @@ runInEachFileSystem(() => {
         const jsContents = env.getContents('test.js');
 
         expect(jsContents).toContain(
-          `MainDirective.ɵfac = function MainDirective_Factory(t) { return new (t || MainDirective)(i0.ɵɵdirectiveInject(i1.SomeService1), i0.ɵɵdirectiveInject(SomeService2), i0.ɵɵdirectiveInject(i2.SomeService3), i0.ɵɵdirectiveInject(i3.nested.SomeService4), i0.ɵɵinjectAttribute('title'), i0.ɵɵdirectiveInject(MESSAGE_TOKEN)); };`,
+          `MainDirective.ɵfac = function MainDirective_Factory(__ngFactoryType__) { return new (__ngFactoryType__ || MainDirective)(i0.ɵɵdirectiveInject(i1.SomeService1), i0.ɵɵdirectiveInject(SomeService2), i0.ɵɵdirectiveInject(i2.SomeService3), i0.ɵɵdirectiveInject(i3.nested.SomeService4), i0.ɵɵinjectAttribute('title'), i0.ɵɵdirectiveInject(MESSAGE_TOKEN)); };`,
         );
       });
 
@@ -1137,9 +1143,7 @@ runInEachFileSystem(() => {
           import * as SomeWhere3 from './some-where3'
           import * as SomeWhere4 from './some-where4'
 
-          @Directive({
-            standalone: true,
-          })
+          @Directive()
           export class MainDirective {
             constructor(
               private someService1: SomeService1,
@@ -1157,7 +1161,7 @@ runInEachFileSystem(() => {
         const jsContents = env.getContents('test.js');
 
         expect(jsContents).toContain(
-          `MainDirective.ɵfac = function MainDirective_Factory(t) { return new (t || MainDirective)(i0.ɵɵdirectiveInject(i1.SomeService1), i0.ɵɵdirectiveInject(SomeService2), i0.ɵɵdirectiveInject(i2.SomeService3), i0.ɵɵdirectiveInject(i3.nested.SomeService4), i0.ɵɵinjectAttribute('title'), i0.ɵɵdirectiveInject(MESSAGE_TOKEN)); };`,
+          `MainDirective.ɵfac = function MainDirective_Factory(__ngFactoryType__) { return new (__ngFactoryType__ || MainDirective)(i0.ɵɵdirectiveInject(i1.SomeService1), i0.ɵɵdirectiveInject(SomeService2), i0.ɵɵdirectiveInject(i2.SomeService3), i0.ɵɵdirectiveInject(i3.nested.SomeService4), i0.ɵɵinjectAttribute('title'), i0.ɵɵdirectiveInject(MESSAGE_TOKEN)); };`,
         );
       });
 
@@ -1196,7 +1200,7 @@ runInEachFileSystem(() => {
         const jsContents = env.getContents('test.js');
 
         expect(jsContents).toContain(
-          `MainPipe.ɵfac = function MainPipe_Factory(t) { return new (t || MainPipe)(i0.ɵɵdirectiveInject(i1.SomeService1, 16), i0.ɵɵdirectiveInject(SomeService2, 16), i0.ɵɵdirectiveInject(i2.SomeService3, 16), i0.ɵɵdirectiveInject(i3.nested.SomeService4, 16), i0.ɵɵinjectAttribute('title'), i0.ɵɵdirectiveInject(MESSAGE_TOKEN, 16)); };`,
+          `MainPipe.ɵfac = function MainPipe_Factory(__ngFactoryType__) { return new (__ngFactoryType__ || MainPipe)(i0.ɵɵdirectiveInject(i1.SomeService1, 16), i0.ɵɵdirectiveInject(SomeService2, 16), i0.ɵɵdirectiveInject(i2.SomeService3, 16), i0.ɵɵdirectiveInject(i3.nested.SomeService4, 16), i0.ɵɵinjectAttribute('title'), i0.ɵɵdirectiveInject(MESSAGE_TOKEN, 16)); };`,
         );
       });
 
@@ -1211,10 +1215,7 @@ runInEachFileSystem(() => {
           import * as SomeWhere3 from './some-where3'
           import * as SomeWhere4 from './some-where4'
 
-          @Pipe({
-            name: 'pipe',
-            standalone: true,
-          })
+          @Pipe({name: 'pipe'})
           export class MainPipe {
             constructor(
               private someService1: SomeService1,
@@ -1232,7 +1233,7 @@ runInEachFileSystem(() => {
         const jsContents = env.getContents('test.js');
 
         expect(jsContents).toContain(
-          `MainPipe.ɵfac = function MainPipe_Factory(t) { return new (t || MainPipe)(i0.ɵɵdirectiveInject(i1.SomeService1, 16), i0.ɵɵdirectiveInject(SomeService2, 16), i0.ɵɵdirectiveInject(i2.SomeService3, 16), i0.ɵɵdirectiveInject(i3.nested.SomeService4, 16), i0.ɵɵinjectAttribute('title'), i0.ɵɵdirectiveInject(MESSAGE_TOKEN, 16)); };`,
+          `MainPipe.ɵfac = function MainPipe_Factory(__ngFactoryType__) { return new (__ngFactoryType__ || MainPipe)(i0.ɵɵdirectiveInject(i1.SomeService1, 16), i0.ɵɵdirectiveInject(SomeService2, 16), i0.ɵɵdirectiveInject(i2.SomeService3, 16), i0.ɵɵdirectiveInject(i3.nested.SomeService4, 16), i0.ɵɵinjectAttribute('title'), i0.ɵɵdirectiveInject(MESSAGE_TOKEN, 16)); };`,
         );
       });
 
@@ -1267,7 +1268,7 @@ runInEachFileSystem(() => {
         const jsContents = env.getContents('test.js');
 
         expect(jsContents).toContain(
-          `MainService.ɵfac = function MainService_Factory(t) { return new (t || MainService)(i0.ɵɵinject(i1.SomeService1), i0.ɵɵinject(SomeService2), i0.ɵɵinject(i2.SomeService3), i0.ɵɵinject(i3.nested.SomeService4), i0.ɵɵinjectAttribute('title'), i0.ɵɵinject(MESSAGE_TOKEN)); };`,
+          `MainService.ɵfac = function MainService_Factory(__ngFactoryType__) { return new (__ngFactoryType__ || MainService)(i0.ɵɵinject(i1.SomeService1), i0.ɵɵinject(SomeService2), i0.ɵɵinject(i2.SomeService3), i0.ɵɵinject(i3.nested.SomeService4), i0.ɵɵinjectAttribute('title'), i0.ɵɵinject(MESSAGE_TOKEN)); };`,
         );
       });
 
@@ -1301,7 +1302,7 @@ runInEachFileSystem(() => {
         const jsContents = env.getContents('test.js');
 
         expect(jsContents).toContain(
-          `MainModule.ɵfac = function MainModule_Factory(t) { return new (t || MainModule)(i0.ɵɵinject(i1.SomeService1), i0.ɵɵinject(SomeService2), i0.ɵɵinject(i2.SomeService3), i0.ɵɵinject(i3.nested.SomeService4), i0.ɵɵinjectAttribute('title'), i0.ɵɵinject(MESSAGE_TOKEN)); };`,
+          `MainModule.ɵfac = function MainModule_Factory(__ngFactoryType__) { return new (__ngFactoryType__ || MainModule)(i0.ɵɵinject(i1.SomeService1), i0.ɵɵinject(SomeService2), i0.ɵɵinject(i2.SomeService3), i0.ɵɵinject(i3.nested.SomeService4), i0.ɵɵinjectAttribute('title'), i0.ɵɵinject(MESSAGE_TOKEN)); };`,
         );
       });
 
@@ -1324,7 +1325,7 @@ runInEachFileSystem(() => {
         const jsContents = env.getContents('test.js');
 
         expect(jsContents).toContain(
-          `MainService.ɵfac = function MainService_Factory(t) { i0.ɵɵinvalidFactory(); };`,
+          `MainService.ɵfac = function MainService_Factory(__ngFactoryType__) { i0.ɵɵinvalidFactory(); };`,
         );
       });
 
@@ -1348,7 +1349,7 @@ runInEachFileSystem(() => {
         const jsContents = env.getContents('test.js');
 
         expect(jsContents).toContain(
-          `MainService.ɵfac = function MainService_Factory(t) { i0.ɵɵinvalidFactory(); };`,
+          `MainService.ɵfac = function MainService_Factory(__ngFactoryType__) { i0.ɵɵinvalidFactory(); };`,
         );
       });
 
@@ -1373,7 +1374,7 @@ runInEachFileSystem(() => {
         const jsContents = env.getContents('test.js');
 
         expect(jsContents).toContain(
-          `MainService.ɵfac = function MainService_Factory(t) { i0.ɵɵinvalidFactory(); };`,
+          `MainService.ɵfac = function MainService_Factory(__ngFactoryType__) { i0.ɵɵinvalidFactory(); };`,
         );
       });
 
@@ -1398,7 +1399,7 @@ runInEachFileSystem(() => {
         const jsContents = env.getContents('test.js');
 
         expect(jsContents).toContain(
-          `MainService.ɵfac = function MainService_Factory(t) { i0.ɵɵinvalidFactory(); };`,
+          `MainService.ɵfac = function MainService_Factory(__ngFactoryType__) { i0.ɵɵinvalidFactory(); };`,
         );
       });
 
@@ -1421,7 +1422,7 @@ runInEachFileSystem(() => {
         const jsContents = env.getContents('test.js');
 
         expect(jsContents).toContain(
-          `MyDirective.ɵfac = function MyDirective_Factory(t) { i0.ɵɵinvalidFactory(); };`,
+          `MyDirective.ɵfac = function MyDirective_Factory(__ngFactoryType__) { i0.ɵɵinvalidFactory(); };`,
         );
       });
 
@@ -1445,7 +1446,7 @@ runInEachFileSystem(() => {
         const jsContents = env.getContents('test.js');
 
         expect(jsContents).toContain(
-          `MyDirective.ɵfac = function MyDirective_Factory(t) { i0.ɵɵinvalidFactory(); };`,
+          `MyDirective.ɵfac = function MyDirective_Factory(__ngFactoryType__) { i0.ɵɵinvalidFactory(); };`,
         );
       });
 
@@ -1470,7 +1471,7 @@ runInEachFileSystem(() => {
         const jsContents = env.getContents('test.js');
 
         expect(jsContents).toContain(
-          `MyDirective.ɵfac = function MyDirective_Factory(t) { i0.ɵɵinvalidFactory(); };`,
+          `MyDirective.ɵfac = function MyDirective_Factory(__ngFactoryType__) { i0.ɵɵinvalidFactory(); };`,
         );
       });
 
@@ -1495,7 +1496,7 @@ runInEachFileSystem(() => {
         const jsContents = env.getContents('test.js');
 
         expect(jsContents).toContain(
-          `MyDirective.ɵfac = function MyDirective_Factory(t) { i0.ɵɵinvalidFactory(); };`,
+          `MyDirective.ɵfac = function MyDirective_Factory(__ngFactoryType__) { i0.ɵɵinvalidFactory(); };`,
         );
       });
     });
@@ -1559,7 +1560,8 @@ runInEachFileSystem(() => {
         const {code, messageText, relatedInformation, length} = errors[0];
 
         expect(code).toBe(ngErrorCode(ErrorCode.LOCAL_COMPILATION_UNRESOLVED_CONST));
-        expect(length).toBe(14), expect(relatedInformation).toBeUndefined();
+        expect(length).toBe(14);
+        expect(relatedInformation).toBeUndefined();
 
         const text = ts.flattenDiagnosticMessageText(messageText, '\n');
 
@@ -1592,7 +1594,8 @@ runInEachFileSystem(() => {
         const {code, messageText, relatedInformation, length} = errors[0];
 
         expect(code).toBe(ngErrorCode(ErrorCode.LOCAL_COMPILATION_UNRESOLVED_CONST));
-        expect(length).toBe(14), expect(relatedInformation).toBeUndefined();
+        expect(length).toBe(14);
+        expect(relatedInformation).toBeUndefined();
 
         const text = ts.flattenDiagnosticMessageText(messageText, '\n');
 
@@ -1625,7 +1628,8 @@ runInEachFileSystem(() => {
         const {code, messageText, relatedInformation, length} = errors[0];
 
         expect(code).toBe(ngErrorCode(ErrorCode.LOCAL_COMPILATION_UNRESOLVED_CONST));
-        expect(length).toBe(14), expect(relatedInformation).toBeUndefined();
+        expect(length).toBe(14);
+        expect(relatedInformation).toBeUndefined();
 
         const text = ts.flattenDiagnosticMessageText(messageText, '\n');
 
@@ -1658,7 +1662,8 @@ runInEachFileSystem(() => {
         const {code, messageText, relatedInformation, length} = errors[0];
 
         expect(code).toBe(ngErrorCode(ErrorCode.LOCAL_COMPILATION_UNRESOLVED_CONST));
-        expect(length).toBe(14), expect(relatedInformation).toBeUndefined();
+        expect(length).toBe(14);
+        expect(relatedInformation).toBeUndefined();
 
         const text = ts.flattenDiagnosticMessageText(messageText, '\n');
 
@@ -1689,7 +1694,8 @@ runInEachFileSystem(() => {
         const {code, messageText, relatedInformation, length} = errors[0];
 
         expect(code).toBe(ngErrorCode(ErrorCode.LOCAL_COMPILATION_UNRESOLVED_CONST));
-        expect(length).toBe(14), expect(relatedInformation).toBeUndefined();
+        expect(length).toBe(14);
+        expect(relatedInformation).toBeUndefined();
 
         const text = ts.flattenDiagnosticMessageText(messageText, '\n');
 
@@ -1719,7 +1725,8 @@ runInEachFileSystem(() => {
         const {code, messageText, relatedInformation, length} = errors[0];
 
         expect(code).toBe(ngErrorCode(ErrorCode.LOCAL_COMPILATION_UNRESOLVED_CONST));
-        expect(length).toBe(14), expect(relatedInformation).toBeUndefined();
+        expect(length).toBe(14);
+        expect(relatedInformation).toBeUndefined();
 
         const text = ts.flattenDiagnosticMessageText(messageText, '\n');
 
@@ -1749,7 +1756,8 @@ runInEachFileSystem(() => {
         const {code, messageText, relatedInformation, length} = errors[0];
 
         expect(code).toBe(ngErrorCode(ErrorCode.LOCAL_COMPILATION_UNRESOLVED_CONST));
-        expect(length).toBe(14), expect(relatedInformation).toBeUndefined();
+        expect(length).toBe(14);
+        expect(relatedInformation).toBeUndefined();
 
         const text = ts.flattenDiagnosticMessageText(messageText, '\n');
 
@@ -1766,8 +1774,7 @@ runInEachFileSystem(() => {
           import {ExternalString} from './some-where';
 
           @Directive({selector: '[test]', exportAs: ExternalString})
-          export class Main {
-          }
+          export class Main {}
           `,
         );
 
@@ -1778,7 +1785,8 @@ runInEachFileSystem(() => {
         const {code, messageText, relatedInformation, length} = errors[0];
 
         expect(code).toBe(ngErrorCode(ErrorCode.LOCAL_COMPILATION_UNRESOLVED_CONST));
-        expect(length).toBe(14), expect(relatedInformation).toBeUndefined();
+        expect(length).toBe(14);
+        expect(relatedInformation).toBeUndefined();
 
         const text = ts.flattenDiagnosticMessageText(messageText, '\n');
 
@@ -1859,7 +1867,8 @@ runInEachFileSystem(() => {
           @Component({
             selector: 'my-comp',
             template: '',
-            hostDirectives: [ExternalDirective, n.ExternalDirective, LocalDirective]
+            hostDirectives: [ExternalDirective, n.ExternalDirective, LocalDirective],
+            standalone: false,
           })
           export class MyComp {}
         `,
@@ -1888,6 +1897,7 @@ runInEachFileSystem(() => {
               inputs: ['value', 'color: colorAlias'],
               outputs: ['opened', 'closed: closedAlias'],
             }],
+            standalone: false,
           })
           export class MyComp {}
         `,
@@ -1909,7 +1919,7 @@ runInEachFileSystem(() => {
           `
           import {Directive, Component} from '@angular/core';
 
-          @Directive({standalone: true})
+          @Directive()
           export class LocalDirective {
           }
 
@@ -1921,6 +1931,7 @@ runInEachFileSystem(() => {
               inputs: ['value', 'color: colorAlias'],
               outputs: ['opened', 'closed: closedAlias'],
             }],
+            standalone: false,
           })
           export class MyComp {}
         `,
@@ -1943,19 +1954,11 @@ runInEachFileSystem(() => {
           import {Directive, Component} from '@angular/core';
           import {ExternalDirective} from 'some_where';
 
-          @Directive({
-            standalone: true,
-            hostDirectives: [ExternalDirective],
-          })
-          export class LocalDirective {
-          }
+          @Directive({hostDirectives: [ExternalDirective]})
+          export class LocalDirective {}
 
-          @Directive({
-            standalone: true,
-            hostDirectives: [LocalDirective],
-          })
-          export class LocalDirective2 {
-          }
+          @Directive({hostDirectives: [LocalDirective]})
+          export class LocalDirective2 {}
         `,
         );
 
@@ -1963,11 +1966,11 @@ runInEachFileSystem(() => {
         const jsContents = env.getContents('test.js');
 
         expect(jsContents).toContain(
-          'ɵɵdefineDirective({ type: LocalDirective, standalone: true, ' +
+          'ɵɵdefineDirective({ type: LocalDirective, ' +
             'features: [i0.ɵɵHostDirectivesFeature([ExternalDirective])] });',
         );
         expect(jsContents).toContain(
-          'ɵɵdefineDirective({ type: LocalDirective2, standalone: true, ' +
+          'ɵɵdefineDirective({ type: LocalDirective2, ' +
             'features: [i0.ɵɵHostDirectivesFeature([LocalDirective])] });',
         );
       });
@@ -1981,13 +1984,13 @@ runInEachFileSystem(() => {
           @Component({
             selector: 'my-component',
             template: '',
-            hostDirectives: [forwardRef(() => DirectiveB)]
+            hostDirectives: [forwardRef(() => DirectiveB)],
+            standalone: false,
           })
           export class MyComponent {
           }
 
           @Directive({
-            standalone: true,
             hostDirectives: [{directive: forwardRef(() => DirectiveA), inputs: ['value']}],
           })
           export class DirectiveB {
@@ -2169,7 +2172,6 @@ runInEachFileSystem(() => {
           `
           import {Component} from '@angular/core';
           @Component({
-            standalone: true,
             selector: 'deferred-cmp-a',
             template: 'DeferredCmpA contents',
           })
@@ -2183,8 +2185,7 @@ runInEachFileSystem(() => {
           `
           import {Component} from '@angular/core';
           @Component({
-            standalone: true,
-            selector: 'deferred-cmp-b',
+                        selector: 'deferred-cmp-b',
             template: 'DeferredCmpB contents',
           })
           export class DeferredCmpB {
@@ -2199,7 +2200,6 @@ runInEachFileSystem(() => {
           import {DeferredCmpA} from './deferred-a';
           import {DeferredCmpB} from './deferred-b';
           @Component({
-            standalone: true,
             deferredImports: [DeferredCmpA, DeferredCmpB],
             template: \`
               @defer {
@@ -2250,7 +2250,6 @@ runInEachFileSystem(() => {
           `
           import {Component} from '@angular/core';
           @Component({
-            standalone: true,
             selector: 'deferred-cmp-a',
             template: 'DeferredCmpA contents',
           })
@@ -2265,7 +2264,6 @@ runInEachFileSystem(() => {
           import {Component} from '@angular/core';
           import {DeferredCmpA} from './deferred-a';
           @Component({
-            standalone: true,
             imports: [DeferredCmpA],
             template: \`
               @defer {
@@ -2303,7 +2301,6 @@ runInEachFileSystem(() => {
           `
               import {Component} from '@angular/core';
               @Component({
-                standalone: true,
                 selector: 'eager-cmp-a',
                 template: 'EagerCmpA contents',
               })
@@ -2317,7 +2314,6 @@ runInEachFileSystem(() => {
           `
               import {Component} from '@angular/core';
               @Component({
-                standalone: true,
                 selector: 'deferred-cmp-a',
                 template: 'DeferredCmpA contents',
               })
@@ -2331,8 +2327,7 @@ runInEachFileSystem(() => {
           `
               import {Component} from '@angular/core';
               @Component({
-                standalone: true,
-                selector: 'deferred-cmp-b',
+                                selector: 'deferred-cmp-b',
                 template: 'DeferredCmpB contents',
               })
               export class DeferredCmpB {
@@ -2348,7 +2343,6 @@ runInEachFileSystem(() => {
               import {DeferredCmpB} from './deferred-b';
               import {EagerCmpA} from './eager-a';
               @Component({
-                standalone: true,
                 imports: [EagerCmpA],
                 deferredImports: [DeferredCmpA, DeferredCmpB],
                 template: \`
@@ -2410,7 +2404,6 @@ runInEachFileSystem(() => {
               import {Component} from '@angular/core';
 
               @Component({
-                standalone: true,
                 selector: 'deferred-cmp-a',
                 template: 'DeferredCmpA contents',
               })
@@ -2418,7 +2411,6 @@ runInEachFileSystem(() => {
               }
 
               @Component({
-                standalone: true,
                 selector: 'deferred-cmp-b',
                 template: 'DeferredCmpB contents',
               })
@@ -2438,7 +2430,6 @@ runInEachFileSystem(() => {
               import {DeferredCmpA, DeferredCmpB} from './deferred-deps';
 
               @Component({
-                standalone: true,
                 deferredImports: [DeferredCmpA],
                 template: \`
                   @defer {
@@ -2449,7 +2440,6 @@ runInEachFileSystem(() => {
               export class AppCmpA {}
 
               @Component({
-                standalone: true,
                 deferredImports: [DeferredCmpB],
                 template: \`
                   @defer {
@@ -2504,7 +2494,6 @@ runInEachFileSystem(() => {
               import {Component} from '@angular/core';
 
               @Component({
-                standalone: true,
                 selector: 'deferred-cmp-a',
                 template: 'DeferredCmpA contents',
               })
@@ -2512,7 +2501,6 @@ runInEachFileSystem(() => {
               }
 
               @Component({
-                standalone: true,
                 selector: 'deferred-cmp-b',
                 template: 'DeferredCmpB contents',
               })
@@ -2536,7 +2524,6 @@ runInEachFileSystem(() => {
               import {DeferredCmpA, DeferredCmpB, utilityFn} from './deferred-deps';
 
               @Component({
-                standalone: true,
                 deferredImports: [DeferredCmpA],
                 template: \`
                   @defer {
@@ -2551,7 +2538,6 @@ runInEachFileSystem(() => {
               }
 
               @Component({
-                standalone: true,
                 deferredImports: [DeferredCmpB],
                 template: \`
                   @defer {
@@ -2562,7 +2548,6 @@ runInEachFileSystem(() => {
               export class AppCmpB {}
 
               @Component({
-                standalone: true,
                 template: 'Component without any dependencies'
               })
               export class ComponentWithoutDeps {}
@@ -2630,7 +2615,7 @@ runInEachFileSystem(() => {
           'test.ts',
           `
           import {Component} from '@angular/core';
-  
+
           @Component({
             template: '<span Hello! </span>',
           })
@@ -2657,7 +2642,7 @@ runInEachFileSystem(() => {
           'test.ts',
           `
           import {Component} from '@angular/core';
-  
+
           @Component({
             templateUrl: 'test.ng.html',
           })

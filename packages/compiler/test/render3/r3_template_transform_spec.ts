@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {BindingType, ParsedEventType} from '../../src/expression_parser/ast';
@@ -14,25 +14,35 @@ import {parseR3 as parse} from './view/util';
 
 // Transform an IVY AST to a flat list of nodes to ease testing
 class R3AstHumanizer implements t.Visitor<void> {
-  result: any[] = [];
+  result: (string | number | null)[][] = [];
 
   visitElement(element: t.Element) {
-    this.result.push(['Element', element.name]);
+    const res = ['Element', element.name];
+    this.result.push(res);
+    if (element.isSelfClosing) {
+      res.push('#selfClosing');
+    }
     this.visitAll([
       element.attributes,
       element.inputs,
       element.outputs,
+      element.directives,
       element.references,
       element.children,
     ]);
   }
 
   visitTemplate(template: t.Template) {
-    this.result.push(['Template']);
+    const res = ['Template'];
+    if (template.isSelfClosing) {
+      res.push('#selfClosing');
+    }
+    this.result.push(res);
     this.visitAll([
       template.attributes,
       template.inputs,
       template.outputs,
+      template.directives,
       template.templateAttrs,
       template.references,
       template.variables,
@@ -41,7 +51,11 @@ class R3AstHumanizer implements t.Visitor<void> {
   }
 
   visitContent(content: t.Content) {
-    this.result.push(['Content', content.selector]);
+    const res = ['Content', content.selector];
+    this.result.push(res);
+    if (content.isSelfClosing) {
+      res.push('#selfClosing');
+    }
     this.visitAll([content.attributes, content.children]);
   }
 
@@ -137,6 +151,8 @@ class R3AstHumanizer implements t.Visitor<void> {
       this.result.push(['InteractionDeferredTrigger', trigger.reference]);
     } else if (trigger instanceof t.ViewportDeferredTrigger) {
       this.result.push(['ViewportDeferredTrigger', trigger.reference]);
+    } else if (trigger instanceof t.NeverDeferredTrigger) {
+      this.result.push(['NeverDeferredTrigger']);
     } else {
       throw new Error('Unknown trigger');
     }
@@ -170,13 +186,39 @@ class R3AstHumanizer implements t.Visitor<void> {
     this.result.push(['LetDeclaration', decl.name, unparse(decl.value)]);
   }
 
+  visitComponent(component: t.Component) {
+    const res = ['Component', component.componentName, component.tagName, component.fullName];
+    if (component.isSelfClosing) {
+      res.push('#selfClosing');
+    }
+    this.result.push(res);
+    this.visitAll([
+      component.attributes,
+      component.inputs,
+      component.outputs,
+      component.directives,
+      component.references,
+      component.children,
+    ]);
+  }
+
+  visitDirective(directive: t.Directive): void {
+    this.result.push(['Directive', directive.name]);
+    this.visitAll([
+      directive.attributes,
+      directive.inputs,
+      directive.outputs,
+      directive.references,
+    ]);
+  }
+
   private visitAll(nodes: t.Node[][]) {
     nodes.forEach((node) => t.visitAll(this, node));
   }
 }
 
-function expectFromHtml(html: string, ignoreError = false) {
-  const res = parse(html, {ignoreError});
+function expectFromHtml(html: string, ignoreError = false, selectorlessEnabled = false) {
+  const res = parse(html, {ignoreError, selectorlessEnabled});
   return expectFromR3Nodes(res.nodes);
 }
 
@@ -242,6 +284,14 @@ describe('R3 template transform', () => {
         ['Content', 'a'],
         ['TextAttribute', 'select', 'a'],
       ]);
+    });
+
+    it('should indicate whether an element is void', () => {
+      const nodes = parse('<input><div></div>').nodes as t.Element[];
+      expect(nodes[0].name).toBe('input');
+      expect(nodes[0].isVoid).toBe(true);
+      expect(nodes[1].name).toBe('div');
+      expect(nodes[1].isVoid).toBe(false);
     });
   });
 
@@ -323,6 +373,61 @@ describe('R3 template transform', () => {
       expectFromHtml('<div [style.someStyle]="v"></div>').toEqual([
         ['Element', 'div'],
         ['BoundAttribute', BindingType.Style, 'someStyle', 'v'],
+      ]);
+    });
+
+    it('should parse class bindings with various characters', () => {
+      expectFromHtml(
+        `<foo [class.text-primary/80]="expr" ` +
+          `[class.data-active:text-green-300/80]="expr2" ` +
+          `[class.data-[size='large']:p-8] = "expr3" some-attr/>`,
+      ).toEqual([
+        ['Element', 'foo', '#selfClosing'],
+        ['TextAttribute', 'some-attr', ''],
+        ['BoundAttribute', BindingType.Class, 'text-primary/80', 'expr'],
+        ['BoundAttribute', BindingType.Class, 'data-active:text-green-300/80', 'expr2'],
+        ['BoundAttribute', BindingType.Class, `data-[size='large']:p-8`, 'expr3'],
+      ]);
+    });
+  });
+
+  describe('animation bindings', () => {
+    it('should support animate.enter', () => {
+      expectFromHtml('<div animate.enter="foo"></div>').toEqual([
+        ['Element', 'div'],
+        ['TextAttribute', 'animate.enter', 'foo'],
+      ]);
+
+      expectFromHtml(`<div [animate.enter]="['foo', 'bar']"></div>`).toEqual([
+        ['Element', 'div'],
+        ['BoundAttribute', 6, 'animate.enter', '["foo", "bar"]'],
+      ]);
+
+      expectFromHtml(`<div (animate.enter)="animateFn($event)"></div>`).toEqual([
+        ['Element', 'div'],
+        ['BoundEvent', 3, 'animate.enter', null, 'animateFn($event)'],
+      ]);
+    });
+
+    it('should support animate.leave', () => {
+      expectFromHtml('<div animate.leave="foo"></div>').toEqual([
+        ['Element', 'div'],
+        ['TextAttribute', 'animate.leave', 'foo'],
+      ]);
+
+      expectFromHtml(`<div [animate.leave]="['foo', 'bar']"></div>`).toEqual([
+        ['Element', 'div'],
+        ['BoundAttribute', 6, 'animate.leave', '["foo", "bar"]'],
+      ]);
+
+      expectFromHtml(`<div (animate.leave)="animateFn($event)"></div>`).toEqual([
+        ['Element', 'div'],
+        ['BoundEvent', 3, 'animate.leave', null, 'animateFn($event)'],
+      ]);
+
+      expectFromHtml(`<div (animateXYZ)="animateFn()"></div>`).toEqual([
+        ['Element', 'div'],
+        ['BoundEvent', 0, 'animateXYZ', null, 'animateFn()'],
       ]);
     });
   });
@@ -489,6 +594,14 @@ describe('R3 template transform', () => {
       ]);
     });
 
+    it('should parse $any in a two-way binding', () => {
+      expectFromHtml('<div [(prop)]="$any(v)"></div>').toEqual([
+        ['Element', 'div'],
+        ['BoundAttribute', BindingType.TwoWay, 'prop', '$any(v)'],
+        ['BoundEvent', ParsedEventType.TwoWay, 'propChange', null, '$any(v)'],
+      ]);
+    });
+
     it('should parse bound events and properties via bindon-', () => {
       expectFromHtml('<div bindon-prop="v"></div>').toEqual([
         ['Element', 'div'],
@@ -538,6 +651,10 @@ describe('R3 template transform', () => {
         'v + 1',
         'foo.bar?.baz',
         `foo.bar?.['baz']`,
+        'foo?.bar.baz[0]',
+        'foo?.bar.baz[0].boo[0]',
+        'foo?.bar.baz()',
+        '(foo?.bar).baz', // not null-safe and would crash at runtime, but may not report an error without `strictNullChecks`
         'true',
         '123',
         'a.b()',
@@ -551,12 +668,22 @@ describe('R3 template transform', () => {
         '!a',
         '!!a',
         'a ? b : c',
+        '$any(a || b)',
+        'this.$any(a)',
+        '$any(a, b)',
       ];
 
       for (const expression of unsupportedExpressions) {
         expect(() => parse(`<div [(prop)]="${expression}"></div>`))
           .withContext(expression)
           .toThrowError(/Unsupported expression in a two-way binding/);
+      }
+
+      const supportedExpressions = ['(foo?.bar ?? bar).baz'];
+      for (const expression of supportedExpressions) {
+        expect(() => parse(`<div [(prop)]="${expression}"></div>`))
+          .withContext(expression)
+          .not.toThrowError();
       }
     });
 
@@ -583,7 +710,7 @@ describe('R3 template transform', () => {
     it('should parse bound animation events when event name is empty', () => {
       expectFromHtml('<div (@)="onAnimationEvent($event)"></div>', true).toEqual([
         ['Element', 'div'],
-        ['BoundEvent', ParsedEventType.Animation, '', null, 'onAnimationEvent($event)'],
+        ['BoundEvent', ParsedEventType.LegacyAnimation, '', null, 'onAnimationEvent($event)'],
       ]);
       expect(() => parse('<div (@)></div>')).toThrowError(
         /Animation event name is missing in binding/,
@@ -709,6 +836,61 @@ describe('R3 template transform', () => {
         ['Text', 'Parent '],
         ['Element', 'span'],
         ['Text', 'Child'],
+      ]);
+    });
+  });
+
+  describe('parser errors', () => {
+    it('should only report errors on the node on which the error occurred', () => {
+      const errors = parse(
+        `
+        <input (input)="foo(12#3)">
+        <button (click)="bar()"></button>
+        <span (mousedown)="baz()"></span>
+      `,
+        {
+          ignoreError: true,
+        },
+      ).errors;
+
+      expect(errors.length).toBe(3);
+      expect(errors[0].msg).toContain('Parser Error: Missing expected )');
+      expect(errors[1].msg).toContain('Invalid character [#]');
+      expect(errors[2].msg).toContain(`Unexpected token ')'`);
+    });
+
+    it('should report parsing errors on the specific interpolated expressions', () => {
+      const errors = parse(
+        `
+          bunch of text bunch of text bunch of text bunch of text bunch of text bunch of text
+          bunch of text bunch of text bunch of text bunch of text
+
+          {{foo[0}} bunch of text bunch of text bunch of text bunch of text {{.bar}}
+
+          bunch of text
+          bunch of text
+          bunch of text
+          bunch of text
+          bunch of text {{one + #two + baz}}
+        `,
+        {
+          ignoreError: true,
+        },
+      ).errors;
+
+      expect(errors.map((e) => e.span.toString())).toEqual([
+        '{{foo[0}}',
+        '{{.bar}}',
+        '{{one + #two + baz}}',
+      ]);
+
+      expect(errors.map((e) => e.msg)).toEqual([
+        jasmine.stringContaining('Missing expected ] at the end of the expression [foo[0]'),
+        jasmine.stringContaining('Unexpected token . at column 1 in [.bar]'),
+        jasmine.stringContaining(
+          'Private identifiers are not supported. Unexpected private identifier: ' +
+            '#two at column 7 in [one + #two + baz]',
+        ),
       ]);
     });
   });
@@ -911,7 +1093,7 @@ describe('R3 template transform', () => {
           '@error {Loading failed :(}',
       ).toEqual([
         ['DeferredBlock'],
-        ['Element', 'calendar-cmp'],
+        ['Element', 'calendar-cmp', '#selfClosing'],
         ['BoundAttribute', 0, 'date', 'current'],
         ['DeferredBlockPlaceholder'],
         ['Text', 'Placeholder content!'],
@@ -930,7 +1112,7 @@ describe('R3 template transform', () => {
           '<!-- Show this on error --> @error {Loading failed :(}',
       ).toEqual([
         ['DeferredBlock'],
-        ['Element', 'calendar-cmp'],
+        ['Element', 'calendar-cmp', '#selfClosing'],
         ['BoundAttribute', 0, 'date', 'current'],
         ['DeferredBlockPlaceholder'],
         ['Text', 'Placeholder content!'],
@@ -954,7 +1136,7 @@ describe('R3 template transform', () => {
         expectFromR3Nodes(parse(template, {preserveWhitespaces: true}).nodes).toEqual([
           // Note: we also expect the whitespace nodes between the blocks to be ignored here.
           ['DeferredBlock'],
-          ['Element', 'calendar-cmp'],
+          ['Element', 'calendar-cmp', '#selfClosing'],
           ['BoundAttribute', 0, 'date', 'current'],
           ['DeferredBlockPlaceholder'],
           ['Text', 'Placeholder content!'],
@@ -972,7 +1154,7 @@ describe('R3 template transform', () => {
           '@loading (after 100ms; minimum 1.5s){Loading...}',
       ).toEqual([
         ['DeferredBlock'],
-        ['Element', 'calendar-cmp'],
+        ['Element', 'calendar-cmp', '#selfClosing'],
         ['BoundAttribute', 0, 'date', 'current'],
         ['DeferredBlockLoading', 'after 100ms', 'minimum 1500ms'],
         ['Text', 'Loading...'],
@@ -984,7 +1166,7 @@ describe('R3 template transform', () => {
         '@defer {<calendar-cmp [date]="current"/>}' + '@placeholder (minimum 1.5s){Placeholder...}',
       ).toEqual([
         ['DeferredBlock'],
-        ['Element', 'calendar-cmp'],
+        ['Element', 'calendar-cmp', '#selfClosing'],
         ['BoundAttribute', 0, 'date', 'current'],
         ['DeferredBlockPlaceholder', 'minimum 1500ms'],
         ['Text', 'Placeholder...'],
@@ -1019,16 +1201,58 @@ describe('R3 template transform', () => {
       ]);
     });
 
+    it('should parse the hydrate-specific `never` trigger', () => {
+      const html = '@defer (on idle; hydrate never){hello}';
+
+      expectFromHtml(html).toEqual([
+        ['DeferredBlock'],
+        ['NeverDeferredTrigger'],
+        ['IdleDeferredTrigger'],
+        ['Text', 'hello'],
+      ]);
+    });
+
+    it('should parse a deferred block with hydrate triggers', () => {
+      const html =
+        '@defer (on idle; hydrate on viewport, hover, timer(500); hydrate when shouldHydrate()){hello}';
+
+      expectFromHtml(html).toEqual([
+        ['DeferredBlock'],
+        ['ViewportDeferredTrigger', null],
+        ['HoverDeferredTrigger', null],
+        ['TimerDeferredTrigger', 500],
+        ['BoundDeferredTrigger', 'shouldHydrate()'],
+        ['IdleDeferredTrigger'],
+        ['Text', 'hello'],
+      ]);
+    });
+
+    it('should allow arbitrary number of spaces after the `hydrate` keyword', () => {
+      const html =
+        '@defer (on idle; hydrate         on viewport, hover; hydrate    when shouldHydrate()){hello}';
+
+      expectFromHtml(html).toEqual([
+        ['DeferredBlock'],
+        ['ViewportDeferredTrigger', null],
+        ['HoverDeferredTrigger', null],
+        ['BoundDeferredTrigger', 'shouldHydrate()'],
+        ['IdleDeferredTrigger'],
+        ['Text', 'hello'],
+      ]);
+    });
+
     it('should parse a complete example', () => {
       expectFromHtml(
         '@defer (when isVisible() && foo; on hover(button), timer(10s), idle, immediate, ' +
           'interaction(button), viewport(container); prefetch on immediate; ' +
-          'prefetch when isDataLoaded()){<calendar-cmp [date]="current"/>}' +
-          '@loading (minimum 1s; after 100ms){Loading...}' +
+          'prefetch when isDataLoaded(); hydrate when shouldHydrate(); hydrate on viewport){' +
+          '<calendar-cmp [date]="current"/>}@loading (minimum 1s; after 100ms){Loading...}' +
           '@placeholder (minimum 500){Placeholder content!}' +
           '@error {Loading failed :(}',
       ).toEqual([
         ['DeferredBlock'],
+        ['BoundDeferredTrigger', 'shouldHydrate()'],
+        ['ViewportDeferredTrigger', null],
         ['BoundDeferredTrigger', 'isVisible() && foo'],
         ['HoverDeferredTrigger', 'button'],
         ['TimerDeferredTrigger', 10000],
@@ -1038,7 +1262,7 @@ describe('R3 template transform', () => {
         ['ViewportDeferredTrigger', 'container'],
         ['ImmediateDeferredTrigger'],
         ['BoundDeferredTrigger', 'isDataLoaded()'],
-        ['Element', 'calendar-cmp'],
+        ['Element', 'calendar-cmp', '#selfClosing'],
         ['BoundAttribute', 0, 'date', 'current'],
         ['DeferredBlockPlaceholder', 'minimum 500ms'],
         ['Text', 'Placeholder content!'],
@@ -1052,10 +1276,11 @@ describe('R3 template transform', () => {
     it('should treat blocks as plain text inside ngNonBindable', () => {
       expectFromHtml(
         '<div ngNonBindable>' +
-          '@defer (when isVisible() && foo; on hover, timer(10s); ' +
-          'prefetch on immediate; prefetch when isDataLoaded()){<calendar-cmp [date]="current"/>}' +
-          '@loading {Loading...}' +
-          '@placeholder {Placeholder content!}' +
+          '@defer (when isVisible() && foo; on hover(button), timer(10s), idle, immediate, ' +
+          'interaction(button), viewport(container); prefetch on immediate; ' +
+          'prefetch when isDataLoaded(); hydrate when shouldHydrate(); hydrate on viewport){' +
+          '<calendar-cmp [date]="current"/>}@loading (minimum 1s; after 100ms){Loading...}' +
+          '@placeholder (minimum 500){Placeholder content!}' +
           '@error {Loading failed :(}' +
           '</div>',
       ).toEqual([
@@ -1063,15 +1288,17 @@ describe('R3 template transform', () => {
         ['TextAttribute', 'ngNonBindable', ''],
         [
           'Text',
-          '@defer (when isVisible() && foo; on hover, timer(10s); prefetch on immediate; prefetch when isDataLoaded()){',
+          '@defer (when isVisible() && foo; on hover(button), timer(10s), idle, immediate, ' +
+            'interaction(button), viewport(container); prefetch on immediate; ' +
+            'prefetch when isDataLoaded(); hydrate when shouldHydrate(); hydrate on viewport){',
         ],
-        ['Element', 'calendar-cmp'],
+        ['Element', 'calendar-cmp', '#selfClosing'],
         ['TextAttribute', '[date]', 'current'],
         ['Text', '}'],
-        ['Text', '@loading {'],
+        ['Text', '@loading (minimum 1s; after 100ms){'],
         ['Text', 'Loading...'],
         ['Text', '}'],
-        ['Text', '@placeholder {'],
+        ['Text', '@placeholder (minimum 500){'],
         ['Text', 'Placeholder content!'],
         ['Text', '}'],
         ['Text', '@error {'],
@@ -1094,7 +1321,7 @@ describe('R3 template transform', () => {
         ['ViewportDeferredTrigger', null],
         ['Text', 'hello'],
         ['DeferredBlockPlaceholder'],
-        ['Element', 'implied-trigger'],
+        ['Element', 'implied-trigger', '#selfClosing'],
       ]);
     });
 
@@ -1315,29 +1542,64 @@ describe('R3 template transform', () => {
         ).toThrowError(/@loading block can only have one "after" parameter/);
       });
 
-      it('should report if reference-based trigger has no reference and there is no placeholder block', () => {
-        expect(() => parse('@defer (on viewport) {hello}')).toThrowError(
-          /"viewport" trigger with no parameters can only be placed on an @defer that has a @placeholder block/,
-        );
-      });
-
-      it('should report if reference-based trigger has no reference and the placeholder is empty', () => {
-        expect(() => parse('@defer (on viewport) {hello} @placeholder {}')).toThrowError(
-          /"viewport" trigger with no parameters can only be placed on an @defer that has a @placeholder block with exactly one root element node/,
-        );
-      });
-
-      it('should report if reference-based trigger has no reference and the placeholder with text at the root', () => {
-        expect(() => parse('@defer (on viewport) {hello} @placeholder {placeholder}')).toThrowError(
-          /"viewport" trigger with no parameters can only be placed on an @defer that has a @placeholder block with exactly one root element node/,
-        );
-      });
-
-      it('should report if reference-based trigger has no reference and the placeholder has multiple root elements', () => {
+      it('should report parameter passed to hydrate trigger with reference-based equivalent', () => {
         expect(() =>
-          parse('@defer (on viewport) {hello} @placeholder {<div></div><span></span>}'),
+          parse('@defer (on interaction(button); hydrate on interaction(button)) {hello}'),
+        ).toThrowError(/Hydration trigger "interaction" cannot have parameters/);
+      });
+
+      it('should not report missing reference on hydrate trigger', () => {
+        expect(() => parse('@defer (on immediate; hydrate on viewport) {hello}')).not.toThrow();
+      });
+
+      it('should report never trigger used without `hydrate`', () => {
+        expect(() => parse('@defer (on immediate; never) {hello}')).toThrowError(
+          /Unrecognized trigger/,
+        );
+        expect(() => parse('@defer (on immediate; prefetch never) {hello}')).toThrowError(
+          /Unrecognized trigger/,
+        );
+      });
+
+      it('should report `hydrate never` used with additonal characters', () => {
+        expect(() => parse('@defer (hydrate never, and thank you) {hello}')).toThrowError(
+          /Unrecognized trigger/,
+        );
+      });
+
+      it('should not report an error when `hydrate never` is used with additonal blocks', () => {
+        expect(() => parse('@defer (hydrate never; on idle;) {hello}')).not.toThrowError(
+          /Unrecognized trigger/,
+        );
+      });
+
+      it('should not report an error when `hydrate never` is used with spaces', () => {
+        expect(() => parse('@defer(hydrate never ; on idle ;) {hello}')).not.toThrowError(
+          /Unrecognized trigger/,
+        );
+      });
+
+      it('should not report an error when `hydrate never` is used after another block', () => {
+        expect(() =>
+          parse(`@defer(
+        on idle;
+        hydrate never) {hello}`),
+        ).not.toThrowError(/Unrecognized trigger/);
+      });
+
+      it('should report when `hydrate never` is used together with another `hydrate` trigger', () => {
+        // Extra trigger after `hydrate never`.
+        expect(() =>
+          parse('@defer (hydrate never; hydrate when shouldHydrate()) {hello}'),
         ).toThrowError(
-          /"viewport" trigger with no parameters can only be placed on an @defer that has a @placeholder block with exactly one root element node/,
+          /Cannot specify additional `hydrate` triggers if `hydrate never` is present/,
+        );
+
+        // Extra trigger before `hydrate never`.
+        expect(() =>
+          parse('@defer (hydrate when shouldHydrate(); hydrate never) {hello}'),
+        ).toThrowError(
+          /Cannot specify additional `hydrate` triggers if `hydrate never` is present/,
         );
       });
     });
@@ -1413,13 +1675,13 @@ describe('R3 template transform', () => {
             @default { No case matched }
           }
         `).toEqual([
-        ['SwitchBlock', 'cond.kind'],
-        ['SwitchBlockCase', 'x()'],
+        ['SwitchBlock', '(cond.kind)'],
+        ['SwitchBlockCase', '(x())'],
         ['Text', ' X case '],
-        ['SwitchBlockCase', '"hello"'],
+        ['SwitchBlockCase', '("hello")'],
         ['Element', 'button'],
         ['Text', 'Y case'],
-        ['SwitchBlockCase', '42'],
+        ['SwitchBlockCase', '(42)'],
         ['Text', ' Z case '],
         ['SwitchBlockCase', null],
         ['Text', ' No case matched '],
@@ -1523,7 +1785,7 @@ describe('R3 template transform', () => {
           `
               @switch (cond) {
                 @case (x()) {X case}
-                @foo {Foo}
+                @if (true) {Foo}
               }
             `,
           {ignoreError: true},
@@ -1533,7 +1795,7 @@ describe('R3 template transform', () => {
         expect(result.errors.map((e) => e.msg)).toEqual([
           '@switch block can only contain @case and @default blocks',
         ]);
-        expect(switchNode.unknownBlocks.map((b) => b.name)).toEqual(['foo']);
+        expect(switchNode.unknownBlocks.map((b) => b.name)).toEqual(['if']);
       });
 
       it('should report if @case or @default is used outside of a switch block', () => {
@@ -1801,13 +2063,24 @@ describe('R3 template transform', () => {
         ['Variable', '$count', '$count'],
         ['BoundText', '{{ item }}'],
       ];
+      const expectedExtraParensResult = [
+        ['ForLoopBlock', 'items.foo.bar', '(item.id + foo)'],
+        ['Variable', 'item', '$implicit'],
+        ['Variable', '$index', '$index'],
+        ['Variable', '$first', '$first'],
+        ['Variable', '$last', '$last'],
+        ['Variable', '$even', '$even'],
+        ['Variable', '$odd', '$odd'],
+        ['Variable', '$count', '$count'],
+        ['BoundText', '{{ item }}'],
+      ];
 
       expectFromHtml(`
         @for (item\nof\nitems.foo.bar; track item.id +\nfoo) {{{ item }}}
       `).toEqual(expectedResult);
       expectFromHtml(`
         @for ((item\nof\nitems.foo.bar); track (item.id +\nfoo)) {{{ item }}}
-      `).toEqual(expectedResult);
+      `).toEqual(expectedExtraParensResult);
     });
 
     it('should parse for loop block expression containing new lines', () => {
@@ -1859,7 +2132,7 @@ describe('R3 template transform', () => {
 
       it('should report unrecognized for loop parameters', () => {
         expect(() => parse(`@for (a of b; foo bar) {hello}`)).toThrowError(
-          /Unrecognized @for loop paramater "foo bar"/,
+          /Unrecognized @for loop parameter "foo bar"/,
         );
       });
 
@@ -2009,9 +2282,9 @@ describe('R3 template transform', () => {
         }
         `).toEqual([
         ['IfBlock'],
-        ['IfBlockBranch', 'cond.expr'],
+        ['IfBlockBranch', '(cond.expr)'],
         ['Text', ' Main case was true! '],
-        ['IfBlockBranch', 'other.expr'],
+        ['IfBlockBranch', '(other.expr)'],
         ['Text', ' Extra case was true! '],
         ['IfBlockBranch', null],
         ['Text', ' False case! '],
@@ -2118,6 +2391,24 @@ describe('R3 template transform', () => {
       ]);
     });
 
+    it('should parse an else if block with an aliased expression', () => {
+      expectFromHtml(`
+        @if (cond.expr; as foo) {
+          Main case was true!
+        } @else if (other.expr; as bar) {
+          Other case was true!
+        }
+        `).toEqual([
+        ['IfBlock'],
+        ['IfBlockBranch', 'cond.expr'],
+        ['Variable', 'foo', 'foo'],
+        ['Text', ' Main case was true! '],
+        ['IfBlockBranch', 'other.expr'],
+        ['Variable', 'bar', 'bar'],
+        ['Text', ' Other case was true! '],
+      ]);
+    });
+
     describe('validations', () => {
       it('should report an if block without a condition', () => {
         expect(() =>
@@ -2137,7 +2428,7 @@ describe('R3 template transform', () => {
           parse(`
           @if (foo; bar) {hello}
         `),
-        ).toThrowError(/Unrecognized conditional paramater "bar"/);
+        ).toThrowError(/Unrecognized conditional parameter "bar"/);
       });
 
       it('should report an unknown parameter in an else if block', () => {
@@ -2145,7 +2436,7 @@ describe('R3 template transform', () => {
           parse(`
           @if (foo) {hello} @else if (bar; baz) {goodbye}
         `),
-        ).toThrowError(/Unrecognized conditional paramater "baz"/);
+        ).toThrowError(/Unrecognized conditional parameter "baz"/);
       });
 
       it('should report an if block that has multiple `as` expressions', () => {
@@ -2162,14 +2453,6 @@ describe('R3 template transform', () => {
           @if (foo) {hello} @else\nif (bar) {goodbye}
         `),
         ).toThrowError(/Unrecognized block @else\nif/);
-      });
-
-      it('should report an else if block that has an `as` expression', () => {
-        expect(() =>
-          parse(`
-          @if (foo) {hello} @else if (bar; as alias) {goodbye}
-        `),
-        ).toThrowError(/"as" expression is only allowed on the primary @if block/);
       });
 
       it('should report an @else if block used without an @if block', () => {
@@ -2219,12 +2502,14 @@ describe('R3 template transform', () => {
         `),
         ).toThrowError(/@else block must be last inside the conditional/);
       });
-    });
-  });
 
-  describe('unknown blocks', () => {
-    it('should parse unknown blocks', () => {
-      expectFromHtml('@unknown {}', true /* ignoreError */).toEqual([['UnknownBlock', 'unknown']]);
+      it('should throw if "as" expression is not a valid identifier', () => {
+        expect(() =>
+          parse(`
+          @if (foo; as foo && bar) {hello}
+        `),
+        ).toThrowError(/"as" expression must be a valid JavaScript identifier/);
+      });
     });
   });
 
@@ -2250,5 +2535,255 @@ describe('R3 template transform', () => {
         ['Text', '@let foo = 123;'],
       ]);
     });
+  });
+
+  describe('component nodes', () => {
+    function expectSelectorless(html: string, ignoreError?: boolean) {
+      return expectFromHtml(html, ignoreError, true);
+    }
+
+    function parseSelectorless(html: string) {
+      return parse(html, {selectorlessEnabled: true});
+    }
+
+    it('should parse a simple component node', () => {
+      expectSelectorless('<MyComp>Hello</MyComp>').toEqual([
+        ['Component', 'MyComp', null, 'MyComp'],
+        ['Text', 'Hello'],
+      ]);
+    });
+
+    it('should parse a component node with a tag name', () => {
+      expectSelectorless('<MyComp:button>Hello</MyComp:button>').toEqual([
+        ['Component', 'MyComp', 'button', 'MyComp:button'],
+        ['Text', 'Hello'],
+      ]);
+    });
+
+    it('should parse a component tag nested within other markup', () => {
+      expectSelectorless(
+        '@if (expr) {<div>Hello: <MyComp><span><OtherComp/></span></MyComp></div>}',
+      ).toEqual([
+        ['IfBlock'],
+        ['IfBlockBranch', 'expr'],
+        ['Element', 'div'],
+        ['Text', 'Hello: '],
+        ['Component', 'MyComp', null, 'MyComp'],
+        ['Element', 'span'],
+        ['Component', 'OtherComp', null, 'OtherComp', '#selfClosing'],
+      ]);
+    });
+
+    it('should parse a component node with attributes and directives', () => {
+      expectSelectorless(
+        '<MyComp before="foo" @Dir middle @OtherDir([a]="a" (b)="b()") after="123">Hello</MyComp>',
+      ).toEqual([
+        ['Component', 'MyComp', null, 'MyComp'],
+        ['TextAttribute', 'before', 'foo'],
+        ['TextAttribute', 'middle', ''],
+        ['TextAttribute', 'after', '123'],
+        ['Directive', 'Dir'],
+        ['Directive', 'OtherDir'],
+        ['BoundAttribute', 0, 'a', 'a'],
+        ['BoundEvent', 0, 'b', null, 'b()'],
+        ['Text', 'Hello'],
+      ]);
+    });
+
+    it('should parse a component node with * directives', () => {
+      expectSelectorless('<MyComp *ngIf="expr">Hello</MyComp>').toEqual([
+        ['Template'],
+        ['BoundAttribute', 0, 'ngIf', 'expr'],
+        ['Component', 'MyComp', null, 'MyComp'],
+        ['Text', 'Hello'],
+      ]);
+    });
+
+    it('should not pick up attributes from directives when using * syntax', () => {
+      expectSelectorless(
+        '<MyComp *ngIf="true" @Dir(static="1" [bound]="expr" (event)="fn()")/>',
+      ).toEqual([
+        ['Template'],
+        ['BoundAttribute', 0, 'ngIf', 'true'],
+        ['Component', 'MyComp', null, 'MyComp', '#selfClosing'],
+        ['Directive', 'Dir'],
+        ['TextAttribute', 'static', '1'],
+        ['BoundAttribute', 0, 'bound', 'expr'],
+        ['BoundEvent', 0, 'event', null, 'fn()'],
+      ]);
+    });
+
+    it('should treat components as elements inside ngNonBindable', () => {
+      expectSelectorless(
+        '<div ngNonBindable><MyComp foo="bar" @Dir(some="attr")></MyComp></div>',
+      ).toEqual([
+        ['Element', 'div'],
+        ['TextAttribute', 'ngNonBindable', ''],
+        ['Element', 'MyComp'],
+        ['TextAttribute', 'foo', 'bar'],
+      ]);
+    });
+
+    it('should not allow a selectorless component with an unsupported tag name', () => {
+      const unsupportedTags = [
+        'link',
+        'style',
+        'script',
+        'ng-template',
+        'ng-container',
+        'ng-content',
+      ];
+
+      for (const name of unsupportedTags) {
+        expect(() => parseSelectorless(`<MyComp:${name}></MyComp:${name}>`)).toThrowError(
+          new RegExp(`Tag name "${name}" cannot be used as a component tag`),
+        );
+      }
+    });
+  });
+
+  describe('directives', () => {
+    function expectSelectorless(html: string, ignoreError?: boolean) {
+      return expectFromHtml(html, ignoreError, true);
+    }
+
+    function parseSelectorless(html: string) {
+      return parse(html, {selectorlessEnabled: true});
+    }
+
+    it('should parse a directive with no attributes', () => {
+      expectSelectorless('<div @Dir></div>').toEqual([
+        ['Element', 'div'],
+        ['Directive', 'Dir'],
+      ]);
+    });
+
+    it('should parse a directive with attributes', () => {
+      expectSelectorless('<div @Dir(a="1" [b]="two" (c)="c()" [(d)]="d")></div>').toEqual([
+        ['Element', 'div'],
+        ['Directive', 'Dir'],
+        ['TextAttribute', 'a', '1'],
+        ['BoundAttribute', 0, 'b', 'two'],
+        ['BoundAttribute', BindingType.TwoWay, 'd', 'd'],
+        ['BoundEvent', 0, 'c', null, 'c()'],
+        ['BoundEvent', 2, 'dChange', null, 'd'],
+      ]);
+    });
+
+    it('should parse a directive mixed with other attributes', () => {
+      expectSelectorless(
+        '<div before="foo" @Dir middle @OtherDir([a]="a" (b)="b()") after="123"></div>',
+      ).toEqual([
+        ['Element', 'div'],
+        ['TextAttribute', 'before', 'foo'],
+        ['TextAttribute', 'middle', ''],
+        ['TextAttribute', 'after', '123'],
+        ['Directive', 'Dir'],
+        ['Directive', 'OtherDir'],
+        ['BoundAttribute', 0, 'a', 'a'],
+        ['BoundEvent', 0, 'b', null, 'b()'],
+      ]);
+    });
+
+    it('should remove directives inside ngNonBindable', () => {
+      expectSelectorless(
+        '<div ngNonBindable><span @EmptyDir @WithAttrs(foo="123" [bar]="321")></span></div>',
+      ).toEqual([
+        ['Element', 'div'],
+        ['TextAttribute', 'ngNonBindable', ''],
+        ['Element', 'span'],
+      ]);
+    });
+
+    it('should pick up attributes from selectorless directives when using * syntax', () => {
+      expectSelectorless(
+        '<div *ngIf="true" @Dir(static="1" [bound]="expr" (event)="fn()")></div>',
+      ).toEqual([
+        ['Template'],
+        ['BoundAttribute', 0, 'ngIf', 'true'],
+        ['Element', 'div'],
+        ['Directive', 'Dir'],
+        ['TextAttribute', 'static', '1'],
+        ['BoundAttribute', 0, 'bound', 'expr'],
+        ['BoundEvent', 0, 'event', null, 'fn()'],
+      ]);
+    });
+
+    describe('validations', () => {
+      it('should not allow * syntax inside directives', () => {
+        expect(() => parseSelectorless(`<div @Dir(*ngIf="true")></div>`)).toThrowError(
+          /Shorthand template syntax "\*ngIf" is not supported inside a directive context/,
+        );
+      });
+
+      it('should not allow ngProjectAs inside directive syntax', () => {
+        expect(() => parseSelectorless(`<div @Dir(ngProjectAs="foo")></div>`)).toThrowError(
+          /Attribute "ngProjectAs" is not supported in a directive context/,
+        );
+      });
+
+      it('should not allow ngNonBindable inside directive syntax', () => {
+        expect(() => parseSelectorless(`<div @Dir(ngNonBindable)></div>`)).toThrowError(
+          /Attribute "ngNonBindable" is not supported in a directive context/,
+        );
+      });
+
+      it('should not allow the same directive to be applied multiple times', () => {
+        expect(() => parseSelectorless(`<div @One @Two @One(input="123")></div>`)).toThrowError(
+          /Cannot apply directive "One" multiple times on the same element/,
+        );
+      });
+
+      it('should not allow class bindings inside directives', () => {
+        expect(() => parseSelectorless(`<div @Dir([class.foo]="expr")></div>`)).toThrowError(
+          /Binding is not supported in a directive context/,
+        );
+      });
+
+      it('should not allow style bindings inside directives', () => {
+        expect(() => parseSelectorless(`<div @Dir([style.foo]="expr")></div>`)).toThrowError(
+          /Binding is not supported in a directive context/,
+        );
+      });
+
+      it('should not allow attribute bindings inside directives', () => {
+        expect(() => parseSelectorless(`<div @Dir([attr.foo]="expr")></div>`)).toThrowError(
+          /Binding is not supported in a directive context/,
+        );
+      });
+
+      it('should not allow animation bindings inside directives', () => {
+        expect(() => parseSelectorless(`<div @Dir([@animation]="expr")></div>`)).toThrowError(
+          /Binding is not supported in a directive context/,
+        );
+      });
+
+      it('should not allow named references', () => {
+        const pattern = /Cannot specify a value for a local reference in this context/;
+        expect(() => parseSelectorless('<MyComp #foo="bar"/>')).toThrowError(pattern);
+        expect(() => parseSelectorless('<div @Dir(#foo="bar")></div>')).toThrowError(pattern);
+      });
+
+      it('should not allow duplicate references', () => {
+        const pattern = /Duplicate reference names are not allowed/;
+        expect(() => parseSelectorless('<MyComp #foo #foo/>')).toThrowError(pattern);
+        expect(() => parseSelectorless('<div @Dir(#foo #foo)></div>')).toThrowError(pattern);
+      });
+    });
+  });
+
+  it('should report an error for attribute bindings on ng-container', () => {
+    const template = `<ng-container [attr.title]="'test'"></ng-container>`;
+    const errors = parse(template, {ignoreError: true}).errors;
+    expect(errors.length).toBe(1);
+    expect(errors[0].msg).toBe(
+      'Attribute bindings are not supported on ng-container. Use property bindings instead.',
+    );
+  });
+
+  it('should not report an error on non-attr bindings on ng-container', () => {
+    const template = `<ng-container *ngIf"test" [ngTemplateOutlet]="foo"></ng-container>`;
+    const errors = parse(template, {ignoreError: true}).errors;
+    expect(errors.length).toBe(0);
   });
 });

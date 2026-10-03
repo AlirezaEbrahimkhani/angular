@@ -3,12 +3,14 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {animate, AnimationOptions, state, style, transition} from '@angular/animations';
-import {AnimationTransitionInstruction} from '@angular/animations/browser/src/dsl/animation_transition_instruction';
-import {AnimationTrigger} from '@angular/animations/browser/src/dsl/animation_trigger';
+import {isNode} from '@angular/private/testing';
+
+import {animate, AnimationOptions, state, style, transition} from '../../../src/animations';
+import {AnimationTransitionInstruction} from '../../src/dsl/animation_transition_instruction';
+import {AnimationTrigger} from '../../src/dsl/animation_trigger';
 
 import {ENTER_CLASSNAME, LEAVE_CLASSNAME} from '../../src/util';
 import {MockAnimationDriver} from '../../testing';
@@ -29,7 +31,7 @@ describe('AnimationTrigger', () => {
   });
 
   afterEach(() => {
-    document.body.removeChild(element);
+    element.remove();
   });
 
   describe('trigger validation', () => {

@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 /**
@@ -12,10 +12,10 @@
  * the resulting types match our expectations (via comments asserting the `.d.ts`).
  */
 
-import {input} from '@angular/core';
+import {input} from '../../src/core';
 // import preserved to simplify `.d.ts` emit and simplify the `type_tester` logic.
 // tslint:disable-next-line no-duplicate-imports
-import {InputSignal, InputSignalWithTransform} from '@angular/core';
+import {InputSignal, InputSignalWithTransform} from '../../src/core';
 
 export class InputSignatureTest {
   /** string | undefined */
@@ -67,6 +67,24 @@ export class InputSignatureTest {
 
   /** string | undefined */
   withNoInitialValue = input<string>();
+
+  /** undefined */
+  initialValueUndefinedWithoutOptions = input(undefined);
+  /** undefined */
+  initialValueUndefinedWithOptions = input(undefined, {});
+  /** @internal */
+  __shouldErrorIfInitialValueUndefinedExplicitReadWithoutOptions = input<string>(
+    // @ts-expect-error
+    undefined,
+  );
+  /** string | undefined, unknown */
+  initialValueUndefinedWithUntypedTransform = input(undefined, {transform: (bla) => ''});
+  /** string | undefined, string */
+  initialValueUndefinedWithTypedTransform = input(undefined, {transform: (bla: string) => ''});
+  /** string | undefined, string */
+  initialValueUndefinedExplicitReadWithTransform = input<string, string>(undefined, {
+    transform: (bla) => '',
+  });
 
   /** string */
   requiredNoInitialValue = input.required<string>();

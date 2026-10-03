@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 const DASH_CASE_REGEXP = /-+([a-z0-9])/g;
@@ -12,15 +12,19 @@ export function dashCaseToCamelCase(input: string): string {
   return input.replace(DASH_CASE_REGEXP, (...m: any[]) => m[1].toUpperCase());
 }
 
-export function splitAtColon(input: string, defaultValues: string[]): string[] {
+export function splitAtColon(input: string, defaultValues: (string | null)[]): (string | null)[] {
   return _splitAt(input, ':', defaultValues);
 }
 
-export function splitAtPeriod(input: string, defaultValues: string[]): string[] {
+export function splitAtPeriod(input: string, defaultValues: (string | null)[]): (string | null)[] {
   return _splitAt(input, '.', defaultValues);
 }
 
-function _splitAt(input: string, character: string, defaultValues: string[]): string[] {
+function _splitAt(
+  input: string,
+  character: string,
+  defaultValues: (string | null)[],
+): (string | null)[] {
   const characterIndex = input.indexOf(character);
   if (characterIndex == -1) return defaultValues;
   return [input.slice(0, characterIndex).trim(), input.slice(characterIndex + 1).trim()];
@@ -85,19 +89,16 @@ export function stringify(token: any): string {
   }
 
   if (Array.isArray(token)) {
-    return '[' + token.map(stringify).join(', ') + ']';
+    return `[${token.map(stringify).join(', ')}]`;
   }
 
   if (token == null) {
     return '' + token;
   }
 
-  if (token.overriddenName) {
-    return `${token.overriddenName}`;
-  }
-
-  if (token.name) {
-    return `${token.name}`;
+  const name = token.overriddenName || token.name;
+  if (name) {
+    return `${name}`;
   }
 
   if (!token.toString) {
@@ -106,14 +107,14 @@ export function stringify(token: any): string {
 
   // WARNING: do not try to `JSON.stringify(token)` here
   // see https://github.com/angular/angular/issues/23440
-  const res = token.toString();
+  const result = token.toString();
 
-  if (res == null) {
-    return '' + res;
+  if (result == null) {
+    return '' + result;
   }
 
-  const newLineIndex = res.indexOf('\n');
-  return newLineIndex === -1 ? res : res.substring(0, newLineIndex);
+  const newLineIndex = result.indexOf('\n');
+  return newLineIndex >= 0 ? result.slice(0, newLineIndex) : result;
 }
 
 export class Version {
@@ -137,32 +138,18 @@ export interface Console {
 const _global: {[name: string]: any} = globalThis;
 export {_global as global};
 
-export function newArray<T = any>(size: number): T[];
-export function newArray<T>(size: number, value: T): T[];
-export function newArray<T>(size: number, value?: T): T[] {
-  const list: T[] = [];
-  for (let i = 0; i < size; i++) {
-    list.push(value!);
-  }
-  return list;
-}
+const V1_TO_18 = /^([1-9]|1[0-8])\./;
 
-/**
- * Partitions a given array into 2 arrays, based on a boolean value returned by the condition
- * function.
- *
- * @param arr Input array that should be partitioned
- * @param conditionFn Condition function that is called for each item in a given array and returns a
- * boolean value.
- */
-export function partitionArray<T, F = T>(
-  arr: (T | F)[],
-  conditionFn: (value: T | F) => boolean,
-): [T[], F[]] {
-  const truthy: T[] = [];
-  const falsy: F[] = [];
-  for (const item of arr) {
-    (conditionFn(item) ? truthy : falsy).push(item as any);
+export function getJitStandaloneDefaultForVersion(version: string): boolean {
+  if (version.startsWith('0.')) {
+    // 0.0.0 is always "latest", default is true.
+    return true;
   }
-  return [truthy, falsy];
+  if (V1_TO_18.test(version)) {
+    // Angular v2 - v18 default is false.
+    return false;
+  }
+
+  // All other Angular versions (v19+) default to true.
+  return true;
 }

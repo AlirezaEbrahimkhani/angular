@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 import {bindingUpdated} from '../bindings';
 import {SanitizerFn} from '../interfaces/sanitization';
@@ -37,5 +37,6 @@ export function ɵɵattribute(
     elementAttributeInternal(tNode, lView, name, value, sanitizer, namespace);
     ngDevMode && storePropertyBindingMetadata(tView.data, tNode, 'attr.' + name, bindingIndex);
   }
+
   return ɵɵattribute;
 }

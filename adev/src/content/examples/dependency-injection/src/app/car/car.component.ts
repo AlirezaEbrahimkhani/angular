@@ -1,5 +1,5 @@
 // #docregion
-import {Component} from '@angular/core';
+import {Component, inject} from '@angular/core';
 
 import {Car, Engine, Tires} from './car';
 import {Car as CarNoDi} from './car-no-di';
@@ -10,7 +10,6 @@ import {testCar, simpleCar, superCar} from './car-creations';
 import {useInjector} from './car-injector';
 
 @Component({
-  standalone: true,
   selector: 'app-car',
   template: `
   <h2>Cars</h2>
@@ -32,5 +31,5 @@ export class CarComponent {
   superCar = superCar();
   testCar = testCar();
 
-  constructor(public car: Car) {}
+  public car = inject(Car);
 }

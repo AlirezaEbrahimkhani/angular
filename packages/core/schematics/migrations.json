@@ -1,19 +1,36 @@
 {
   "schematics": {
-    "invalid-two-way-bindings": {
-      "version": "18.0.0",
-      "description": "Updates two-way bindings that have an invalid expression to use the longform expression instead.",
-      "factory": "./migrations/invalid-two-way-bindings/bundle"
+    "control-flow-migration": {
+      "version": "21.0.0",
+      "description": "Converts the entire application to block control flow syntax",
+      "factory": "./bundles/control-flow-migration.cjs#migrate",
+      "optional": true
     },
-    "migration-http-providers": {
-      "version": "18.0.0",
-      "description": "Replace deprecated HTTP related modules with provider functions",
-      "factory": "./migrations/http-providers/bundle"
+    "router-current-navigation": {
+      "version": "21.0.0",
+      "description": "Replaces usages of the deprecated Router.getCurrentNavigation method with the Router.currentNavigation signal",
+      "factory": "./bundles/router-current-navigation.cjs#migrate",
+      "optional": true
     },
-    "migration-after-render-phase": {
-      "version": "18.1.0",
-      "description": "Updates calls to afterRender with an explicit phase to the new API",
-      "factory": "./migrations/after-render-phase/bundle"
+    "router-last-successful-navigation": {
+      "version": "21.0.0",
+      "description": "Ensures that the Router.lastSuccessfulNavigation signal is now invoked",
+      "factory": "./bundles/router-last-successful-navigation.cjs#migrate"
+    },
+    "application-config-core": {
+      "version": "21.0.0",
+      "description": "Moves imports of `ApplicationConfig` from `@angular/platform-browser` to `@angular/core`",
+      "factory": "./bundles/application-config-core.cjs#migrate"
+    },
+    "add-bootstrap-context-to-server-main": {
+      "version": "21.0.0",
+      "description": "Adds `BootstrapContext` to `bootstrapApplication` calls in `main.server.ts` to support server rendering.",
+      "factory": "./bundles/add-bootstrap-context-to-server-main.cjs#migrate"
+    },
+    "bootstrap-options-migration": {
+      "version": "21.0.0",
+      "description": "Migrates deprecated bootstrap options to providers.",
+      "factory": "./bundles/bootstrap-options-migration.cjs#migrate"
     }
   }
 }

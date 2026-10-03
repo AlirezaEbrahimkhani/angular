@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {DOCUMENT, NgIf} from '@angular/common';
@@ -12,33 +12,30 @@ import {
   Component,
   ComponentRef,
   createComponent,
-  createEnvironmentInjector,
   Directive,
   ElementRef,
-  EmbeddedViewRef,
   EnvironmentInjector,
   forwardRef,
-  inject,
   Injectable,
   InjectionToken,
   Injector,
   input,
   Input,
+  model,
   NgModule,
   OnDestroy,
   reflectComponentType,
   Renderer2,
-  Type,
+  viewChild,
   ViewChild,
   ViewContainerRef,
   ViewEncapsulation,
   ɵsetClassDebugInfo,
   ɵsetDocument,
   ɵɵdefineComponent,
-} from '@angular/core';
-import {stringifyForError} from '@angular/core/src/render3/util/stringify_utils';
-import {TestBed} from '@angular/core/testing';
-import {expect} from '@angular/platform-browser/testing/src/matchers';
+} from '../../src/core';
+import {TestBed} from '../../testing';
+import {expect} from '@angular/private/testing/matchers';
 
 import {global} from '../../src/util/global';
 
@@ -52,6 +49,7 @@ describe('component', () => {
         selector: 'comp-with-on-destroy',
         template: '',
         providers: [{provide: testToken, useExisting: ParentWithOnDestroy}],
+        standalone: false,
       })
       class ParentWithOnDestroy {
         ngOnDestroy() {
@@ -59,7 +57,11 @@ describe('component', () => {
         }
       }
 
-      @Component({selector: 'child', template: ''})
+      @Component({
+        selector: 'child',
+        template: '',
+        standalone: false,
+      })
       class ChildComponent {
         // We need to inject the parent so the provider is instantiated.
         constructor(_parent: ParentWithOnDestroy) {}
@@ -71,6 +73,7 @@ describe('component', () => {
             <child></child>
           </comp-with-on-destroy>
         `,
+        standalone: false,
       })
       class App {}
 
@@ -84,10 +87,17 @@ describe('component', () => {
   });
 
   it('should be able to dynamically insert a component into a view container at the root of a component', () => {
-    @Component({template: 'hello'})
+    @Component({
+      template: 'hello',
+      standalone: false,
+    })
     class HelloComponent {}
 
-    @Component({selector: 'wrapper', template: '<ng-content></ng-content>'})
+    @Component({
+      selector: 'wrapper',
+      template: '<ng-content></ng-content>',
+      standalone: false,
+    })
     class Wrapper {}
 
     @Component({
@@ -96,6 +106,7 @@ describe('component', () => {
               <div #insertionPoint></div>
             </wrapper>
           `,
+      standalone: false,
     })
     class App {
       @ViewChild('insertionPoint', {read: ViewContainerRef}) viewContainerRef!: ViewContainerRef;
@@ -112,10 +123,16 @@ describe('component', () => {
   });
 
   it('should not throw when calling `detectChanges` on the ChangeDetectorRef of a destroyed view', () => {
-    @Component({template: 'hello'})
+    @Component({
+      template: 'hello',
+      standalone: false,
+    })
     class HelloComponent {}
 
-    @Component({template: `<div #insertionPoint></div>`})
+    @Component({
+      template: `<div #insertionPoint></div>`,
+      standalone: false,
+    })
     class App {
       @ViewChild('insertionPoint', {read: ViewContainerRef}) viewContainerRef!: ViewContainerRef;
     }
@@ -139,15 +156,17 @@ describe('component', () => {
       selector: 'wrapper',
       encapsulation: ViewEncapsulation.None,
       template: `<encapsulated></encapsulated>`,
+      standalone: false,
     })
     class WrapperComponent {}
 
     @Component({
       selector: 'encapsulated',
       encapsulation: ViewEncapsulation.Emulated,
-      // styles array must contain a value (even empty) to trigger `ViewEncapsulation.Emulated`
-      styles: [``],
+      // styles must be non-empty to trigger `ViewEncapsulation.Emulated`
+      styles: `:host {display: block}`,
       template: `foo<leaf></leaf>`,
+      standalone: false,
     })
     class EncapsulatedComponent {}
 
@@ -155,6 +174,7 @@ describe('component', () => {
       selector: 'leaf',
       encapsulation: ViewEncapsulation.None,
       template: `<span>bar</span>`,
+      standalone: false,
     })
     class LeafComponent {}
 
@@ -182,9 +202,9 @@ describe('component', () => {
     });
 
     it('should encapsulate host and children with different attributes', () => {
-      // styles array must contain a value (even empty) to trigger `ViewEncapsulation.Emulated`
+      // styles must be non-empty to trigger `ViewEncapsulation.Emulated`
       TestBed.overrideComponent(LeafComponent, {
-        set: {encapsulation: ViewEncapsulation.Emulated, styles: [``]},
+        set: {encapsulation: ViewEncapsulation.Emulated, styles: [`span {color:red}`]},
       });
       const fixture = TestBed.createComponent(EncapsulatedComponent);
       fixture.detectChanges();
@@ -193,11 +213,32 @@ describe('component', () => {
       expect(match).toBeDefined();
       expect(match.length).toEqual(2);
       expect(html).toMatch(
-        `<leaf ${match[0].replace('_nghost', '_ngcontent')}="" ${match[1]}=""><span ${match[1].replace(
-          '_nghost',
-          '_ngcontent',
-        )}="">bar</span></leaf></div>`,
+        `<leaf ${match[0].replace('_nghost', '_ngcontent')}="" ${
+          match[1]
+        }=""><span ${match[1].replace('_nghost', '_ngcontent')}="">bar</span></leaf></div>`,
       );
+    });
+
+    it('should be off for a component with no styles', () => {
+      TestBed.overrideComponent(EncapsulatedComponent, {
+        set: {styles: undefined},
+      });
+      const fixture = TestBed.createComponent(EncapsulatedComponent);
+      fixture.detectChanges();
+      const html = fixture.nativeElement.outerHTML;
+      expect(html).not.toContain('<encapsulated _nghost-');
+      expect(html).not.toContain('<leaf _ngcontent-');
+    });
+
+    it('should be off for a component with empty styles', () => {
+      TestBed.overrideComponent(EncapsulatedComponent, {
+        set: {styles: [`  `, '', '/*comment*/']},
+      });
+      const fixture = TestBed.createComponent(EncapsulatedComponent);
+      fixture.detectChanges();
+      const html = fixture.nativeElement.outerHTML;
+      expect(html).not.toContain('<encapsulated _nghost-');
+      expect(html).not.toContain('<leaf _ngcontent-');
     });
   });
 
@@ -205,7 +246,11 @@ describe('component', () => {
     it('should invoke onDestroy when directly destroying a root view', () => {
       let wasOnDestroyCalled = false;
 
-      @Component({selector: 'comp-with-destroy', template: ``})
+      @Component({
+        selector: 'comp-with-destroy',
+        template: ``,
+        standalone: false,
+      })
       class ComponentWithOnDestroy implements OnDestroy {
         ngOnDestroy() {
           wasOnDestroyCalled = true;
@@ -216,7 +261,11 @@ describe('component', () => {
       // tree is used during view destruction. If the child view is not correctly attached as a
       // child of the root view, then the onDestroy hook on the child view will never be called
       // when the view tree is torn down following the destruction of that root view.
-      @Component({selector: `test-app`, template: `<comp-with-destroy></comp-with-destroy>`})
+      @Component({
+        selector: `test-app`,
+        template: `<comp-with-destroy></comp-with-destroy>`,
+        standalone: false,
+      })
       class TestApp {}
 
       TestBed.configureTestingModule({declarations: [ComponentWithOnDestroy, TestApp]});
@@ -235,6 +284,7 @@ describe('component', () => {
     @Component({
       selector: '[comp]',
       template: 'comp content',
+      standalone: false,
     })
     class DynamicComponent {
       ngOnDestroy() {
@@ -249,6 +299,7 @@ describe('component', () => {
            <div id="app-root"></div>
            <div class="wrapper"></div>
          `,
+      standalone: false,
     })
     class App {
       componentRef!: ComponentRef<DynamicComponent>;
@@ -316,12 +367,14 @@ describe('component', () => {
           @Component({
             selector: '[comp]',
             template: 'comp content',
+            standalone: false,
           })
           class DynamicComponent {}
 
           @Component({
             selector: 'button',
             template: '<div id="app-root" #anchor></div>',
+            standalone: false,
           })
           class App {
             @ViewChild('anchor', {read: ViewContainerRef}) anchor!: ViewContainerRef;
@@ -366,12 +419,14 @@ describe('component', () => {
       @Component({
         selector: 'ng-container',
         template: '...',
+        standalone: false,
       })
       class Comp {}
 
       @Component({
         selector: 'root',
         template: '<ng-container></ng-container>',
+        standalone: false,
       })
       class App {}
 
@@ -385,12 +440,14 @@ describe('component', () => {
       @Component({
         selector: 'ng-template',
         template: '...',
+        standalone: false,
       })
       class Comp {}
 
       @Component({
         selector: 'root',
         template: '<ng-template></ng-template>',
+        standalone: false,
       })
       class App {}
 
@@ -404,17 +461,20 @@ describe('component', () => {
       @Component({
         selector: 'comp',
         template: '...',
+        standalone: false,
       })
       class CompA {}
 
       @Component({
         selector: 'comp',
         template: '...',
+        standalone: false,
       })
       class CompB {}
 
       @Component({
         template: '<comp></comp>',
+        standalone: false,
       })
       class App {}
 
@@ -428,7 +488,6 @@ describe('component', () => {
       @Component({
         selector: 'comp',
         template: '<comp *ngIf="recurse"/>hello',
-        standalone: true,
         imports: [Comp, NgIf],
       })
       class Comp {
@@ -437,7 +496,6 @@ describe('component', () => {
 
       @Component({
         template: '<comp [recurse]="true"/>',
-        standalone: true,
         imports: [Comp],
       })
       class App {}
@@ -458,7 +516,6 @@ describe('component', () => {
       @Component({
         selector: 'comp',
         template: '<comp *ngIf="recurse"/>hello',
-        standalone: true,
         imports: [forwardRef(() => Comp), NgIf],
       })
       class Comp {
@@ -467,7 +524,6 @@ describe('component', () => {
 
       @Component({
         template: '<comp [recurse]="true"/>',
-        standalone: true,
         imports: [Comp],
       })
       class App {}
@@ -491,6 +547,7 @@ describe('component', () => {
       template: '<parent-comp></parent-comp>',
       styles: [':host { color: red; }'], // `styles` must exist for encapsulation to apply.
       encapsulation: ViewEncapsulation.Emulated,
+      standalone: false,
     })
     class AppRoot {}
 
@@ -499,6 +556,7 @@ describe('component', () => {
       template: '',
       styles: [':host { color: orange; }'], // `styles` must exist for encapsulation to apply.
       encapsulation: ViewEncapsulation.Emulated,
+      standalone: false,
     })
     class ParentComponent {
       constructor(elementRef: ElementRef, renderer: Renderer2) {
@@ -535,6 +593,7 @@ describe('component', () => {
       template: '',
       styles: [':host { color: red; }'],
       encapsulation: ViewEncapsulation.Emulated,
+      standalone: false,
     })
     class Child {
       constructor(public renderer: Renderer2) {}
@@ -544,6 +603,7 @@ describe('component', () => {
       template: '<child></child>',
       styles: [':host { color: orange; }'],
       encapsulation: ViewEncapsulation.Emulated,
+      standalone: false,
     })
     class Parent {
       @ViewChild(Child) childInstance!: Child;
@@ -567,6 +627,7 @@ describe('component', () => {
     @Component({
       selector: 'comp-a',
       template: '<div>{{ a }}</div>',
+      standalone: false,
     })
     class CompA {
       @Input() a: string = '';
@@ -578,6 +639,7 @@ describe('component', () => {
     @Component({
       selector: 'comp-b',
       template: '<div>{{ b }}</div>',
+      standalone: false,
     })
     class CompB {
       @Input() b: string = '';
@@ -586,7 +648,10 @@ describe('component', () => {
       }
     }
 
-    @Component({template: `<span></span>`})
+    @Component({
+      template: `<span></span>`,
+      standalone: false,
+    })
     class MyCompA {
       constructor(private _injector: EnvironmentInjector) {}
 
@@ -598,7 +663,10 @@ describe('component', () => {
       }
     }
 
-    @Component({template: `<span></span>`})
+    @Component({
+      template: `<span></span>`,
+      standalone: false,
+    })
     class MyCompB {
       constructor(private envInjector: EnvironmentInjector) {}
 
@@ -640,7 +708,11 @@ describe('component', () => {
   });
 
   it('should preserve simple component selector in a component factory', () => {
-    @Component({selector: '[foo]', template: ''})
+    @Component({
+      selector: '[foo]',
+      template: '',
+      standalone: false,
+    })
     class AttSelectorCmp {}
 
     const selector = reflectComponentType(AttSelectorCmp)?.selector;
@@ -649,7 +721,11 @@ describe('component', () => {
   });
 
   it('should preserve complex component selector in a component factory', () => {
-    @Component({selector: '[foo],div:not(.bar)', template: ''})
+    @Component({
+      selector: '[foo],div:not(.bar)',
+      template: '',
+      standalone: false,
+    })
     class ComplexSelectorCmp {}
 
     const selector = reflectComponentType(ComplexSelectorCmp)?.selector;
@@ -661,6 +737,7 @@ describe('component', () => {
     @Component({
       selector: 'dynamic-comp',
       template: 'DynamicComponent Content',
+      standalone: false,
     })
     class DynamicComponent {}
 
@@ -676,6 +753,7 @@ describe('component', () => {
           </p>
         </div>
       `,
+      standalone: false,
     })
     class App {
       constructor(public injector: EnvironmentInjector) {}
@@ -717,247 +795,12 @@ describe('component', () => {
     expect(targetEl.innerHTML).toContain('DynamicComponent Content');
   });
 
-  describe('createComponent', () => {
-    it('should create an instance of a standalone component', () => {
-      @Component({
-        standalone: true,
-        template: 'Hello {{ name }}!',
-      })
-      class StandaloneComponent {
-        name = 'Angular';
-      }
-
-      const hostElement = document.createElement('div');
-      const environmentInjector = TestBed.inject(EnvironmentInjector);
-      const componentRef = createComponent(StandaloneComponent, {hostElement, environmentInjector});
-
-      componentRef.changeDetectorRef.detectChanges();
-      expect(hostElement.textContent).toBe('Hello Angular!');
-
-      // Verify basic change detection works.
-      componentRef.instance.name = 'ZoneJS';
-      componentRef.changeDetectorRef.detectChanges();
-      expect(hostElement.textContent).toBe('Hello ZoneJS!');
-    });
-
-    it('should create an instance of an NgModule-based component', () => {
-      @Component({
-        template: 'Hello {{ name }}!',
-      })
-      class NgModuleBasedComponent {
-        name = 'Angular';
-      }
-
-      @NgModule({
-        declarations: [NgModuleBasedComponent],
-      })
-      class AppModule {}
-
-      const hostElement = document.createElement('div');
-      const environmentInjector = TestBed.inject(EnvironmentInjector);
-      const componentRef = createComponent(NgModuleBasedComponent, {
-        hostElement,
-        environmentInjector,
-      });
-
-      componentRef.changeDetectorRef.detectChanges();
-      expect(hostElement.textContent).toBe('Hello Angular!');
-
-      // Verify basic change detection works.
-      componentRef.instance.name = 'ZoneJS';
-      componentRef.changeDetectorRef.detectChanges();
-      expect(hostElement.textContent).toBe('Hello ZoneJS!');
-    });
-
-    it('should render projected content', () => {
-      @Component({
-        standalone: true,
-        template: `
-          <ng-content></ng-content>|
-          <ng-content></ng-content>|
-          <ng-content></ng-content>
-        `,
-      })
-      class StandaloneComponent {}
-
-      // Helper method to create a `<p>` element
-      const p = (content: string): Element => {
-        const element = document.createElement('p');
-        element.innerHTML = content;
-        return element;
-      };
-      const hostElement = document.createElement('div');
-      const environmentInjector = TestBed.inject(EnvironmentInjector);
-      const projectableNodes = [[p('1')], [p('2')], [p('3')]];
-      const componentRef = createComponent(StandaloneComponent, {
-        hostElement,
-        environmentInjector,
-        projectableNodes,
-      });
-
-      componentRef.changeDetectorRef.detectChanges();
-      expect(hostElement.innerHTML.replace(/\s*/g, '')).toBe('<p>1</p>|<p>2</p>|<p>3</p>');
-    });
-
-    it('should be able to inject tokens from EnvironmentInjector', () => {
-      const A = new InjectionToken('A');
-      @Component({
-        standalone: true,
-        template: 'Token: {{ a }}',
-      })
-      class StandaloneComponent {
-        a = inject(A);
-      }
-
-      const hostElement = document.createElement('div');
-      const parentInjector = TestBed.inject(EnvironmentInjector);
-      const providers = [{provide: A, useValue: 'EnvironmentInjector(A)'}];
-      const environmentInjector = createEnvironmentInjector(providers, parentInjector);
-      const componentRef = createComponent(StandaloneComponent, {hostElement, environmentInjector});
-      componentRef.changeDetectorRef.detectChanges();
-
-      expect(hostElement.textContent).toBe('Token: EnvironmentInjector(A)');
-    });
-
-    it('should be able to use NodeInjector from the node hierarchy', () => {
-      const A = new InjectionToken('A');
-      const B = new InjectionToken('B');
-      @Component({
-        standalone: true,
-        template: '{{ a }} and {{ b }}',
-      })
-      class ChildStandaloneComponent {
-        a = inject(A);
-        b = inject(B);
-      }
-
-      @Component({
-        standalone: true,
-        template: 'Tokens: <div #target></div>',
-        providers: [{provide: A, useValue: 'ElementInjector(A)'}],
-      })
-      class RootStandaloneComponent {
-        @ViewChild('target', {read: ElementRef}) target!: ElementRef;
-        constructor(private injector: Injector) {}
-
-        createChildComponent() {
-          const hostElement = this.target.nativeElement;
-          const parentInjector = this.injector.get(EnvironmentInjector);
-          const providers = [
-            {provide: A, useValue: 'EnvironmentInjector(A)'},
-            {provide: B, useValue: 'EnvironmentInjector(B)'},
-          ];
-          const environmentInjector = createEnvironmentInjector(providers, parentInjector);
-          const childComponentRef = createComponent(ChildStandaloneComponent, {
-            hostElement,
-            elementInjector: this.injector,
-            environmentInjector,
-          });
-          childComponentRef.changeDetectorRef.detectChanges();
-        }
-      }
-
-      const fixture = TestBed.createComponent(RootStandaloneComponent);
-      fixture.detectChanges();
-
-      fixture.componentInstance.createChildComponent();
-
-      const rootEl = fixture.nativeElement;
-
-      // Token A is coming from the Element Injector, token B - from the Environment Injector.
-      expect(rootEl.textContent).toBe('Tokens: ElementInjector(A) and EnvironmentInjector(B)');
-    });
-
-    it('should create a host element if none provided', () => {
-      const selector = 'standalone-comp';
-      @Component({
-        selector,
-        standalone: true,
-        template: 'Hello {{ name }}!',
-      })
-      class StandaloneComponent {
-        name = 'Angular';
-      }
-
-      const environmentInjector = TestBed.inject(EnvironmentInjector);
-      const componentRef = createComponent(StandaloneComponent, {environmentInjector});
-      componentRef.changeDetectorRef.detectChanges();
-
-      const hostElement = (componentRef.hostView as EmbeddedViewRef<StandaloneComponent>)
-        .rootNodes[0];
-
-      // A host element that matches component's selector.
-      expect(hostElement.tagName.toLowerCase()).toBe(selector);
-
-      expect(hostElement.textContent).toBe('Hello Angular!');
-    });
-
-    it(
-      'should fall-back to use a `div` as a host element if none provided ' +
-        'and element selector does not have a tag name',
-      () => {
-        @Component({
-          selector: '.some-class',
-          standalone: true,
-          template: 'Hello {{ name }}!',
-        })
-        class StandaloneComponent {
-          name = 'Angular';
-        }
-
-        const environmentInjector = TestBed.inject(EnvironmentInjector);
-        const componentRef = createComponent(StandaloneComponent, {environmentInjector});
-        componentRef.changeDetectorRef.detectChanges();
-
-        const hostElement = (componentRef.hostView as EmbeddedViewRef<StandaloneComponent>)
-          .rootNodes[0];
-
-        // A host element has the `div` tag name, since component's selector doesn't contain
-        // tag name information (only a class name).
-        expect(hostElement.tagName.toLowerCase()).toBe('div');
-
-        expect(hostElement.textContent).toBe('Hello Angular!');
-      },
-    );
-
-    describe('error checking', () => {
-      it('should throw when provided class is not a component', () => {
-        class NotAComponent {}
-
-        @Directive()
-        class ADirective {}
-
-        @Injectable()
-        class AnInjectiable {}
-
-        const errorFor = (type: Type<unknown>): string =>
-          `NG0906: The ${stringifyForError(type)} is not an Angular component, ` +
-          `make sure it has the \`@Component\` decorator.`;
-        const hostElement = document.createElement('div');
-        const environmentInjector = TestBed.inject(EnvironmentInjector);
-
-        expect(() =>
-          createComponent(NotAComponent, {hostElement, environmentInjector}),
-        ).toThrowError(errorFor(NotAComponent));
-
-        expect(() => createComponent(ADirective, {hostElement, environmentInjector})).toThrowError(
-          errorFor(ADirective),
-        );
-
-        expect(() =>
-          createComponent(AnInjectiable, {hostElement, environmentInjector}),
-        ).toThrowError(errorFor(AnInjectiable));
-      });
-    });
-  });
-
   describe('reflectComponentType', () => {
     it('should create an ComponentMirror for a standalone component', () => {
       function transformFn() {}
 
       @Component({
         selector: 'standalone-component',
-        standalone: true,
         template: `
           <ng-content></ng-content>
           <ng-content select="content-selector-a"></ng-content>
@@ -1013,6 +856,7 @@ describe('component', () => {
         `,
         inputs: ['input-a', 'input-b:input-alias-b'],
         outputs: ['output-a', 'output-b:output-alias-b'],
+        standalone: false,
       })
       class NonStandaloneComponent {
         @Input({alias: 'input-alias-c', transform: transformFn}) inputC: unknown;
@@ -1078,6 +922,76 @@ describe('component', () => {
       filePath: 'comp.ts',
       lineNumber: 11,
       forbidOrphanRendering: true,
+    });
+  });
+
+  describe('required initiliazers', () => {
+    // The following tests are specifically not in the authoring subdirectory to ensure that AOT doesn't check (and throws) forbidden required reads.
+    it('should throw error if a required input is accessed too early', () => {
+      @Component({
+        selector: 'input-comp',
+        template: 'input:{{input()}}',
+      })
+      class InputComp {
+        input = input.required<number>({debugName: 'input'});
+
+        constructor() {
+          this.input();
+        }
+      }
+
+      @Component({
+        template: `<input-comp [input]="value" />`,
+        imports: [InputComp],
+      })
+      class TestCmp {
+        value = 1;
+      }
+
+      expect(() => TestBed.createComponent(TestCmp)).toThrowError(
+        /Input "input" is required but no value is available yet/,
+      );
+    });
+
+    it('should throw if a required model input is accessed too early', () => {
+      @Directive({selector: '[dir]'})
+      class Dir {
+        value = model.required<number>();
+
+        constructor() {
+          this.value();
+        }
+      }
+
+      @Component({
+        template: '<div [(value)]="value" dir></div>',
+        imports: [Dir],
+      })
+      class App {
+        value = 1;
+      }
+
+      expect(() => TestBed.createComponent(App)).toThrowError(
+        /Model is required but no value is available yet/,
+      );
+    });
+
+    it('should throw if required query is read in the constructor', () => {
+      @Component({
+        template: `<div #el></div>`,
+      })
+      class AppComponent {
+        divEl = viewChild.required<ElementRef<HTMLDivElement>>('el');
+
+        constructor() {
+          this.divEl();
+        }
+      }
+
+      // non-required query results are undefined before we run creation mode on the view queries
+      expect(() => {
+        TestBed.createComponent(AppComponent);
+      }).toThrowError(/NG0951: Child query result is required but no value is available/);
     });
   });
 });

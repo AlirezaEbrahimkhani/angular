@@ -3,14 +3,14 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {CommonModule, NgIf, ɵgetDOM as getDOM} from '@angular/common';
-import {Component} from '@angular/core';
+import {CommonModule, NgIf} from '../../index';
+import {Component, provideZoneChangeDetection} from '@angular/core';
 import {ComponentFixture, TestBed, waitForAsync} from '@angular/core/testing';
-import {By} from '@angular/platform-browser/src/dom/debug/by';
-import {expect} from '@angular/platform-browser/testing/src/matchers';
+import {By} from '@angular/platform-browser';
+import {expect} from '@angular/private/testing/matchers';
 
 describe('ngIf directive', () => {
   let fixture: ComponentFixture<any>;
@@ -27,6 +27,7 @@ describe('ngIf directive', () => {
     TestBed.configureTestingModule({
       declarations: [TestComponent],
       imports: [CommonModule],
+      providers: [provideZoneChangeDetection()],
     });
   });
 
@@ -261,7 +262,6 @@ describe('ngIf directive', () => {
           <div *ngIf="true">Hello</div>
           <div *ngIf="false">World</div>
         `,
-        standalone: true,
       })
       class TestComponent {}
 
@@ -300,7 +300,11 @@ describe('ngIf directive', () => {
   });
 });
 
-@Component({selector: 'test-cmp', template: ''})
+@Component({
+  selector: 'test-cmp',
+  template: '',
+  standalone: false,
+})
 class TestComponent {
   booleanCondition: boolean = true;
   nestedBooleanCondition: boolean = true;

@@ -6,6 +6,7 @@
 
 import { EnvironmentProviders } from '@angular/core';
 import * as i0 from '@angular/core';
+import { Injector } from '@angular/core';
 import { ModuleWithProviders } from '@angular/core';
 import { Observable } from 'rxjs';
 
@@ -45,6 +46,16 @@ export class SwPush {
             title: string;
         };
     }>;
+    readonly notificationCloses: Observable<{
+        action: string;
+        notification: NotificationOptions & {
+            title: string;
+        };
+    }>;
+    readonly pushSubscriptionChanges: Observable<{
+        oldSubscription: PushSubscription | null;
+        newSubscription: PushSubscription | null;
+    }>;
     requestSubscription(options: {
         serverPublicKey: string;
     }): Promise<PushSubscription>;
@@ -61,6 +72,8 @@ export abstract class SwRegistrationOptions {
     enabled?: boolean;
     registrationStrategy?: string | (() => Observable<unknown>);
     scope?: string;
+    type?: WorkerType;
+    updateViaCache?: ServiceWorkerUpdateViaCache;
 }
 
 // @public
@@ -97,7 +110,7 @@ export interface VersionDetectedEvent {
 }
 
 // @public
-export type VersionEvent = VersionDetectedEvent | VersionInstallationFailedEvent | VersionReadyEvent | NoNewVersionDetectedEvent;
+export type VersionEvent = VersionDetectedEvent | VersionInstallationFailedEvent | VersionReadyEvent | VersionFailedEvent | NoNewVersionDetectedEvent;
 
 // @public
 export interface VersionInstallationFailedEvent {

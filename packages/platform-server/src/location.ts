@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {
@@ -13,7 +13,7 @@ import {
   PlatformLocation,
   ɵgetDOM as getDOM,
 } from '@angular/common';
-import {Inject, Injectable, Optional, ɵWritable as Writable} from '@angular/core';
+import {inject, Inject, Injectable, Optional, ɵWritable as Writable} from '@angular/core';
 import {Subject} from 'rxjs';
 
 import {INITIAL_CONFIG, PlatformConfig} from './tokens';
@@ -57,12 +57,10 @@ export class ServerPlatformLocation implements PlatformLocation {
   public readonly search: string = '';
   public readonly hash: string = '';
   private _hashUpdate = new Subject<LocationChangeEvent>();
+  private _doc = inject(DOCUMENT);
 
-  constructor(
-    @Inject(DOCUMENT) private _doc: any,
-    @Optional() @Inject(INITIAL_CONFIG) _config: any,
-  ) {
-    const config = _config as PlatformConfig | null;
+  constructor() {
+    const config = inject(INITIAL_CONFIG, {optional: true});
     if (!config) {
       return;
     }
@@ -74,7 +72,7 @@ export class ServerPlatformLocation implements PlatformLocation {
       this.pathname = url.pathname;
       this.search = url.search;
       this.hash = url.hash;
-      this.href = _doc.location.href;
+      this.href = this._doc.location.href;
     }
   }
 

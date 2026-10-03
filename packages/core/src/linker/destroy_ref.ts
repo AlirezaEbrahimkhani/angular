@@ -3,13 +3,16 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {EnvironmentInjector} from '../di';
+import {isDestroyed} from '../render3/interfaces/type_checks';
 import {LView} from '../render3/interfaces/view';
 import {getLView} from '../render3/state';
 import {removeLViewOnDestroy, storeLViewOnDestroy} from '../render3/util/view_utils';
+
+const EXECUTE_CALLBACK_IF_ALREADY_DESTROYED = false;
 
 /**
  * `DestroyRef` lets you set callbacks to run for any cleanup or destruction behavior.
@@ -31,7 +34,7 @@ export abstract class DestroyRef {
    *
    * @usageNotes
    * ### Example
-   * ```typescript
+   * ```ts
    * const destroyRef = inject(DestroyRef);
    *
    * // register a destroy callback
@@ -42,6 +45,11 @@ export abstract class DestroyRef {
    * ```
    */
   abstract onDestroy(callback: () => void): () => void;
+
+  /**
+   * Indicates whether the instance has already been destroyed.
+   */
+  abstract get destroyed(): boolean;
 
   /**
    * @internal
@@ -56,14 +64,26 @@ export abstract class DestroyRef {
   static __NG_ENV_ID__: (injector: EnvironmentInjector) => DestroyRef = (injector) => injector;
 }
 
-class NodeInjectorDestroyRef extends DestroyRef {
-  constructor(private _lView: LView) {
+export class NodeInjectorDestroyRef extends DestroyRef {
+  constructor(readonly _lView: LView) {
     super();
   }
 
+  override get destroyed() {
+    return isDestroyed(this._lView);
+  }
+
   override onDestroy(callback: () => void): () => void {
-    storeLViewOnDestroy(this._lView, callback);
-    return () => removeLViewOnDestroy(this._lView, callback);
+    const lView = this._lView;
+
+    // TODO(atscott): Remove once g3 cleanup is complete
+    if (EXECUTE_CALLBACK_IF_ALREADY_DESTROYED && isDestroyed(lView)) {
+      callback();
+      return () => {};
+    }
+
+    storeLViewOnDestroy(lView, callback);
+    return () => removeLViewOnDestroy(lView, callback);
   }
 }
 

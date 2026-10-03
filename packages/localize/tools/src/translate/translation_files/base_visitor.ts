@@ -3,13 +3,15 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 import {
   Attribute,
   Block,
   BlockParameter,
   Comment,
+  Component,
+  Directive,
   Element,
   Expansion,
   ExpansionCase,
@@ -33,4 +35,6 @@ export class BaseVisitor implements Visitor {
   visitBlock(_block: Block, _context: any) {}
   visitBlockParameter(_parameter: BlockParameter, _context: any) {}
   visitLetDeclaration(_decl: LetDeclaration, _context: any) {}
+  visitComponent(_component: Component, _context: any) {}
+  visitDirective(_directive: Directive, _context: any) {}
 }

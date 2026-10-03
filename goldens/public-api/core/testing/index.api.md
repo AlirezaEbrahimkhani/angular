@@ -4,33 +4,16 @@
 
 ```ts
 
-import { ChangeDetectorRef } from '@angular/core';
-import { Component } from '@angular/core';
-import { ComponentRef } from '@angular/core';
-import { DebugElement } from '@angular/core';
-import { ɵDeferBlockBehavior as DeferBlockBehavior } from '@angular/core';
-import { ɵDeferBlockState as DeferBlockState } from '@angular/core';
-import { Directive } from '@angular/core';
-import { ElementRef } from '@angular/core';
-import { InjectFlags } from '@angular/core';
-import { InjectionToken } from '@angular/core';
-import { InjectOptions } from '@angular/core';
-import { NgModule } from '@angular/core';
-import { NgZone } from '@angular/core';
-import { Pipe } from '@angular/core';
-import { PlatformRef } from '@angular/core';
-import { ProviderToken } from '@angular/core';
-import { SchemaMetadata } from '@angular/core';
-import { Type } from '@angular/core';
-import { ɵDeferBlockDetails } from '@angular/core';
+import { Observable } from 'rxjs';
+import { Subject } from 'rxjs';
+import { Subscription } from 'rxjs';
 
 // @public
-export const __core_private_testing_placeholder__ = "";
-
-// @public
-export abstract class ComponentFixture<T> {
+export class ComponentFixture<T> {
     constructor(componentRef: ComponentRef<T>);
-    abstract autoDetectChanges(autoDetect?: boolean): void;
+    // @deprecated
+    autoDetectChanges(autoDetect: boolean): void;
+    autoDetectChanges(): void;
     changeDetectorRef: ChangeDetectorRef;
     checkNoChanges(): void;
     componentInstance: T;
@@ -38,7 +21,7 @@ export abstract class ComponentFixture<T> {
     componentRef: ComponentRef<T>;
     debugElement: DebugElement;
     destroy(): void;
-    abstract detectChanges(checkNoChanges?: boolean): void;
+    detectChanges(checkNoChanges?: boolean): void;
     elementRef: ElementRef;
     getDeferBlocks(): Promise<DeferBlockFixture[]>;
     isStable(): boolean;
@@ -55,22 +38,34 @@ export const ComponentFixtureAutoDetect: InjectionToken<boolean>;
 // @public (undocumented)
 export const ComponentFixtureNoNgZone: InjectionToken<boolean>;
 
-export { DeferBlockBehavior }
+// @public
+export enum DeferBlockBehavior {
+    Manual = 0,
+    Playthrough = 1
+}
 
 // @public
 export class DeferBlockFixture {
-    constructor(block: ɵDeferBlockDetails, componentFixture: ComponentFixture<unknown>);
+    constructor(block: DeferBlockDetails, componentFixture: ComponentFixture<unknown>);
     getDeferBlocks(): Promise<DeferBlockFixture[]>;
     render(state: DeferBlockState): Promise<void>;
 }
 
-export { DeferBlockState }
+// @public
+export enum DeferBlockState {
+    Complete = 2,
+    Error = 3,
+    Loading = 1,
+    Placeholder = 0
+}
 
 // @public
 export function discardPeriodicTasks(): void;
 
 // @public
-export function fakeAsync(fn: Function): (...args: any[]) => any;
+export function fakeAsync(fn: Function, options?: {
+    flush?: boolean;
+}): (...args: any[]) => any;
 
 // @public
 export function flush(maxTurns?: number): number;
@@ -119,14 +114,11 @@ export interface TestBed {
     // (undocumented)
     configureTestingModule(moduleDef: TestModuleMetadata): TestBed;
     // (undocumented)
-    createComponent<T>(component: Type<T>): ComponentFixture<T>;
+    createComponent<T>(component: Type<T>, options?: TestComponentOptions): ComponentFixture<T>;
     // (undocumented)
     execute(tokens: any[], fn: Function, context?: any): any;
+    // @deprecated
     flushEffects(): void;
-    // @deprecated (undocumented)
-    get<T>(token: ProviderToken<T>, notFoundValue?: T, flags?: InjectFlags): any;
-    // @deprecated (undocumented)
-    get(token: any, notFoundValue?: any): any;
     initTestEnvironment(ngModule: Type<any> | Type<any>[], platform: PlatformRef, options?: TestEnvironmentOptions): void;
     // (undocumented)
     inject<T>(token: ProviderToken<T>, notFoundValue: undefined, options: InjectOptions & {
@@ -136,10 +128,6 @@ export interface TestBed {
     inject<T>(token: ProviderToken<T>, notFoundValue: null | undefined, options: InjectOptions): T | null;
     // (undocumented)
     inject<T>(token: ProviderToken<T>, notFoundValue?: T, options?: InjectOptions): T;
-    // @deprecated (undocumented)
-    inject<T>(token: ProviderToken<T>, notFoundValue?: T, flags?: InjectFlags): T;
-    // @deprecated (undocumented)
-    inject<T>(token: ProviderToken<T>, notFoundValue: null, flags?: InjectFlags): T | null;
     // (undocumented)
     get ngModule(): Type<any> | Type<any>[];
     // (undocumented)
@@ -177,6 +165,7 @@ export interface TestBed {
     // (undocumented)
     resetTestingModule(): TestBed;
     runInInjectionContext<T>(fn: () => T): T;
+    tick(): void;
 }
 
 // @public
@@ -189,9 +178,15 @@ export interface TestBedStatic extends TestBed {
 }
 
 // @public
+export interface TestComponentOptions {
+    bindings?: Binding[];
+    inferTagName?: boolean;
+}
+
+// @public
 export class TestComponentRenderer {
     // (undocumented)
-    insertRootElement(rootElementId: string): void;
+    insertRootElement(rootElementId: string, tagName?: string): void;
     // (undocumented)
     removeAllRootElements?(): void;
 }
@@ -205,6 +200,7 @@ export interface TestEnvironmentOptions {
 
 // @public (undocumented)
 export interface TestModuleMetadata {
+    animationsEnabled?: boolean;
     // (undocumented)
     declarations?: any[];
     deferBlockBehavior?: DeferBlockBehavior;
@@ -212,8 +208,10 @@ export interface TestModuleMetadata {
     errorOnUnknownProperties?: boolean;
     // (undocumented)
     imports?: any[];
+    inferTagName?: boolean;
     // (undocumented)
     providers?: any[];
+    rethrowApplicationErrors?: boolean;
     // (undocumented)
     schemas?: Array<SchemaMetadata | any[]>;
     // (undocumented)

@@ -4,6 +4,8 @@ Deciding what to display on the screen for a user is a common task in applicatio
 
 To express conditional displays in templates, Angular uses the `@if` template syntax.
 
+Note: Learn more about [control flow in the essentials guide](/essentials/templates#control-flow-with-if-and-for).
+
 In this activity, you'll learn how to use conditionals in templates.
 
 <hr/>
@@ -12,7 +14,7 @@ The syntax that enables the conditional display of elements in a template is `@i
 
 Here's an example of how to use the `@if` syntax in a component:
 
-```ts
+```angular-ts
 @Component({
   ...
   template: `
@@ -21,7 +23,7 @@ Here's an example of how to use the `@if` syntax in a component:
     }
   `,
 })
-class AppComponent {
+export class App {
   isLoggedIn = true;
 }
 ```
@@ -34,7 +36,7 @@ Two things to take note of:
 <docs-workflow>
 
 <docs-step title="Create a property called `isServerRunning`">
-In the `AppComponent` class, add a `boolean` property called `isServerRunning`, set the initial value to `true`.
+In the `App` class, add a `boolean` property called `isServerRunning`, set the initial value to `true`.
 </docs-step>
 
 <docs-step title="Use `@if` in the template">
@@ -47,7 +49,7 @@ Now Angular supports native template syntax for defining the else case with the 
 
 Here's an example:
 
-```ts
+```angular-ts
 template: `
   @if (isServerRunning) { ... }
   @else { ... }

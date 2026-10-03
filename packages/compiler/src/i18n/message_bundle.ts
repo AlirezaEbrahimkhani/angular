@@ -3,11 +3,11 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {InterpolationConfig} from '../ml_parser/defaults';
 import {HtmlParser} from '../ml_parser/html_parser';
+import {WhitespaceVisitor, visitAllWithSiblings} from '../ml_parser/html_whitespaces';
 import {ParseError} from '../parse_util';
 
 import {extractMessages} from './extractor_merger';
@@ -25,27 +25,31 @@ export class MessageBundle {
     private _implicitTags: string[],
     private _implicitAttrs: {[k: string]: string[]},
     private _locale: string | null = null,
+    private readonly _preserveWhitespace = true,
   ) {}
 
-  updateFromTemplate(
-    html: string,
-    url: string,
-    interpolationConfig: InterpolationConfig,
-  ): ParseError[] {
-    const htmlParserResult = this._htmlParser.parse(html, url, {
-      tokenizeExpansionForms: true,
-      interpolationConfig,
-    });
+  updateFromTemplate(source: string, url: string): ParseError[] {
+    const htmlParserResult = this._htmlParser.parse(source, url, {tokenizeExpansionForms: true});
 
     if (htmlParserResult.errors.length) {
       return htmlParserResult.errors;
     }
 
+    // Trim unnecessary whitespace from extracted messages if requested. This
+    // makes the messages more durable to trivial whitespace changes without
+    // affected message IDs.
+    const rootNodes = this._preserveWhitespace
+      ? htmlParserResult.rootNodes
+      : visitAllWithSiblings(
+          new WhitespaceVisitor(/* preserveSignificantWhitespace */ false),
+          htmlParserResult.rootNodes,
+        );
+
     const i18nParserResult = extractMessages(
-      htmlParserResult.rootNodes,
-      interpolationConfig,
+      rootNodes,
       this._implicitTags,
       this._implicitAttrs,
+      /* preserveSignificantWhitespace */ this._preserveWhitespace,
     );
 
     if (i18nParserResult.errors.length) {

@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {EnvironmentInjector} from '@angular/core';
@@ -26,7 +26,7 @@ import {PRIMARY_OUTLET} from '../src/shared';
 import {DefaultUrlSerializer, UrlTree} from '../src/url_tree';
 import {TreeNode} from '../src/utils/tree';
 
-describe('create router state', async () => {
+describe('create router state', () => {
   let reuseStrategy: DefaultRouteReuseStrategy;
   beforeEach(() => {
     reuseStrategy = new DefaultRouteReuseStrategy();
@@ -181,16 +181,17 @@ function advanceNode(node: TreeNode<ActivatedRoute>): void {
 }
 
 async function createState(config: Routes, url: string): Promise<RouterStateSnapshot> {
-  return recognize(
+  const result = await recognize(
     TestBed.inject(EnvironmentInjector),
     TestBed.inject(RouterConfigLoader),
     RootComponent,
     config,
     tree(url),
     new DefaultUrlSerializer(),
-  )
-    .pipe(map((result) => result.state))
-    .toPromise() as Promise<RouterStateSnapshot>;
+    undefined,
+    new AbortController().signal,
+  );
+  return result.state;
 }
 
 function checkActivatedRoute(

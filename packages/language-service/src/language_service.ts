@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {AST, TmplAstNode} from '@angular/compiler';
@@ -18,6 +18,8 @@ import {OptimizeFor} from '@angular/compiler-cli/src/ngtsc/typecheck/api';
 import ts from 'typescript';
 
 import {
+  ApplyRefactoringProgressFn,
+  ApplyRefactoringResult,
   GetComponentLocationsForTemplateResponse,
   GetTcbResponse,
   GetTemplateLocationForComponentResponse,
@@ -44,15 +46,30 @@ import {
   getClassDeclFromDecoratorProp,
   getParentClassDeclaration,
   getPropertyAssignmentFromValue,
-} from './ts_utils';
-import {getTemplateInfoAtPosition, isTypeScriptFile} from './utils';
+} from './utils/ts_utils';
+import {getTypeCheckInfoAtPosition, isTypeScriptFile, TypeCheckInfo} from './utils';
+import {ActiveRefactoring, allRefactorings} from './refactorings/refactoring';
+import {getClassificationsForTemplate, TokenEncodingConsts} from './semantic_tokens';
+import {isExternalResource} from '@angular/compiler-cli/src/ngtsc/metadata';
 
 type LanguageServiceConfig = Omit<PluginConfig, 'angularOnly'>;
+
+// Whether the language service should suppress the below for google3.
+const enableG3Suppression = false;
+
+// The Copybara config that syncs the language service into g3 will be patched to
+// always suppress any diagnostics in this list.
+// See `angular2/copy.bara.sky` for more information.
+const suppressDiagnosticsInG3: number[] = [
+  parseInt(`-99${ErrorCode.COMPONENT_RESOURCE_NOT_FOUND}`),
+  parseInt(`-99${ErrorCode.INLINE_TCB_REQUIRED}`),
+];
 
 export class LanguageService {
   private options: CompilerOptions;
   readonly compilerFactory: CompilerFactory;
   private readonly codeFixes: CodeFixes;
+  private readonly activeRefactorings = new Map<string, ActiveRefactoring>();
 
   constructor(
     private readonly project: ts.server.Project,
@@ -80,45 +97,55 @@ export class LanguageService {
 
   getSemanticDiagnostics(fileName: string): ts.Diagnostic[] {
     return this.withCompilerAndPerfTracing(PerfPhase.LsDiagnostics, (compiler) => {
-      const diagnostics: ts.Diagnostic[] = [];
+      let diagnostics: ts.Diagnostic[] = [];
       if (isTypeScriptFile(fileName)) {
         const program = compiler.getCurrentProgram();
         const sourceFile = program.getSourceFile(fileName);
         if (sourceFile) {
           const ngDiagnostics = compiler.getDiagnosticsForFile(sourceFile, OptimizeFor.SingleFile);
-          // There are several kinds of diagnostics returned by `NgCompiler` for a source file:
-          //
-          // 1. Angular-related non-template diagnostics from decorated classes within that
-          // file.
-          // 2. Template diagnostics for components with direct inline templates (a string
-          // literal).
-          // 3. Template diagnostics for components with indirect inline templates (templates
-          // computed
-          //    by expression).
-          // 4. Template diagnostics for components with external templates.
-          //
-          // When showing diagnostics for a TS source file, we want to only include kinds 1 and
-          // 2 - those diagnostics which are reported at a location within the TS file itself.
-          // Diagnostics for external templates will be shown when editing that template file
-          // (the `else` block) below.
-          //
-          // Currently, indirect inline template diagnostics (kind 3) are not shown at all by
-          // the Language Service, because there is no sensible location in the user's code for
-          // them. Such templates are an edge case, though, and should not be common.
-          //
-          // TODO(alxhub): figure out a good user experience for indirect template diagnostics
-          // and show them from within the Language Service.
-          diagnostics.push(
-            ...ngDiagnostics.filter(
-              (diag) => diag.file !== undefined && diag.file.fileName === sourceFile.fileName,
-            ),
-          );
+          diagnostics.push(...filterNgDiagnosticsForFile(ngDiagnostics, sourceFile.fileName));
         }
       } else {
         const components = compiler.getComponentsWithTemplateFile(fileName);
         for (const component of components) {
           if (ts.isClassDeclaration(component)) {
             diagnostics.push(...compiler.getDiagnosticsForComponent(component));
+          }
+        }
+      }
+      if (this.config.suppressAngularDiagnosticCodes) {
+        diagnostics = diagnostics.filter(
+          (diag) => !this.config.suppressAngularDiagnosticCodes!.includes(diag.code),
+        );
+      }
+      if (enableG3Suppression) {
+        diagnostics = diagnostics.filter((diag) => !suppressDiagnosticsInG3.includes(diag.code));
+      }
+      return diagnostics;
+    });
+  }
+
+  getSuggestionDiagnostics(fileName: string): ts.DiagnosticWithLocation[] {
+    return this.withCompilerAndPerfTracing(PerfPhase.LsSuggestionDiagnostics, (compiler) => {
+      const diagnostics: ts.DiagnosticWithLocation[] = [];
+      if (isTypeScriptFile(fileName)) {
+        const program = compiler.getCurrentProgram();
+        const sourceFile = program.getSourceFile(fileName);
+        if (sourceFile) {
+          const ngDiagnostics = compiler
+            .getTemplateTypeChecker()
+            .getSuggestionDiagnosticsForFile(sourceFile, this.tsLS, OptimizeFor.SingleFile);
+          diagnostics.push(...filterNgDiagnosticsForFile(ngDiagnostics, sourceFile.fileName));
+        }
+      } else {
+        const components = compiler.getComponentsWithTemplateFile(fileName);
+        for (const component of components) {
+          if (ts.isClassDeclaration(component)) {
+            diagnostics.push(
+              ...compiler
+                .getTemplateTypeChecker()
+                .getSuggestionDiagnosticsForComponent(component, this.tsLS),
+            );
           }
         }
       }
@@ -146,7 +173,7 @@ export class LanguageService {
     position: number,
   ): readonly ts.DefinitionInfo[] | undefined {
     return this.withCompilerAndPerfTracing(PerfPhase.LsDefinition, (compiler) => {
-      if (!isTemplateContext(compiler.getCurrentProgram(), fileName, position)) {
+      if (!isInTypeCheckContext(compiler.getCurrentProgram(), fileName, position)) {
         return undefined;
       }
       return new DefinitionBuilder(this.tsLS, compiler).getTypeDefinitionsAtPosition(
@@ -167,15 +194,15 @@ export class LanguageService {
     position: number,
     compiler: NgCompiler,
   ): ts.QuickInfo | undefined {
-    if (!isTemplateContext(compiler.getCurrentProgram(), fileName, position)) {
+    if (!isInTypeCheckContext(compiler.getCurrentProgram(), fileName, position)) {
       return undefined;
     }
 
-    const templateInfo = getTemplateInfoAtPosition(fileName, position, compiler);
-    if (templateInfo === undefined) {
+    const typeCheckInfo = getTypeCheckInfoAtPosition(fileName, position, compiler);
+    if (typeCheckInfo === undefined) {
       return undefined;
     }
-    const positionDetails = getTargetAtPosition(templateInfo.template, position);
+    const positionDetails = getTargetAtPosition(typeCheckInfo.nodes, position);
     if (positionDetails === null) {
       return undefined;
     }
@@ -190,7 +217,7 @@ export class LanguageService {
     return new QuickInfoBuilder(
       this.tsLS,
       compiler,
-      templateInfo.component,
+      typeCheckInfo.declaration,
       node,
       positionDetails,
     ).get();
@@ -243,11 +270,11 @@ export class LanguageService {
     position: number,
     compiler: NgCompiler,
   ): CompletionBuilder<TmplAstNode | AST> | null {
-    const templateInfo = getTemplateInfoAtPosition(fileName, position, compiler);
-    if (templateInfo === undefined) {
+    const typeCheckInfo = getTypeCheckInfoAtPosition(fileName, position, compiler);
+    if (typeCheckInfo === undefined) {
       return null;
     }
-    const positionDetails = getTargetAtPosition(templateInfo.template, position);
+    const positionDetails = getTargetAtPosition(typeCheckInfo.nodes, position);
     if (positionDetails === null) {
       return null;
     }
@@ -261,10 +288,92 @@ export class LanguageService {
     return new CompletionBuilder(
       this.tsLS,
       compiler,
-      templateInfo.component,
+      typeCheckInfo.declaration,
       node,
       positionDetails,
     );
+  }
+
+  getEncodedSemanticClassifications(
+    fileName: string,
+    span: ts.TextSpan,
+    format: ts.SemanticClassificationFormat | undefined,
+  ): ts.Classifications {
+    return this.withCompilerAndPerfTracing(PerfPhase.LSSemanticClassification, (compiler) => {
+      return this.getEncodedSemanticClassificationsImpl(fileName, span, format, compiler);
+    });
+  }
+
+  private getEncodedSemanticClassificationsImpl(
+    fileName: string,
+    span: ts.TextSpan,
+    format: ts.SemanticClassificationFormat | undefined,
+    compiler: NgCompiler,
+  ): ts.Classifications {
+    if (format == ts.SemanticClassificationFormat.Original) {
+      return {spans: [], endOfLineState: ts.EndOfLineState.None};
+    }
+
+    if (isTypeScriptFile(fileName)) {
+      const sf = compiler.getCurrentProgram().getSourceFile(fileName);
+      if (sf === undefined) {
+        return {spans: [], endOfLineState: ts.EndOfLineState.None};
+      }
+
+      const classDeclarations: ts.ClassDeclaration[] = [];
+      sf.forEachChild((node) => {
+        if (ts.isClassDeclaration(node)) {
+          classDeclarations.push(node);
+        }
+      });
+
+      const hasInlineTemplate = (classDecl: ts.ClassDeclaration) => {
+        const resources = compiler.getDirectiveResources(classDecl);
+        return resources && resources.template && !isExternalResource(resources.template);
+      };
+
+      const typeCheckInfos: TypeCheckInfo[] = [];
+      const templateChecker = compiler.getTemplateTypeChecker();
+
+      for (const classDecl of classDeclarations) {
+        if (!hasInlineTemplate(classDecl)) {
+          continue;
+        }
+        const template = templateChecker.getTemplate(classDecl);
+        if (template !== null) {
+          typeCheckInfos.push({
+            nodes: template,
+            declaration: classDecl,
+          });
+        }
+      }
+
+      const spans = [];
+      for (const templInfo of typeCheckInfos) {
+        const classifications = getClassificationsForTemplate(compiler, templInfo, span);
+        spans.push(...classifications.spans);
+      }
+
+      return {spans, endOfLineState: ts.EndOfLineState.None};
+    } else {
+      const typeCheckInfo = getTypeCheckInfoAtPosition(fileName, span.start, compiler);
+      if (typeCheckInfo === undefined) {
+        return {spans: [], endOfLineState: ts.EndOfLineState.None};
+      }
+
+      return getClassificationsForTemplate(compiler, typeCheckInfo, span);
+    }
+  }
+
+  getTokenTypeFromClassification(classification: number): number | undefined {
+    if (classification > TokenEncodingConsts.modifierMask) {
+      return (classification >> TokenEncodingConsts.typeOffset) - 1;
+    }
+    return undefined;
+  }
+
+  getTokenModifierFromClassification(classification: number) {
+    return classification & TokenEncodingConsts.modifierMask;
   }
 
   getCompletionsAtPosition(
@@ -283,7 +392,7 @@ export class LanguageService {
     options: ts.GetCompletionsAtPositionOptions | undefined,
     compiler: NgCompiler,
   ): ts.WithMetadata<ts.CompletionInfo> | undefined {
-    if (!isTemplateContext(compiler.getCurrentProgram(), fileName, position)) {
+    if (!isInTypeCheckContext(compiler.getCurrentProgram(), fileName, position)) {
       return undefined;
     }
 
@@ -303,7 +412,7 @@ export class LanguageService {
     data: ts.CompletionEntryData | undefined,
   ): ts.CompletionEntryDetails | undefined {
     return this.withCompilerAndPerfTracing(PerfPhase.LsCompletions, (compiler) => {
-      if (!isTemplateContext(compiler.getCurrentProgram(), fileName, position)) {
+      if (!isInTypeCheckContext(compiler.getCurrentProgram(), fileName, position)) {
         return undefined;
       }
 
@@ -321,7 +430,7 @@ export class LanguageService {
     options?: ts.SignatureHelpItemsOptions,
   ): ts.SignatureHelpItems | undefined {
     return this.withCompilerAndPerfTracing(PerfPhase.LsSignatureHelp, (compiler) => {
-      if (!isTemplateContext(compiler.getCurrentProgram(), fileName, position)) {
+      if (!isInTypeCheckContext(compiler.getCurrentProgram(), fileName, position)) {
         return undefined;
       }
 
@@ -341,7 +450,7 @@ export class LanguageService {
     entryName: string,
   ): ts.Symbol | undefined {
     return this.withCompilerAndPerfTracing(PerfPhase.LsCompletions, (compiler) => {
-      if (!isTemplateContext(compiler.getCurrentProgram(), fileName, position)) {
+      if (!isInTypeCheckContext(compiler.getCurrentProgram(), fileName, position)) {
         return undefined;
       }
 
@@ -352,6 +461,17 @@ export class LanguageService {
       const result = builder.getCompletionEntrySymbol(entryName);
       return result;
     });
+  }
+
+  /**
+   * Performance helper that can help make quick decisions for
+   * the VSCode language server to decide whether a code fix exists
+   * for the given error code.
+   *
+   * Related context: https://github.com/angular/vscode-ng-language-service/pull/2050#discussion_r1673079263
+   */
+  hasCodeFixesForErrorCode(errorCode: number): boolean {
+    return this.codeFixes.hasFixForCode(errorCode);
   }
 
   getCodeFixesAtPosition(
@@ -365,17 +485,18 @@ export class LanguageService {
     return this.withCompilerAndPerfTracing<readonly ts.CodeFixAction[]>(
       PerfPhase.LsCodeFixes,
       (compiler) => {
-        const templateInfo = getTemplateInfoAtPosition(fileName, start, compiler);
-        if (templateInfo === undefined) {
+        // Fast exit if we know no code fix can exist for the given range/and error codes.
+        if (errorCodes.every((code) => !this.hasCodeFixesForErrorCode(code))) {
           return [];
         }
+
         const diags = this.getSemanticDiagnostics(fileName);
         if (diags.length === 0) {
           return [];
         }
         return this.codeFixes.getCodeFixesAtPosition(
           fileName,
-          templateInfo,
+          getTypeCheckInfoAtPosition(fileName, start, compiler) ?? null,
           compiler,
           start,
           end,
@@ -459,22 +580,18 @@ export class LanguageService {
         if (classDeclaration === undefined) {
           return undefined;
         }
-        const resources = compiler.getComponentResources(classDeclaration);
-        if (resources === null) {
+        const template = compiler.getDirectiveResources(classDeclaration)?.template || null;
+        if (template === null) {
           return undefined;
         }
-        const {template} = resources;
         let templateFileName: string;
         let span: ts.TextSpan;
         if (template.path !== null) {
           span = ts.createTextSpanFromBounds(0, 0);
           templateFileName = template.path;
         } else {
-          span = ts.createTextSpanFromBounds(
-            template.expression.getStart(),
-            template.expression.getEnd(),
-          );
-          templateFileName = template.expression.getSourceFile().fileName;
+          span = ts.createTextSpanFromBounds(template.node.getStart(), template.node.getEnd());
+          templateFileName = template.node.getSourceFile().fileName;
         }
         return {fileName: templateFileName, textSpan: span, contextSpan: span};
       },
@@ -485,13 +602,13 @@ export class LanguageService {
     return this.withCompilerAndPerfTracing<GetTcbResponse | undefined>(
       PerfPhase.LsTcb,
       (compiler) => {
-        const templateInfo = getTemplateInfoAtPosition(fileName, position, compiler);
-        if (templateInfo === undefined) {
+        const typeCheckInfo = getTypeCheckInfoAtPosition(fileName, position, compiler);
+        if (typeCheckInfo === undefined) {
           return undefined;
         }
 
         const selectionNodesInfo = getTcbNodesOfTemplateAtPosition(
-          templateInfo,
+          typeCheckInfo,
           position,
           compiler,
         );
@@ -515,6 +632,61 @@ export class LanguageService {
         };
       },
     );
+  }
+
+  getPossibleRefactorings(
+    fileName: string,
+    positionOrRange: number | ts.TextRange,
+  ): ts.ApplicableRefactorInfo[] {
+    return this.withCompilerAndPerfTracing(
+      PerfPhase.LSComputeApplicableRefactorings,
+      (compiler) => {
+        return allRefactorings
+          .filter((r) => r.isApplicable(compiler, fileName, positionOrRange))
+          .map((r) => ({name: r.id, description: r.description, actions: []}));
+      },
+    );
+  }
+
+  /**
+   * Computes edits for applying the specified refactoring.
+   *
+   * VSCode explicitly split code actions into two stages:
+   *
+   *  - 1) what actions are active?
+   *  - 2) what are the edits? <- if the user presses the button
+   *
+   * The latter stage may take longer to compute complex edits, perform
+   * analysis. This stage is currently implemented via our non-LSP standard
+   * `applyRefactoring` method. We implemented it in a way to support asynchronous
+   * computation, so that it can easily integrate with migrations that aren't
+   * synchronous/or compute edits in parallel.
+   */
+  async applyRefactoring(
+    fileName: string,
+    positionOrRange: number | ts.TextRange,
+    refactorName: string,
+    reportProgress: ApplyRefactoringProgressFn,
+  ): Promise<ApplyRefactoringResult | undefined> {
+    const matchingRefactoring = allRefactorings.find((r) => r.id === refactorName);
+    if (matchingRefactoring === undefined) {
+      return undefined;
+    }
+
+    return this.withCompilerAndPerfTracing(PerfPhase.LSApplyRefactoring, (compiler) => {
+      if (!this.activeRefactorings.has(refactorName)) {
+        this.activeRefactorings.set(refactorName, new matchingRefactoring(this.project));
+      }
+      const activeRefactoring = this.activeRefactorings.get(refactorName)!;
+
+      return activeRefactoring.computeEditsForFix(
+        compiler,
+        this.options,
+        fileName,
+        positionOrRange,
+        reportProgress,
+      );
+    });
   }
 
   /**
@@ -639,12 +811,8 @@ function parseNgCompilerOptions(
   if (config['forceStrictTemplates'] === true) {
     options.strictTemplates = true;
   }
-  if (config['enableBlockSyntax'] === false) {
-    options['_enableBlockSyntax'] = false;
-  }
-
-  if (config['enableLetSyntax'] === false) {
-    options['_enableLetSyntax'] = false;
+  if (config['enableSelectorless'] === true) {
+    options['_enableSelectorless'] = true;
   }
 
   options['_angularCoreVersion'] = config['angularCoreVersion'];
@@ -707,7 +875,7 @@ function getOrCreateTypeCheckScriptInfo(
   return scriptInfo;
 }
 
-function isTemplateContext(program: ts.Program, fileName: string, position: number): boolean {
+function isInTypeCheckContext(program: ts.Program, fileName: string, position: number): boolean {
   if (!isTypeScriptFile(fileName)) {
     // If we aren't in a TS file, we must be in an HTML file, which we treat as template context
     return true;
@@ -718,11 +886,51 @@ function isTemplateContext(program: ts.Program, fileName: string, position: numb
     return false;
   }
 
-  let asgn = getPropertyAssignmentFromValue(node, 'template');
-  if (asgn === null) {
+  const assignment = getPropertyAssignmentFromValue(node, 'template');
+  if (assignment !== null) {
+    return getClassDeclFromDecoratorProp(assignment) !== null;
+  }
+  return isHostBindingExpression(node);
+}
+
+function isHostBindingExpression(node: ts.Node): boolean {
+  if (!ts.isStringLiteralLike(node)) {
     return false;
   }
-  return getClassDeclFromDecoratorProp(asgn) !== null;
+
+  const assignment = closestAncestorNode(node, ts.isPropertyAssignment);
+  if (assignment === null || assignment.initializer !== node) {
+    return false;
+  }
+
+  const literal = closestAncestorNode(assignment, ts.isObjectLiteralExpression);
+  if (literal === null) {
+    return false;
+  }
+
+  const parentAssignment = getPropertyAssignmentFromValue(literal, 'host');
+  if (parentAssignment === null || parentAssignment.initializer !== literal) {
+    return false;
+  }
+
+  return getClassDeclFromDecoratorProp(parentAssignment) !== null;
+}
+
+function closestAncestorNode<T extends ts.Node>(
+  start: ts.Node,
+  predicate: (node: ts.Node) => node is T,
+): T | null {
+  let current = start.parent;
+
+  while (current) {
+    if (predicate(current)) {
+      return current;
+    } else {
+      current = current.parent;
+    }
+  }
+
+  return null;
 }
 
 function isInAngularContext(program: ts.Program, fileName: string, position: number) {
@@ -733,6 +941,10 @@ function isInAngularContext(program: ts.Program, fileName: string, position: num
   const node = findTightestNodeAtPosition(program, fileName, position);
   if (node === undefined) {
     return false;
+  }
+
+  if (isHostBindingExpression(node)) {
+    return true;
   }
 
   const assignment =
@@ -760,4 +972,36 @@ function getUniqueLocations<T extends ts.DocumentSpan>(locations: readonly T[]):
     uniqueLocations.set(createLocationKey(location), location);
   }
   return Array.from(uniqueLocations.values());
+}
+
+/**
+ * There are several kinds of diagnostics returned by `NgCompiler` for a source file:
+ *
+ * 1. Angular-related non-template diagnostics from decorated classes within that
+ *    file.
+ * 2. Template diagnostics for components with direct inline templates (a string
+ *    literal).
+ * 3. Template diagnostics for components with indirect inline templates (templates
+ *    computed by expression).
+ * 4. Template diagnostics for components with external templates.
+ *
+ * When showing diagnostics for a TS source file, we want to only include kinds 1 and
+ * 2 - those diagnostics which are reported at a location within the TS file itself.
+ * Diagnostics for external templates will be shown when editing that template file
+ * (the `else` block) below.
+ *
+ * Currently, indirect inline template diagnostics (kind 3) are not shown at all by
+ * the Language Service, because there is no sensible location in the user's code for
+ * them. Such templates are an edge case, though, and should not be common.
+ *
+ * TODO(alxhub): figure out a good user experience for indirect template diagnostics
+ * and show them from within the Language Service.
+ */
+function filterNgDiagnosticsForFile(
+  diagnostics: (ts.Diagnostic | ts.DiagnosticWithLocation)[],
+  fileName: string,
+): ts.DiagnosticWithLocation[] {
+  return diagnostics.filter((diag): diag is ts.DiagnosticWithLocation => {
+    return diag.file !== undefined && diag.file.fileName === fileName;
+  });
 }

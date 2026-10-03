@@ -3,13 +3,13 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {CommonModule, SlicePipe} from '@angular/common';
+import {CommonModule, SlicePipe} from '../../index';
 import {Component} from '@angular/core';
 import {TestBed, waitForAsync} from '@angular/core/testing';
-import {expect} from '@angular/platform-browser/testing/src/matchers';
+import {expect} from '@angular/private/testing/matchers';
 
 describe('SlicePipe', () => {
   let list: number[];
@@ -90,7 +90,11 @@ describe('SlicePipe', () => {
   });
 
   describe('integration', () => {
-    @Component({selector: 'test-comp', template: '{{(data | slice:1).join(",") }}'})
+    @Component({
+      selector: 'test-comp',
+      template: '{{(data | slice:1).join(",") }}',
+      standalone: false,
+    })
     class TestComp {
       data: any;
     }
@@ -103,10 +107,12 @@ describe('SlicePipe', () => {
       const fixture = TestBed.createComponent(TestComp);
       const mutable: number[] = [1, 2];
       fixture.componentInstance.data = mutable;
+      fixture.changeDetectorRef.markForCheck();
       fixture.detectChanges();
       expect(fixture.nativeElement).toHaveText('2');
 
       mutable.push(3);
+      fixture.changeDetectorRef.markForCheck();
       fixture.detectChanges();
       expect(fixture.nativeElement).toHaveText('2,3');
     }));
@@ -117,7 +123,6 @@ describe('SlicePipe', () => {
       selector: 'test-component',
       imports: [SlicePipe],
       template: '{{ title | slice:0:5 }}',
-      standalone: true,
     })
     class TestComponent {
       title = 'Hello World!';

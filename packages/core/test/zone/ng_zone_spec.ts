@@ -3,17 +3,21 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {EventEmitter, NgZone} from '@angular/core';
-import {fakeAsync, flushMicrotasks, inject, waitForAsync} from '@angular/core/testing';
-import {Log} from '@angular/core/testing/src/testing_internal';
+// Needed for the global `Zone` ambient types to be available.
+import type {} from 'zone.js';
+
 import {firstValueFrom} from 'rxjs';
+import {Component, EventEmitter, NgZone, provideZoneChangeDetection} from '../../src/core';
+import {TestBed, fakeAsync, flush, flushMicrotasks, inject, waitForAsync} from '../../testing';
+import {Log} from '../../testing/src/testing_internal';
 
 import {scheduleCallbackWithRafRace as scheduler} from '../../src/util/callback_scheduler';
 import {global} from '../../src/util/global';
 import {NoopNgZone} from '../../src/zone/ng_zone';
+import {isBrowser} from '@angular/private/testing';
 
 const resultTimer = 1000;
 // Schedules a macrotask (using a timer)
@@ -914,6 +918,32 @@ function commonTests() {
         });
       });
     });
+
+    it('coalescing can work with fakeAsync', fakeAsync(() => {
+      if (!isBrowser) {
+        return;
+      }
+
+      @Component({
+        template: `
+          <div class="clickable" (click)="clicked = true"></div>
+          {{clicked ? 'clicked' : '' }}
+        `,
+      })
+      class OuterComponent {}
+
+      TestBed.configureTestingModule({
+        providers: [
+          provideZoneChangeDetection({eventCoalescing: true, scheduleInRootZone: false} as any),
+        ],
+      });
+      const fixture = TestBed.createComponent(OuterComponent);
+      fixture.autoDetectChanges();
+
+      document.querySelector('.clickable')!.dispatchEvent(new MouseEvent('click'));
+      flush();
+      expect(fixture.nativeElement.innerText).toContain('clicked');
+    }));
   });
 
   describe('coalescing', () => {
@@ -937,7 +967,7 @@ function commonTests() {
         });
       });
       await transition.finished;
-      expect(performance.now() - startTime).toBeLessThan(1000);
+      expect(performance.now() - startTime).toBeLessThan(2000);
     });
 
     describe('shouldCoalesceRunChangeDetection = false, shouldCoalesceEventChangeDetection = false', () => {

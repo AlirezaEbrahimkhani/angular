@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import ts from 'typescript';
@@ -14,7 +14,7 @@ import {
   I18nOptions,
   LegacyNgcOptions,
   MiscOptions,
-  StrictTemplateOptions,
+  TypeCheckingOptions,
   TargetOptions,
 } from './public_options';
 
@@ -36,6 +36,12 @@ export interface TestOnlyOptions {
    * Enable the Language Service APIs for template type-checking for tests.
    */
   _enableTemplateTypeChecker?: boolean;
+
+  /**
+   * Whether components that are poisoned should still be processed.
+   * E.g. for generation of type check blocks and diagnostics.
+   */
+  _compilePoisonedComponents?: boolean;
 
   /**
    * An option to enable ngtsc's internal performance tracing.
@@ -75,20 +81,14 @@ export interface InternalOptions {
   supportJitMode?: boolean;
 
   /**
-   * Whether block syntax is enabled in the compiler. Defaults to true.
-   * Used in the language service to disable the new syntax for projects that aren't on v17.
+   * Enables the use of `<link>` elements for component styleUrls instead of inlining the file
+   * content.
+   * This option is intended to be used with a development server that processes and serves
+   * the files on-demand for an application.
    *
    * @internal
    */
-  _enableBlockSyntax?: boolean;
-
-  /**
-   * Whether `@let` syntax is enabled in the compiler.
-   * Defaults to false while the feature is being developed.
-   *
-   * @internal
-   */
-  _enableLetSyntax?: boolean;
+  externalRuntimeStyles?: boolean;
 
   /**
    * Detected version of `@angular/core` in the workspace. Used by the
@@ -97,6 +97,35 @@ export interface InternalOptions {
    * @internal
    */
   _angularCoreVersion?: string;
+
+  /**
+   * Whether to enable the necessary code generation for hot module reloading.
+   *
+   * @internal
+   */
+  _enableHmr?: boolean;
+
+  /**
+   * Whether selectorless is enabled.
+   *
+   * @internal
+   */
+  _enableSelectorless?: boolean;
+
+  // TODO(crisbeto): this is a temporary flag that will be removed in v20.
+  /**
+   * Whether to check the event side of two-way bindings.
+   */
+  _checkTwoWayBoundEvents?: boolean;
+
+  /**
+   * Whether this is a compilation of Angular core itself.
+   *
+   * By default, we detect this automatically based on the existence of `r3_symbols.ts`
+   * in the compilation, but there are other test targets within the `core` package that
+   * import e.g. `Component` relatively and should be detected by the compiler.
+   */
+  _isAngularCoreCompilation?: boolean;
 }
 
 /**
@@ -110,7 +139,7 @@ export interface NgCompilerOptions
     LegacyNgcOptions,
     BazelAndG3Options,
     DiagnosticOptions,
-    StrictTemplateOptions,
+    TypeCheckingOptions,
     TestOnlyOptions,
     I18nOptions,
     TargetOptions,

@@ -4,7 +4,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {
@@ -13,7 +13,7 @@ import {
   NodeJSFileSystem,
   setFileSystem,
 } from '@angular/compiler-cli/private/localize';
-import glob from 'fast-glob';
+import {globSync} from 'tinyglobby';
 import yargs from 'yargs';
 
 import {DiagnosticHandlingStrategy} from '../diagnostics';
@@ -48,7 +48,18 @@ const options = yargs(args)
   .option('f', {
     alias: 'format',
     required: true,
-    choices: ['xmb', 'xlf', 'xlif', 'xliff', 'xlf2', 'xlif2', 'xliff2', 'json', 'legacy-migrate'],
+    choices: [
+      'xmb',
+      'xlf',
+      'xlif',
+      'xliff',
+      'xlf2',
+      'xlif2',
+      'xliff2',
+      'json',
+      'legacy-migrate',
+      'arb',
+    ],
     describe: 'The format of the translation file.',
     type: 'string',
   })
@@ -98,7 +109,7 @@ const fileSystem = new NodeJSFileSystem();
 setFileSystem(fileSystem);
 
 const rootPath = options.r;
-const sourceFilePaths = glob.sync(options.s, {cwd: rootPath});
+const sourceFilePaths = globSync(options.s, {cwd: rootPath});
 const logLevel = options.loglevel as keyof typeof LogLevel | undefined;
 const logger = new ConsoleLogger(logLevel ? LogLevel[logLevel] : LogLevel.warn);
 const duplicateMessageHandling = options.d as DiagnosticHandlingStrategy;

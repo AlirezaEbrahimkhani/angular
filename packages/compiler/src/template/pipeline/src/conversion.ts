@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import * as o from '../../../output/output_ast';
@@ -16,18 +16,30 @@ export const BINARY_OPERATORS = new Map([
   ['|', o.BinaryOperator.BitwiseOr],
   ['&', o.BinaryOperator.BitwiseAnd],
   ['/', o.BinaryOperator.Divide],
+  ['=', o.BinaryOperator.Assign],
   ['==', o.BinaryOperator.Equals],
   ['===', o.BinaryOperator.Identical],
   ['<', o.BinaryOperator.Lower],
   ['<=', o.BinaryOperator.LowerEquals],
   ['-', o.BinaryOperator.Minus],
   ['%', o.BinaryOperator.Modulo],
+  ['**', o.BinaryOperator.Exponentiation],
   ['*', o.BinaryOperator.Multiply],
   ['!=', o.BinaryOperator.NotEquals],
   ['!==', o.BinaryOperator.NotIdentical],
   ['??', o.BinaryOperator.NullishCoalesce],
   ['||', o.BinaryOperator.Or],
   ['+', o.BinaryOperator.Plus],
+  ['in', o.BinaryOperator.In],
+  ['+=', o.BinaryOperator.AdditionAssignment],
+  ['-=', o.BinaryOperator.SubtractionAssignment],
+  ['*=', o.BinaryOperator.MultiplicationAssignment],
+  ['/=', o.BinaryOperator.DivisionAssignment],
+  ['%=', o.BinaryOperator.RemainderAssignment],
+  ['**=', o.BinaryOperator.ExponentiationAssignment],
+  ['&&=', o.BinaryOperator.AndAssignment],
+  ['||=', o.BinaryOperator.OrAssignment],
+  ['??=', o.BinaryOperator.NullishCoalesceAssignment],
 ]);
 
 export function namespaceForKey(namespacePrefixKey: string | null): ir.Namespace {

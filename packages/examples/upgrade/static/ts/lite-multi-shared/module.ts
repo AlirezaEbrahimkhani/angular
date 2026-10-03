@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {
@@ -15,8 +15,7 @@ import {
   NgModule,
   StaticProvider,
 } from '@angular/core';
-import {BrowserModule} from '@angular/platform-browser';
-import {platformBrowserDynamic} from '@angular/platform-browser-dynamic';
+import {BrowserModule, platformBrowser} from '@angular/platform-browser';
 import {downgradeComponent, downgradeModule} from '@angular/upgrade/static';
 
 declare var angular: ng.IAngularStatic;
@@ -42,6 +41,7 @@ export class Ng2RootModule {
 @Component({
   selector: 'ng2A',
   template: 'Component A (Service ID: {{ service.id }})',
+  standalone: false,
 })
 export class Ng2AComponent {
   constructor(public service: Ng2Service) {}
@@ -58,6 +58,7 @@ export class Ng2AModule {
 @Component({
   selector: 'ng2B',
   template: 'Component B (Service ID: {{ service.id }})',
+  standalone: false,
 })
 export class Ng2BComponent {
   constructor(public service: Ng2Service) {}
@@ -74,6 +75,7 @@ export class Ng2BModule {
 @Component({
   selector: 'ng2C',
   template: 'Component C (Service ID: {{ service.id }})',
+  standalone: false,
 })
 export class Ng2CComponent {
   constructor(public service: Ng2Service) {}
@@ -92,7 +94,7 @@ export class Ng2CModule {
 let rootInjectorPromise: Promise<Injector> | null = null;
 const getRootInjector = (extraProviders: StaticProvider[]) => {
   if (!rootInjectorPromise) {
-    rootInjectorPromise = platformBrowserDynamic(extraProviders)
+    rootInjectorPromise = platformBrowser(extraProviders)
       .bootstrapModule(Ng2RootModule)
       .then((moduleRef) => moduleRef.injector);
   }
@@ -100,19 +102,19 @@ const getRootInjector = (extraProviders: StaticProvider[]) => {
 };
 
 const downgradedNg2AModule = downgradeModule(async (extraProviders: StaticProvider[]) => {
-  const rootInjector = await getRootInjector(extraProviders);
+  const rootInjector = await getRootInjector(extraProviders)!;
   const moduleAFactory = await rootInjector.get(Compiler).compileModuleAsync(Ng2AModule);
   return moduleAFactory.create(rootInjector);
 });
 const downgradedNg2BModule = downgradeModule(async (extraProviders: StaticProvider[]) => {
-  const rootInjector = await getRootInjector(extraProviders);
+  const rootInjector = await getRootInjector(extraProviders)!;
   const moduleBFactory = await rootInjector.get(Compiler).compileModuleAsync(Ng2BModule);
   return moduleBFactory.create(rootInjector);
 });
 // #enddocregion shared-root-module
 
 const downgradedNg2CModule = downgradeModule((extraProviders: StaticProvider[]) =>
-  (getPlatform() || platformBrowserDynamic(extraProviders)).bootstrapModule(Ng2CModule),
+  (getPlatform() || platformBrowser(extraProviders)).bootstrapModule(Ng2CModule),
 );
 
 // The AngularJS app including downgraded modules and components.

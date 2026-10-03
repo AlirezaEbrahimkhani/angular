@@ -3,14 +3,14 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 // The functions in this file verify that the assumptions we are making
 // about state in an instruction are correct before implementing any logic.
 // They are meant only to be called in dev mode as sanity checks.
 
-import {getActiveConsumer} from '@angular/core/primitives/signals';
+import {getActiveConsumer} from '../../primitives/signals';
 
 import {stringify} from './stringify';
 

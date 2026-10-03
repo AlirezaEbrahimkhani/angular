@@ -3,15 +3,15 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {isForwardRef, resolveForwardRef} from '../../di/forward_ref';
 import {ModuleWithProviders} from '../../di/interface/provider';
 import {Type} from '../../interface/type';
 import {NgModuleDef} from '../../metadata/ng_module_def';
-import {getComponentDef, getDirectiveDef, getNgModuleDef, getPipeDef} from '../definition';
-import {ComponentType, DirectiveType, PipeType} from '../interfaces/definition';
+import {getComponentDef, getDirectiveDef, getPipeDef, getNgModuleDef} from '../def_getters';
+import type {ComponentType, DirectiveType, PipeType} from '../interfaces/definition';
 import {stringifyForError} from '../util/stringify_utils';
 
 export function isModuleWithProviders(value: any): value is ModuleWithProviders<{}> {
@@ -60,12 +60,11 @@ export function verifyStandaloneImport(depType: Type<unknown>, importingType: Ty
     if (def != null) {
       // if a component, directive or pipe is imported make sure that it is standalone
       if (!def.standalone) {
+        const type = getDependencyTypeForError(depType);
         throw new Error(
-          `The "${stringifyForError(depType)}" ${getDependencyTypeForError(
-            depType,
-          )}, imported from "${stringifyForError(
+          `The "${stringifyForError(depType)}" ${type}, imported from "${stringifyForError(
             importingType,
-          )}", is not standalone. Did you forget to add the standalone: true flag?`,
+          )}", is not standalone. Does the ${type} have the standalone: false flag?`,
         );
       }
     } else {

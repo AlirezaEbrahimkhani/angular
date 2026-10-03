@@ -3,14 +3,20 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import * as o from '../../../../output/output_ast';
 import {Identifiers} from '../../../../render3/r3_identifiers';
 import * as ir from '../../ir';
-import {ViewCompilationUnit, type CompilationJob, type CompilationUnit} from '../compilation';
+import {
+  TemplateCompilationMode,
+  ViewCompilationUnit,
+  type CompilationJob,
+  type CompilationUnit,
+} from '../compilation';
 import * as ng from '../instruction';
+import {isAriaAttribute} from '../util/attributes';
 
 /**
  * Map of target resolvers for event listeners.
@@ -19,6 +25,19 @@ const GLOBAL_TARGET_RESOLVERS = new Map<string, o.ExternalReference>([
   ['window', Identifiers.resolveWindow],
   ['document', Identifiers.resolveDocument],
   ['body', Identifiers.resolveBody],
+]);
+
+/**
+ * DOM properties that need to be remapped on the compiler side.
+ * Note: this mapping has to be kept in sync with the equally named mapping in the runtime.
+ */
+const DOM_PROPERTY_REMAPPING = new Map([
+  ['class', 'className'],
+  ['for', 'htmlFor'],
+  ['formaction', 'formAction'],
+  ['innerHtml', 'innerHTML'],
+  ['readonly', 'readOnly'],
+  ['tabindex', 'tabIndex'],
 ]);
 
 /**
@@ -81,54 +100,94 @@ function reifyCreateOperations(unit: CompilationUnit, ops: ir.OpList<ir.CreateOp
       case ir.OpKind.ElementStart:
         ir.OpList.replace(
           op,
-          ng.elementStart(
-            op.handle.slot!,
-            op.tag!,
-            op.attributes as number | null,
-            op.localRefs as number | null,
-            op.startSourceSpan,
-          ),
+          unit.job.mode === TemplateCompilationMode.DomOnly
+            ? ng.domElementStart(
+                op.handle.slot!,
+                op.tag!,
+                op.attributes as number | null,
+                op.localRefs as number | null,
+                op.startSourceSpan,
+              )
+            : ng.elementStart(
+                op.handle.slot!,
+                op.tag!,
+                op.attributes as number | null,
+                op.localRefs as number | null,
+                op.startSourceSpan,
+              ),
         );
         break;
       case ir.OpKind.Element:
         ir.OpList.replace(
           op,
-          ng.element(
-            op.handle.slot!,
-            op.tag!,
-            op.attributes as number | null,
-            op.localRefs as number | null,
-            op.wholeSourceSpan,
-          ),
+          unit.job.mode === TemplateCompilationMode.DomOnly
+            ? ng.domElement(
+                op.handle.slot!,
+                op.tag!,
+                op.attributes as number | null,
+                op.localRefs as number | null,
+                op.wholeSourceSpan,
+              )
+            : ng.element(
+                op.handle.slot!,
+                op.tag!,
+                op.attributes as number | null,
+                op.localRefs as number | null,
+                op.wholeSourceSpan,
+              ),
         );
         break;
       case ir.OpKind.ElementEnd:
-        ir.OpList.replace(op, ng.elementEnd(op.sourceSpan));
+        ir.OpList.replace(
+          op,
+          unit.job.mode === TemplateCompilationMode.DomOnly
+            ? ng.domElementEnd(op.sourceSpan)
+            : ng.elementEnd(op.sourceSpan),
+        );
         break;
       case ir.OpKind.ContainerStart:
         ir.OpList.replace(
           op,
-          ng.elementContainerStart(
-            op.handle.slot!,
-            op.attributes as number | null,
-            op.localRefs as number | null,
-            op.startSourceSpan,
-          ),
+          unit.job.mode === TemplateCompilationMode.DomOnly
+            ? ng.domElementContainerStart(
+                op.handle.slot!,
+                op.attributes as number | null,
+                op.localRefs as number | null,
+                op.startSourceSpan,
+              )
+            : ng.elementContainerStart(
+                op.handle.slot!,
+                op.attributes as number | null,
+                op.localRefs as number | null,
+                op.startSourceSpan,
+              ),
         );
         break;
       case ir.OpKind.Container:
         ir.OpList.replace(
           op,
-          ng.elementContainer(
-            op.handle.slot!,
-            op.attributes as number | null,
-            op.localRefs as number | null,
-            op.wholeSourceSpan,
-          ),
+          unit.job.mode === TemplateCompilationMode.DomOnly
+            ? ng.domElementContainer(
+                op.handle.slot!,
+                op.attributes as number | null,
+                op.localRefs as number | null,
+                op.wholeSourceSpan,
+              )
+            : ng.elementContainer(
+                op.handle.slot!,
+                op.attributes as number | null,
+                op.localRefs as number | null,
+                op.wholeSourceSpan,
+              ),
         );
         break;
       case ir.OpKind.ContainerEnd:
-        ir.OpList.replace(op, ng.elementContainerEnd());
+        ir.OpList.replace(
+          op,
+          unit.job.mode === TemplateCompilationMode.DomOnly
+            ? ng.domElementContainerEnd()
+            : ng.elementContainerEnd(),
+        );
         break;
       case ir.OpKind.I18nStart:
         ir.OpList.replace(
@@ -163,16 +222,29 @@ function reifyCreateOperations(unit: CompilationUnit, ops: ir.OpList<ir.CreateOp
         const childView = unit.job.views.get(op.xref)!;
         ir.OpList.replace(
           op,
-          ng.template(
-            op.handle.slot!,
-            o.variable(childView.fnName!),
-            childView.decls!,
-            childView.vars!,
-            op.tag,
-            op.attributes,
-            op.localRefs,
-            op.startSourceSpan,
-          ),
+          // Block templates can't have directives so we can always generate them as DOM-only.
+          op.templateKind === ir.TemplateKind.Block ||
+            unit.job.mode === TemplateCompilationMode.DomOnly
+            ? ng.domTemplate(
+                op.handle.slot!,
+                o.variable(childView.fnName!),
+                childView.decls!,
+                childView.vars!,
+                op.tag,
+                op.attributes,
+                op.localRefs,
+                op.startSourceSpan,
+              )
+            : ng.template(
+                op.handle.slot!,
+                o.variable(childView.fnName!),
+                childView.decls!,
+                childView.vars!,
+                op.tag,
+                op.attributes,
+                op.localRefs,
+                op.startSourceSpan,
+              ),
         );
         break;
       case ir.OpKind.DisableBindings:
@@ -186,6 +258,37 @@ function reifyCreateOperations(unit: CompilationUnit, ops: ir.OpList<ir.CreateOp
         break;
       case ir.OpKind.DeclareLet:
         ir.OpList.replace(op, ng.declareLet(op.handle.slot!, op.sourceSpan));
+        break;
+      case ir.OpKind.AnimationString:
+        ir.OpList.replace(
+          op,
+          ng.animationString(op.animationKind, op.expression, op.sanitizer, op.sourceSpan),
+        );
+        break;
+      case ir.OpKind.Animation:
+        const animationCallbackFn = reifyListenerHandler(
+          unit,
+          op.handlerFnName!,
+          op.handlerOps,
+          /* consumesDollarEvent */ false,
+        );
+        ir.OpList.replace(
+          op,
+          ng.animation(op.animationKind, animationCallbackFn, op.sanitizer, op.sourceSpan),
+        );
+        break;
+      case ir.OpKind.AnimationListener:
+        const animationListenerFn = reifyListenerHandler(
+          unit,
+          op.handlerFnName!,
+          op.handlerOps,
+          op.consumesDollarEvent,
+        );
+
+        ir.OpList.replace(
+          op,
+          ng.animationListener(op.animationKind, animationListenerFn, null, op.sourceSpan),
+        );
         break;
       case ir.OpKind.Listener:
         const listenerFn = reifyListenerHandler(
@@ -204,13 +307,17 @@ function reifyCreateOperations(unit: CompilationUnit, ops: ir.OpList<ir.CreateOp
         }
         ir.OpList.replace(
           op,
-          ng.listener(
-            op.name,
-            listenerFn,
-            eventTargetResolver,
-            op.hostListener && op.isAnimationListener,
-            op.sourceSpan,
-          ),
+          unit.job.mode === TemplateCompilationMode.DomOnly &&
+            !op.hostListener &&
+            !op.isLegacyAnimationListener
+            ? ng.domListener(op.name, listenerFn, eventTargetResolver, op.sourceSpan)
+            : ng.listener(
+                op.name,
+                listenerFn,
+                eventTargetResolver,
+                op.hostListener && op.isLegacyAnimationListener,
+                op.sourceSpan,
+              ),
         );
         break;
       case ir.OpKind.TwoWayListener:
@@ -263,12 +370,14 @@ function reifyCreateOperations(unit: CompilationUnit, ops: ir.OpList<ir.CreateOp
             op.placeholderConfig,
             timerScheduling,
             op.sourceSpan,
+            op.flags,
           ),
         );
         break;
       case ir.OpKind.DeferOn:
-        let args: number[] = [];
+        let args: (number | null)[] = [];
         switch (op.trigger.kind) {
+          case ir.DeferTriggerKind.Never:
           case ir.DeferTriggerKind.Idle:
           case ir.DeferTriggerKind.Immediate:
             break;
@@ -278,14 +387,16 @@ function reifyCreateOperations(unit: CompilationUnit, ops: ir.OpList<ir.CreateOp
           case ir.DeferTriggerKind.Interaction:
           case ir.DeferTriggerKind.Hover:
           case ir.DeferTriggerKind.Viewport:
-            if (op.trigger.targetSlot?.slot == null || op.trigger.targetSlotViewSteps === null) {
-              throw new Error(
-                `Slot or view steps not set in trigger reification for trigger kind ${op.trigger.kind}`,
-              );
-            }
-            args = [op.trigger.targetSlot.slot];
-            if (op.trigger.targetSlotViewSteps !== 0) {
-              args.push(op.trigger.targetSlotViewSteps);
+            // `hydrate` triggers don't support targets.
+            if (op.modifier === ir.DeferOpModifierKind.HYDRATE) {
+              args = [];
+            } else {
+              // The slots not being defined at this point is invalid, however we
+              // catch it during type checking. Pass in null in such cases.
+              args = [op.trigger.targetSlot?.slot ?? null];
+              if (op.trigger.targetSlotViewSteps !== 0) {
+                args.push(op.trigger.targetSlotViewSteps);
+              }
             }
             break;
           default:
@@ -295,7 +406,7 @@ function reifyCreateOperations(unit: CompilationUnit, ops: ir.OpList<ir.CreateOp
               }`,
             );
         }
-        ir.OpList.replace(op, ng.deferOn(op.trigger.kind, args, op.prefetch, op.sourceSpan));
+        ir.OpList.replace(op, ng.deferOn(op.trigger.kind, args, op.modifier, op.sourceSpan));
         break;
       case ir.OpKind.ProjectionDef:
         ir.OpList.replace<ir.CreateOp>(op, ng.projectionDef(op.def));
@@ -343,6 +454,54 @@ function reifyCreateOperations(unit: CompilationUnit, ops: ir.OpList<ir.CreateOp
           ),
         );
         break;
+      case ir.OpKind.ConditionalCreate:
+        if (!(unit instanceof ViewCompilationUnit)) {
+          throw new Error(`AssertionError: must be compiling a component`);
+        }
+        if (Array.isArray(op.localRefs)) {
+          throw new Error(
+            `AssertionError: local refs array should have been extracted into a constant`,
+          );
+        }
+        const conditionalCreateChildView = unit.job.views.get(op.xref)!;
+        ir.OpList.replace(
+          op,
+          ng.conditionalCreate(
+            op.handle.slot!,
+            o.variable(conditionalCreateChildView.fnName!),
+            conditionalCreateChildView.decls!,
+            conditionalCreateChildView.vars!,
+            op.tag,
+            op.attributes,
+            op.localRefs,
+            op.startSourceSpan,
+          ),
+        );
+        break;
+      case ir.OpKind.ConditionalBranchCreate:
+        if (!(unit instanceof ViewCompilationUnit)) {
+          throw new Error(`AssertionError: must be compiling a component`);
+        }
+        if (Array.isArray(op.localRefs)) {
+          throw new Error(
+            `AssertionError: local refs array should have been extracted into a constant`,
+          );
+        }
+        const conditionalBranchCreateChildView = unit.job.views.get(op.xref)!;
+        ir.OpList.replace(
+          op,
+          ng.conditionalBranchCreate(
+            op.handle.slot!,
+            o.variable(conditionalBranchCreateChildView.fnName!),
+            conditionalBranchCreateChildView.decls!,
+            conditionalBranchCreateChildView.vars!,
+            op.tag,
+            op.attributes,
+            op.localRefs,
+            op.startSourceSpan,
+          ),
+        );
+        break;
       case ir.OpKind.RepeaterCreate:
         if (op.handle.slot === null) {
           throw new Error('No slot was assigned for repeater instruction');
@@ -384,7 +543,7 @@ function reifyCreateOperations(unit: CompilationUnit, ops: ir.OpList<ir.CreateOp
             op.vars!,
             op.tag,
             op.attributes,
-            op.trackByFn!,
+            reifyTrackBy(unit, op),
             op.usesComponentInstance,
             emptyViewFnName,
             emptyDecls,
@@ -394,6 +553,23 @@ function reifyCreateOperations(unit: CompilationUnit, ops: ir.OpList<ir.CreateOp
             op.wholeSourceSpan,
           ),
         );
+        break;
+      case ir.OpKind.SourceLocation:
+        const locationsLiteral = o.literalArr(
+          op.locations.map(({targetSlot, offset, line, column}) => {
+            if (targetSlot.slot === null) {
+              throw new Error('No slot was assigned for source location');
+            }
+            return o.literalArr([
+              o.literal(targetSlot.slot),
+              o.literal(offset),
+              o.literal(line),
+              o.literal(column),
+            ]);
+          }),
+        );
+
+        ir.OpList.replace(op, ng.attachSourceLocation(op.templatePath, locationsLiteral));
         break;
       case ir.OpKind.Statement:
         // Pass statement operations directly through.
@@ -406,7 +582,7 @@ function reifyCreateOperations(unit: CompilationUnit, ops: ir.OpList<ir.CreateOp
   }
 }
 
-function reifyUpdateOperations(_unit: CompilationUnit, ops: ir.OpList<ir.UpdateOp>): void {
+function reifyUpdateOperations(unit: CompilationUnit, ops: ir.OpList<ir.UpdateOp>): void {
   for (const op of ops) {
     ir.transformExpressionsInOp(op, reifyIrExpression, ir.VisitorContextFlag.None);
 
@@ -415,20 +591,14 @@ function reifyUpdateOperations(_unit: CompilationUnit, ops: ir.OpList<ir.UpdateO
         ir.OpList.replace(op, ng.advance(op.delta, op.sourceSpan));
         break;
       case ir.OpKind.Property:
-        if (op.expression instanceof ir.Interpolation) {
-          ir.OpList.replace(
-            op,
-            ng.propertyInterpolate(
-              op.name,
-              op.expression.strings,
-              op.expression.expressions,
-              op.sanitizer,
-              op.sourceSpan,
-            ),
-          );
-        } else {
-          ir.OpList.replace(op, ng.property(op.name, op.expression, op.sanitizer, op.sourceSpan));
-        }
+        ir.OpList.replace(
+          op,
+          unit.job.mode === TemplateCompilationMode.DomOnly &&
+            op.bindingKind !== ir.BindingKind.LegacyAnimation &&
+            op.bindingKind !== ir.BindingKind.Animation
+            ? reifyDomProperty(op)
+            : reifyProperty(op),
+        );
         break;
       case ir.OpKind.TwoWayProperty:
         ir.OpList.replace(
@@ -437,43 +607,16 @@ function reifyUpdateOperations(_unit: CompilationUnit, ops: ir.OpList<ir.UpdateO
         );
         break;
       case ir.OpKind.StyleProp:
-        if (op.expression instanceof ir.Interpolation) {
-          ir.OpList.replace(
-            op,
-            ng.stylePropInterpolate(
-              op.name,
-              op.expression.strings,
-              op.expression.expressions,
-              op.unit,
-              op.sourceSpan,
-            ),
-          );
-        } else {
-          ir.OpList.replace(op, ng.styleProp(op.name, op.expression, op.unit, op.sourceSpan));
-        }
+        ir.OpList.replace(op, ng.styleProp(op.name, op.expression, op.unit, op.sourceSpan));
         break;
       case ir.OpKind.ClassProp:
         ir.OpList.replace(op, ng.classProp(op.name, op.expression, op.sourceSpan));
         break;
       case ir.OpKind.StyleMap:
-        if (op.expression instanceof ir.Interpolation) {
-          ir.OpList.replace(
-            op,
-            ng.styleMapInterpolate(op.expression.strings, op.expression.expressions, op.sourceSpan),
-          );
-        } else {
-          ir.OpList.replace(op, ng.styleMap(op.expression, op.sourceSpan));
-        }
+        ir.OpList.replace(op, ng.styleMap(op.expression, op.sourceSpan));
         break;
       case ir.OpKind.ClassMap:
-        if (op.expression instanceof ir.Interpolation) {
-          ir.OpList.replace(
-            op,
-            ng.classMapInterpolate(op.expression.strings, op.expression.expressions, op.sourceSpan),
-          );
-        } else {
-          ir.OpList.replace(op, ng.classMap(op.expression, op.sourceSpan));
-        }
+        ir.OpList.replace(op, ng.classMap(op.expression, op.sourceSpan));
         break;
       case ir.OpKind.I18nExpression:
         ir.OpList.replace(op, ng.i18nExp(op.expression, op.sourceSpan));
@@ -488,32 +631,22 @@ function reifyUpdateOperations(_unit: CompilationUnit, ops: ir.OpList<ir.UpdateO
         );
         break;
       case ir.OpKind.Attribute:
-        if (op.expression instanceof ir.Interpolation) {
-          ir.OpList.replace(
-            op,
-            ng.attributeInterpolate(
-              op.name,
-              op.expression.strings,
-              op.expression.expressions,
-              op.sanitizer,
-              op.sourceSpan,
-            ),
-          );
-        } else {
-          ir.OpList.replace(op, ng.attribute(op.name, op.expression, op.sanitizer, op.namespace));
-        }
+        ir.OpList.replace(
+          op,
+          ng.attribute(op.name, op.expression, op.sanitizer, op.namespace, op.sourceSpan),
+        );
         break;
-      case ir.OpKind.HostProperty:
+      case ir.OpKind.DomProperty:
         if (op.expression instanceof ir.Interpolation) {
           throw new Error('not yet handled');
         } else {
-          if (op.isAnimationTrigger) {
+          if (
+            op.bindingKind === ir.BindingKind.LegacyAnimation ||
+            op.bindingKind === ir.BindingKind.Animation
+          ) {
             ir.OpList.replace(op, ng.syntheticHostProperty(op.name, op.expression, op.sourceSpan));
           } else {
-            ir.OpList.replace(
-              op,
-              ng.hostProperty(op.name, op.expression, op.sanitizer, op.sourceSpan),
-            );
+            ir.OpList.replace(op, reifyDomProperty(op));
           }
         }
         break;
@@ -538,7 +671,7 @@ function reifyUpdateOperations(_unit: CompilationUnit, ops: ir.OpList<ir.UpdateO
         ir.OpList.replace(op, ng.repeater(op.collection, op.sourceSpan));
         break;
       case ir.OpKind.DeferWhen:
-        ir.OpList.replace(op, ng.deferWhen(op.prefetch, op.expr, op.sourceSpan));
+        ir.OpList.replace(op, ng.deferWhen(op.modifier, op.expr, op.sourceSpan));
         break;
       case ir.OpKind.StoreLet:
         throw new Error(`AssertionError: unexpected storeLet ${op.declaredName}`);
@@ -551,6 +684,39 @@ function reifyUpdateOperations(_unit: CompilationUnit, ops: ir.OpList<ir.UpdateO
         );
     }
   }
+}
+
+/**
+ * Reifies a DOM property binding operation.
+ *
+ * This is an optimized version of {@link reifyProperty} that avoids unnecessarily trying to bind
+ * to directive inputs at runtime for views that don't import any directives.
+ *
+ * @param op A property binding operation.
+ * @returns A statement to update the property at runtime.
+ */
+function reifyDomProperty(op: ir.DomPropertyOp | ir.PropertyOp): ir.UpdateOp {
+  return ng.domProperty(
+    DOM_PROPERTY_REMAPPING.get(op.name) ?? op.name,
+    op.expression,
+    op.sanitizer,
+    op.sourceSpan,
+  );
+}
+
+/**
+ * Reifies a property binding operation.
+ *
+ * The returned statement attempts to bind to directive inputs before falling back to a DOM
+ * property.
+ *
+ * @param op A property binding operation.
+ * @returns A statement to update the property at runtime.
+ */
+function reifyProperty(op: ir.PropertyOp): ir.UpdateOp {
+  return isAriaAttribute(op.name)
+    ? ng.ariaProperty(op.name, op.expression, op.sourceSpan)
+    : ng.property(op.name, op.expression, op.sanitizer, op.sourceSpan);
 }
 
 function reifyIrExpression(expr: o.Expression): o.Expression {
@@ -608,6 +774,8 @@ function reifyIrExpression(expr: o.Expression): o.Expression {
       return ng.readContextLet(expr.targetSlot.slot!);
     case ir.ExpressionKind.StoreLet:
       return ng.storeLet(expr.value, expr.sourceSpan);
+    case ir.ExpressionKind.TrackContext:
+      return o.variable('this');
     default:
       throw new Error(
         `AssertionError: Unsupported reification of ir.Expression kind: ${
@@ -650,4 +818,47 @@ function reifyListenerHandler(
   }
 
   return o.fn(params, handlerStmts, undefined, undefined, name);
+}
+
+/** Reifies the tracking expression of a `RepeaterCreateOp`. */
+function reifyTrackBy(unit: CompilationUnit, op: ir.RepeaterCreateOp): o.Expression {
+  // If the tracking function was created already, there's nothing left to do.
+  if (op.trackByFn !== null) {
+    return op.trackByFn;
+  }
+
+  const params: o.FnParam[] = [new o.FnParam('$index'), new o.FnParam('$item')];
+  let fn: o.FunctionExpr | o.ArrowFunctionExpr;
+
+  if (op.trackByOps === null) {
+    // If there are no additional ops related to the tracking function, we just need
+    // to turn it into a function that returns the result of the expression.
+    fn = op.usesComponentInstance
+      ? o.fn(params, [new o.ReturnStatement(op.track)])
+      : o.arrowFn(params, op.track);
+  } else {
+    // Otherwise first we need to reify the track-related ops.
+    reifyUpdateOperations(unit, op.trackByOps);
+
+    const statements: o.Statement[] = [];
+    for (const trackOp of op.trackByOps) {
+      if (trackOp.kind !== ir.OpKind.Statement) {
+        throw new Error(
+          `AssertionError: expected reified statements, but found op ${ir.OpKind[trackOp.kind]}`,
+        );
+      }
+      statements.push(trackOp.statement);
+    }
+
+    // Afterwards we can create the function from those ops.
+    fn =
+      op.usesComponentInstance ||
+      statements.length !== 1 ||
+      !(statements[0] instanceof o.ReturnStatement)
+        ? o.fn(params, statements)
+        : o.arrowFn(params, statements[0].value);
+  }
+
+  op.trackByFn = unit.job.pool.getSharedFunctionReference(fn, '_forTrack');
+  return op.trackByFn;
 }

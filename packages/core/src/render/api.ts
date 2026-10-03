@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {isLView} from '../render3/interfaces/type_checks';
@@ -45,6 +45,14 @@ export abstract class RendererFactory2 {
  * Extend this base class to implement custom rendering. By default, Angular
  * renders a template into DOM. You can use custom rendering to intercept
  * rendering calls, or to render to something other than DOM.
+ *
+ * <div class="docs-alert docs-alert-important">
+ * <p>
+ * Please be aware that usage of `Renderer2`, in context of accessing DOM elements, provides no
+ * extra security which makes it equivalent to
+ * {@link /best-practices/security#direct-use-of-the-dom-apis-and-explicit-sanitization-calls Security vulnerabilities}.
+ * </p>
+ * </div>
  *
  * Create your custom renderer using `RendererFactory2`.
  *
@@ -117,9 +125,15 @@ export abstract class Renderer2 {
    * @param parent The parent node.
    * @param oldChild The child node to remove.
    * @param isHostElement Optionally signal to the renderer whether this element is a host element
-   * or not
+   * @param requireSynchronousElementRemoval Optionally signal to the renderer whether this element
+   * needs synchronous removal
    */
-  abstract removeChild(parent: any, oldChild: any, isHostElement?: boolean): void;
+  abstract removeChild(
+    parent: any,
+    oldChild: any,
+    isHostElement?: boolean,
+    requireSynchronousElementRemoval?: boolean,
+  ): void;
   /**
    * Implement this callback to prepare an element to be bootstrapped
    * as a root element, and return the element instance.
@@ -217,12 +231,14 @@ export abstract class Renderer2 {
    * DOM element.
    * @param eventName The event to listen for.
    * @param callback A handler function to invoke when the event occurs.
+   * @param options Options that configure how the event listener is bound.
    * @returns An "unlisten" function for disposing of this handler.
    */
   abstract listen(
     target: 'window' | 'document' | 'body' | any,
     eventName: string,
     callback: (event: any) => boolean | void,
+    options?: ListenerOptions,
   ): () => void;
 
   /**
@@ -251,4 +267,14 @@ export function injectRenderer2(): Renderer2 {
 export const enum AnimationRendererType {
   Regular = 0,
   Delegated = 1,
+}
+
+/**
+ * Options that can be used to configure an event listener.
+ * @publicApi
+ */
+export interface ListenerOptions {
+  capture?: boolean;
+  once?: boolean;
+  passive?: boolean;
 }

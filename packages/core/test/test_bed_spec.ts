@@ -3,14 +3,15 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {PLATFORM_BROWSER_ID} from '@angular/common/src/platform_id';
+import {ɵPLATFORM_BROWSER_ID} from '@angular/common';
 import {
   APP_INITIALIZER,
   ChangeDetectorRef,
   Compiler,
+  provideZoneChangeDetection,
   Component,
   Directive,
   ElementRef,
@@ -19,7 +20,6 @@ import {
   inject,
   Inject,
   Injectable,
-  InjectFlags,
   InjectionToken,
   InjectOptions,
   Injector,
@@ -40,21 +40,29 @@ import {
   ɵɵelementStart as elementStart,
   ɵɵsetNgModuleScope as setNgModuleScope,
   ɵɵtext as text,
-} from '@angular/core';
-import {DeferBlockBehavior} from '@angular/core/testing';
-import {TestBed, TestBedImpl} from '@angular/core/testing/src/test_bed';
+  DOCUMENT,
+  signal,
+  provideZonelessChangeDetection,
+  inputBinding,
+  Output,
+  EventEmitter,
+  outputBinding,
+  twoWayBinding,
+} from '../src/core';
+import {DeferBlockBehavior} from '../testing';
+import {TestBed, TestBedImpl} from '../testing/src/test_bed';
 import {By} from '@angular/platform-browser';
-import {expect} from '@angular/platform-browser/testing/src/matchers';
+import {expect} from '@angular/private/testing/matchers';
 
 import {NgModuleType} from '../src/render3';
 import {depsTracker} from '../src/render3/deps_tracker/deps_tracker';
 import {setClassMetadataAsync} from '../src/render3/metadata';
 import {
+  ComponentFixtureAutoDetect,
   TEARDOWN_TESTING_MODULE_ON_DESTROY_DEFAULT,
   THROW_ON_UNKNOWN_ELEMENTS_DEFAULT,
   THROW_ON_UNKNOWN_PROPERTIES_DEFAULT,
 } from '../testing/src/test_bed_common';
-import {DOCUMENT} from '@angular/common/src/dom_tokens';
 
 const NAME = new InjectionToken<string>('name');
 
@@ -71,6 +79,7 @@ class SimpleService {
 @Component({
   selector: 'hello-world',
   template: '<greeting-cmp></greeting-cmp>',
+  standalone: false,
 })
 export class HelloWorld {}
 
@@ -78,6 +87,7 @@ export class HelloWorld {}
 @Component({
   selector: 'greeting-cmp',
   template: 'Hello {{ name }}',
+  standalone: false,
 })
 export class GreetingCmp {
   name: string;
@@ -97,6 +107,7 @@ export class GreetingCmp {
     SimpleService, //
     {provide: NAME, useValue: `from Component`},
   ],
+  standalone: false,
 })
 class CmpWithProviders {}
 
@@ -106,16 +117,32 @@ class CmpWithProviders {}
 })
 export class GreetingModule {}
 
-@Component({selector: 'simple-cmp', template: '<b>simple</b>'})
+@Component({
+  selector: 'simple-cmp',
+  template: '<b>simple</b>',
+  standalone: false,
+})
 export class SimpleCmp {}
 
-@Component({selector: 'with-refs-cmp', template: '<div #firstDiv></div>'})
+@Component({
+  selector: 'with-refs-cmp',
+  template: '<div #firstDiv></div>',
+  standalone: false,
+})
 export class WithRefsCmp {}
 
-@Component({selector: 'inherited-cmp', template: 'inherited'})
+@Component({
+  selector: 'inherited-cmp',
+  template: 'inherited',
+  standalone: false,
+})
 export class InheritedCmp extends SimpleCmp {}
 
-@Directive({selector: '[hostBindingDir]', host: {'[id]': 'id'}})
+@Directive({
+  selector: '[hostBindingDir]',
+  host: {'[id]': 'id'},
+  standalone: false,
+})
 export class HostBindingDir {
   id = 'one';
 }
@@ -127,6 +154,7 @@ export class HostBindingDir {
     <p title="( {{ label }} - {{ title }} )" [attr.aria-label]="label" id="[ {{ label }} ] [ {{ title }} ]">
     </p>
   `,
+  standalone: false,
 })
 export class ComponentWithPropBindings {
   title = 'some title';
@@ -138,10 +166,15 @@ export class ComponentWithPropBindings {
   template: `
     <simple-cmp></simple-cmp> - <inherited-cmp></inherited-cmp>
   `,
+  standalone: false,
 })
 export class SimpleApp {}
 
-@Component({selector: 'inline-template', template: '<p>Hello</p>'})
+@Component({
+  selector: 'inline-template',
+  template: '<p>Hello</p>',
+  standalone: false,
+})
 export class ComponentWithInlineTemplate {}
 
 @NgModule({
@@ -171,11 +204,13 @@ describe('TestBed', () => {
     @Component({
       selector: 'root',
       template: '<div dirA></div>',
+      standalone: false,
     })
     class Root {}
     @Directive({
       selector: '[dirA]',
       host: {'title': 'Test title'},
+      standalone: false,
     })
     class DirA {}
 
@@ -210,21 +245,18 @@ describe('TestBed with Standalone types', () => {
   it('should override dependencies of standalone components', () => {
     @Component({
       selector: 'dep',
-      standalone: true,
       template: 'main dep',
     })
     class MainDep {}
 
     @Component({
       selector: 'dep',
-      standalone: true,
       template: 'mock dep',
     })
     class MockDep {}
 
     @Component({
       selector: 'app-root',
-      standalone: true,
       imports: [MainDep],
       template: '<dep />',
     })
@@ -257,7 +289,6 @@ describe('TestBed with Standalone types', () => {
     const A = new InjectionToken('A');
 
     @Component({
-      standalone: true,
       template: '{{ a }}',
       providers: [{provide: A, useValue: 'A'}],
     })
@@ -289,7 +320,6 @@ describe('TestBed with Standalone types', () => {
 
     @Component({
       selector: 'dep',
-      standalone: true,
       template: '{{ service.id }}',
       providers: [Service],
     })
@@ -298,7 +328,6 @@ describe('TestBed with Standalone types', () => {
     }
 
     @Component({
-      standalone: true,
       template: '<dep />',
       imports: [Dep],
     })
@@ -334,7 +363,6 @@ describe('TestBed with Standalone types', () => {
     class ComponentDependenciesModule {}
 
     @Component({
-      standalone: true,
       template: '{{ a }}',
       imports: [ComponentDependenciesModule],
     })
@@ -361,7 +389,6 @@ describe('TestBed with Standalone types', () => {
     class ComponentDependenciesModule {}
 
     @Component({
-      standalone: true,
       template: '{{ a }}',
       imports: [ComponentDependenciesModule],
     })
@@ -383,7 +410,6 @@ describe('TestBed with Standalone types', () => {
 
   it('should allow overriding a template of a standalone component', () => {
     @Component({
-      standalone: true,
       template: 'Original',
     })
     class MyStandaloneComp {}
@@ -401,7 +427,6 @@ describe('TestBed with Standalone types', () => {
   it('should allow overriding the set of directives and pipes used in a standalone component', () => {
     @Directive({
       selector: '[dir]',
-      standalone: true,
       host: {'[id]': 'id'},
     })
     class MyStandaloneDirectiveA {
@@ -410,20 +435,19 @@ describe('TestBed with Standalone types', () => {
 
     @Directive({
       selector: '[dir]',
-      standalone: true,
       host: {'[id]': 'id'},
     })
     class MyStandaloneDirectiveB {
       id = 'B';
     }
 
-    @Pipe({name: 'pipe', standalone: true})
+    @Pipe({name: 'pipe'})
     class MyStandalonePipeA {
       transform(value: string): string {
         return `transformed ${value} (A)`;
       }
     }
-    @Pipe({name: 'pipe', standalone: true})
+    @Pipe({name: 'pipe'})
     class MyStandalonePipeB {
       transform(value: string): string {
         return `transformed ${value} (B)`;
@@ -431,7 +455,6 @@ describe('TestBed with Standalone types', () => {
     }
 
     @Component({
-      standalone: true,
       template: '<div dir>{{ name | pipe }}</div>',
       imports: [MyStandalonePipeA, MyStandaloneDirectiveA],
     })
@@ -456,7 +479,6 @@ describe('TestBed with Standalone types', () => {
   it('should reflect overrides on imported standalone directive', () => {
     @Directive({
       selector: '[dir]',
-      standalone: true,
       host: {'[id]': 'id'},
     })
     class DepStandaloneDirective {
@@ -465,7 +487,6 @@ describe('TestBed with Standalone types', () => {
 
     @Component({
       selector: 'standalone-cmp',
-      standalone: true,
       template: 'Original MyStandaloneComponent',
     })
     class DepStandaloneComponent {
@@ -473,7 +494,6 @@ describe('TestBed with Standalone types', () => {
     }
 
     @Component({
-      standalone: true,
       template: '<standalone-cmp dir>Hello world!</standalone-cmp>',
       imports: [DepStandaloneDirective, DepStandaloneComponent],
     })
@@ -499,7 +519,6 @@ describe('TestBed with Standalone types', () => {
     const TOKEN_A = new InjectionToken('TOKEN_A');
     @Pipe({
       name: 'testPipe',
-      standalone: true,
     })
     class TestPipe {
       constructor(@Inject(TOKEN_A) private token: string) {}
@@ -517,7 +536,6 @@ describe('TestBed with Standalone types', () => {
 
     @Component({
       selector: 'test-component',
-      standalone: true,
       imports: [TestNgModule],
       template: `{{ 'original value' | testPipe }}`,
     })
@@ -539,6 +557,7 @@ describe('TestBed with Standalone types', () => {
     @Component({
       selector: 'test-cmp',
       template: '...',
+      standalone: false,
     })
     class TestComponent {
       testField = 'default';
@@ -547,6 +566,7 @@ describe('TestBed with Standalone types', () => {
     @Component({
       selector: 'test-cmp',
       template: '...',
+      standalone: false,
     })
     class MockTestComponent {
       testField = 'overridden';
@@ -559,7 +579,6 @@ describe('TestBed with Standalone types', () => {
     class TestModule {}
 
     @Component({
-      standalone: true,
       selector: 'app-root',
       template: `<test-cmp #testCmpCtrl></test-cmp>`,
       imports: [TestModule],
@@ -634,7 +653,6 @@ describe('TestBed', () => {
 
   it('should not allow overrides of the `standalone` field', () => {
     @Component({
-      standalone: true,
       selector: 'standalone-comp',
       template: '...',
     })
@@ -643,19 +661,25 @@ describe('TestBed', () => {
     @Component({
       selector: 'non-standalone-comp',
       template: '...',
+      standalone: false,
     })
     class NonStandaloneComponent {}
 
-    @Directive({standalone: true})
+    @Directive()
     class StandaloneDirective {}
 
-    @Directive({})
+    @Directive({
+      standalone: false,
+    })
     class NonStandaloneDirective {}
 
-    @Pipe({standalone: true, name: 'test'})
+    @Pipe({name: 'test'})
     class StandalonePipe {}
 
-    @Pipe({name: 'test'})
+    @Pipe({
+      name: 'test',
+      standalone: false,
+    })
     class NonStandalonePipe {}
 
     const getExpectedError = (typeName: string) =>
@@ -703,6 +727,7 @@ describe('TestBed', () => {
   });
 
   it('should give the ability to trigger the change detection', () => {
+    TestBed.configureTestingModule({providers: [provideZoneChangeDetection()]});
     const hello = TestBed.createComponent(HelloWorld);
 
     hello.detectChanges();
@@ -890,7 +915,10 @@ describe('TestBed', () => {
   it('should be able to create a fixture if a test module is reset mid-compilation', async () => {
     const token = new InjectionToken<number>('value');
 
-    @Component({template: 'hello {{_token}}'})
+    @Component({
+      template: 'hello {{_token}}',
+      standalone: false,
+    })
     class TestComponent {
       constructor(@Inject(token) public _token: number) {}
     }
@@ -918,6 +946,7 @@ describe('TestBed', () => {
     @Component({
       selector: 'test-cmp',
       template: '...',
+      standalone: false,
     })
     class TestComponent {
       testField = 'default';
@@ -932,6 +961,7 @@ describe('TestBed', () => {
     @Component({
       selector: 'app-root',
       template: `<test-cmp #testCmpCtrl></test-cmp>`,
+      standalone: false,
     })
     class AppComponent {
       @ViewChild('testCmpCtrl', {static: true}) testCmpCtrl!: TestComponent;
@@ -945,6 +975,7 @@ describe('TestBed', () => {
     @Component({
       selector: 'test-cmp',
       template: '...',
+      standalone: false,
     })
     class MockTestComponent {
       testField = 'overwritten';
@@ -975,12 +1006,14 @@ describe('TestBed', () => {
     @Component({
       selector: 'comp-a',
       template: 'comp-a content',
+      standalone: false,
     })
     class CompA {}
 
     @Component({
       selector: 'comp-a',
       template: 'comp-a mock content',
+      standalone: false,
     })
     class MockCompA {}
 
@@ -995,12 +1028,14 @@ describe('TestBed', () => {
     @Component({
       selector: 'comp-b',
       template: 'comp-b content',
+      standalone: false,
     })
     class CompB {}
 
     @Component({
       selector: 'comp-b',
       template: 'comp-b mock content',
+      standalone: false,
     })
     class MockCompB {}
 
@@ -1019,6 +1054,7 @@ describe('TestBed', () => {
         <comp-a></comp-a>
         <comp-b></comp-b>
       `,
+      standalone: false,
     })
     class App {}
 
@@ -1033,12 +1069,10 @@ describe('TestBed', () => {
         declarations: [App],
         // AppModule -> ModuleB -> ModuleA (to be overridden)
         imports: [AppModule],
-      })
-        .overrideModule(ModuleA, {
-          remove: {declarations: [CompA], exports: [CompA]},
-          add: {declarations: [MockCompA], exports: [MockCompA]},
-        })
-        .compileComponents();
+      }).overrideModule(ModuleA, {
+        remove: {declarations: [CompA], exports: [CompA]},
+        add: {declarations: [MockCompA], exports: [MockCompA]},
+      });
 
       const fixture = TestBed.createComponent(App);
       fixture.detectChanges();
@@ -1063,8 +1097,7 @@ describe('TestBed', () => {
         .overrideModule(ModuleB, {
           remove: {declarations: [CompB], exports: [CompB]},
           add: {declarations: [MockCompB], exports: [MockCompB]},
-        })
-        .compileComponents();
+        });
 
       const fixture = TestBed.createComponent(App);
       fixture.detectChanges();
@@ -1189,6 +1222,73 @@ describe('TestBed', () => {
     });
   });
 
+  describe('bindings', () => {
+    it('should be able to bind to inputs', () => {
+      @Component({template: ''})
+      class TestComp {
+        @Input() value = 0;
+      }
+
+      const value = signal(1);
+      const fixture = TestBed.createComponent(TestComp, {
+        bindings: [inputBinding('value', value)],
+      });
+      fixture.detectChanges();
+      expect(fixture.componentInstance.value).toBe(1);
+
+      value.set(2);
+      fixture.detectChanges();
+      expect(fixture.componentInstance.value).toBe(2);
+    });
+
+    it('should be able to bind to outputs', () => {
+      let count = 0;
+
+      @Component({template: '<button (click)="event.emit()">Click me</button>'})
+      class TestComp {
+        @Output() event = new EventEmitter<void>();
+      }
+
+      const fixture = TestBed.createComponent(TestComp, {
+        bindings: [outputBinding('event', () => count++)],
+      });
+      fixture.detectChanges();
+      const button = fixture.nativeElement.querySelector('button');
+      expect(count).toBe(0);
+
+      button.click();
+      fixture.detectChanges();
+      expect(count).toBe(1);
+    });
+
+    it('should be able to bind two-way bindings', () => {
+      @Component({template: 'Value: {{value}}'})
+      class TestComp {
+        @Input() value = '';
+        @Output() valueChange = new EventEmitter<string>();
+      }
+
+      const value = signal('initial');
+      const fixture = TestBed.createComponent(TestComp, {
+        bindings: [twoWayBinding('value', value)],
+      });
+      fixture.detectChanges();
+      expect(value()).toBe('initial');
+      expect(fixture.nativeElement.textContent).toBe('Value: initial');
+
+      value.set('1');
+      fixture.detectChanges();
+      expect(value()).toBe('1');
+      expect(fixture.nativeElement.textContent).toBe('Value: 1');
+
+      fixture.componentInstance.value = '2';
+      fixture.componentInstance.valueChange.emit('2');
+      fixture.detectChanges();
+      expect(value()).toBe('2');
+      expect(fixture.nativeElement.textContent).toBe('Value: 2');
+    });
+  });
+
   it('should allow overriding a provider defined via ModuleWithProviders (using TestBed.overrideProvider)', () => {
     const serviceOverride = {
       get() {
@@ -1286,25 +1386,23 @@ describe('TestBed', () => {
 
     TestBed.configureTestingModule({
       imports: [TestModule],
-    })
-      .overrideModule(TestModule, {
-        remove: {
-          providers: [
-            // Removing the cycle named "a" should result in removing the provider for "a".
-            // Note: although this removes a different instance than the one provided, metadata
-            // overrides compare objects by value, not by reference.
-            {provide: CYCLES, useValue: new Cyclic('a'), multi: true},
+    }).overrideModule(TestModule, {
+      remove: {
+        providers: [
+          // Removing the cycle named "a" should result in removing the provider for "a".
+          // Note: although this removes a different instance than the one provided, metadata
+          // overrides compare objects by value, not by reference.
+          {provide: CYCLES, useValue: new Cyclic('a'), multi: true},
 
-            // Also attempt to remove a cycle named "B" (which does not exist) to verify that
-            // objects are correctly compared by value.
-            {provide: CYCLES, useValue: new Cyclic('B'), multi: true},
-          ],
-        },
-        add: {
-          providers: [{provide: CYCLES, useValue: new Cyclic('c'), multi: true}],
-        },
-      })
-      .compileComponents();
+          // Also attempt to remove a cycle named "B" (which does not exist) to verify that
+          // objects are correctly compared by value.
+          {provide: CYCLES, useValue: new Cyclic('B'), multi: true},
+        ],
+      },
+      add: {
+        providers: [{provide: CYCLES, useValue: new Cyclic('c'), multi: true}],
+      },
+    });
 
     const values = TestBed.inject(CYCLES);
     expect(values.map((v) => v.name)).toEqual(['b', 'c']);
@@ -1330,7 +1428,11 @@ describe('TestBed', () => {
     const MY_TOKEN = new InjectionToken('MyProvider');
     class MyProvider {}
 
-    @Component({selector: 'my-comp', template: ``})
+    @Component({
+      selector: 'my-comp',
+      template: ``,
+      standalone: false,
+    })
     class MyComp {
       constructor(@Inject(MY_TOKEN) public myProviders: MyProvider[]) {}
     }
@@ -1359,6 +1461,7 @@ describe('TestBed', () => {
     @Component({
       selector: 'comp-a',
       template: '...',
+      standalone: false,
     })
     class CompA {
       @Input() inputA: string = '';
@@ -1370,6 +1473,7 @@ describe('TestBed', () => {
     @Component({
       selector: 'comp-b',
       template: '...',
+      standalone: false,
     })
     class CompB {
       @Input() inputB: string = '';
@@ -1425,7 +1529,11 @@ describe('TestBed', () => {
   });
 
   it('should throw errors in CD', () => {
-    @Component({selector: 'my-comp', template: ''})
+    @Component({
+      selector: 'my-comp',
+      template: '',
+      standalone: false,
+    })
     class MyComp {
       name!: {hello: string};
 
@@ -1447,7 +1555,11 @@ describe('TestBed', () => {
   // tests to fail. This is an issue in both View Engine and Ivy, and may require a breaking
   // change to completely fix (since simple re-throwing breaks handlers in ngrx, etc).
   xit('should throw errors in listeners', () => {
-    @Component({selector: 'my-comp', template: '<button (click)="onClick()">Click me</button>'})
+    @Component({
+      selector: 'my-comp',
+      template: '<button (click)="onClick()">Click me</button>',
+      standalone: false,
+    })
     class MyComp {
       name!: {hello: string};
 
@@ -1485,12 +1597,14 @@ describe('TestBed', () => {
     @Component({
       selector: 'inner',
       template: 'Inner',
+      standalone: false,
     })
     class Inner {}
 
     @Component({
       selector: 'outer',
       template: '<inner></inner>',
+      standalone: false,
     })
     class Outer {}
 
@@ -1502,6 +1616,7 @@ describe('TestBed', () => {
     @Component({
       template: '<outer></outer>',
       selector: 'fixture',
+      standalone: false,
     })
     class Fixture {}
 
@@ -1520,6 +1635,7 @@ describe('TestBed', () => {
   describe('checking types before compiling them', () => {
     @Directive({
       selector: 'my-dir',
+      standalone: false,
     })
     class MyDir {}
 
@@ -1549,8 +1665,7 @@ describe('TestBed', () => {
      * Function returns a class that represents AOT-compiled version of the following Component:
      *
      * @Component({
-     *  standalone: true,
-     *  imports: [...],
+     *       *  imports: [...],
      *  selector: '...',
      *  template: '...',
      * })
@@ -1567,7 +1682,6 @@ describe('TestBed', () => {
       class ComponentClass {
         static ɵfac = () => new ComponentClass();
         static ɵcmp = defineComponent({
-          standalone: true,
           type: ComponentClass,
           selectors: [[selector]],
           decls: 2,
@@ -1601,7 +1715,6 @@ describe('TestBed', () => {
                 args: [
                   {
                     selector,
-                    standalone: true,
                     imports: [...dependencies, ...deferrableSymbols],
                     template: `<div>root cmp!</div>`,
                   },
@@ -1618,7 +1731,6 @@ describe('TestBed', () => {
 
     it('should handle async metadata on root and nested components', async () => {
       @Component({
-        standalone: true,
         selector: 'cmp-a',
         template: 'CmpA!',
       })
@@ -1636,6 +1748,7 @@ describe('TestBed', () => {
         set: {template: `Override of a nested template! <cmp-a />`},
       });
 
+      // This is only required because the components are AOT compiled and thus include setClassMetadataAsync
       await TestBed.compileComponents();
 
       const fixture = TestBed.createComponent(RootAotComponent);
@@ -1664,7 +1777,6 @@ describe('TestBed', () => {
       class ThisModuleProvidesService {}
 
       @Component({
-        standalone: true,
         selector: 'child',
         imports: [ThisModuleProvidesService],
         template: '<h1>{{value}}</h1>',
@@ -1675,7 +1787,6 @@ describe('TestBed', () => {
       }
 
       @Component({
-        standalone: true,
         selector: 'parent',
         imports: [ChildCmp],
         template: `
@@ -1705,7 +1816,6 @@ describe('TestBed', () => {
                 args: [
                   {
                     selector: 'parent',
-                    standalone: true,
                     imports: [...deferrableSymbols],
                     template: `<div>root cmp!</div>`,
                   },
@@ -1720,11 +1830,12 @@ describe('TestBed', () => {
 
       // Set `PLATFORM_ID` to a browser platform value to trigger defer loading
       // while running tests in Node.
-      const COMMON_PROVIDERS = [{provide: PLATFORM_ID, useValue: PLATFORM_BROWSER_ID}];
+      const COMMON_PROVIDERS = [{provide: PLATFORM_ID, useValue: ɵPLATFORM_BROWSER_ID}];
 
       TestBed.configureTestingModule({imports: [ParentCmp], providers: [COMMON_PROVIDERS]});
       TestBed.overrideProvider(ImportantService, {useValue: {value: 'overridden'}});
 
+      // This is only required because the component has setClassMetadataAsync
       await TestBed.compileComponents();
 
       const fixture = TestBed.createComponent(ParentCmp);
@@ -1750,6 +1861,7 @@ describe('TestBed', () => {
         },
       });
 
+      // This is only required because the components are AOT compiled and thus include setClassMetadataAsync
       await TestBed.compileComponents();
 
       const fixture = TestBed.createComponent(RootAotComponent);
@@ -1827,6 +1939,7 @@ describe('TestBed', () => {
       @Directive({
         selector: '[dir]',
         providers: [{provide: A, useValue: 'A'}],
+        standalone: false,
       })
       class SomeDir {
         constructor(
@@ -1877,8 +1990,8 @@ describe('TestBed', () => {
 
       @Component({
         template: '<comp></comp>',
-
         selector: 'fixture',
+        standalone: false,
       })
       class TestFixture {}
 
@@ -1904,19 +2017,30 @@ describe('TestBed', () => {
 
   describe('resetting ng defs', () => {
     it('should restore ng defs to their initial states', () => {
-      @Pipe({name: 'somePipe', pure: true})
+      @Pipe({
+        name: 'somePipe',
+        pure: true,
+        standalone: false,
+      })
       class SomePipe {
         transform(value: string): string {
           return `transformed ${value}`;
         }
       }
 
-      @Directive({selector: 'someDirective'})
+      @Directive({
+        selector: 'someDirective',
+        standalone: false,
+      })
       class SomeDirective {
         someProp = 'hello';
       }
 
-      @Component({selector: 'comp', template: 'someText'})
+      @Component({
+        selector: 'comp',
+        template: 'someText',
+        standalone: false,
+      })
       class SomeComponent {}
 
       @NgModule({declarations: [SomeComponent]})
@@ -1962,17 +2086,27 @@ describe('TestBed', () => {
     });
 
     it('should cleanup ng defs for classes with no ng annotations (in case of inheritance)', () => {
-      @Component({selector: 'someDirective', template: '...'})
+      @Component({
+        selector: 'someDirective',
+        template: '...',
+        standalone: false,
+      })
       class SomeComponent {}
 
       class ComponentWithNoAnnotations extends SomeComponent {}
 
-      @Directive({selector: 'some-directive'})
+      @Directive({
+        selector: 'some-directive',
+        standalone: false,
+      })
       class SomeDirective {}
 
       class DirectiveWithNoAnnotations extends SomeDirective {}
 
-      @Pipe({name: 'some-pipe'})
+      @Pipe({
+        name: 'some-pipe',
+        standalone: false,
+      })
       class SomePipe {}
 
       class PipeWithNoAnnotations extends SomePipe {}
@@ -2012,12 +2146,14 @@ describe('TestBed', () => {
       @Component({
         selector: 'child',
         template: 'Child comp',
+        standalone: false,
       })
       class ChildCmp {}
 
       @Component({
         selector: 'root',
         template: '<child></child>',
+        standalone: false,
       })
       class RootCmp {}
 
@@ -2096,7 +2232,10 @@ describe('TestBed', () => {
         id: string | undefined;
       }
 
-      @Component({providers: [SomeInjectable]})
+      @Component({
+        providers: [SomeInjectable],
+        standalone: false,
+      })
       class ComponentWithProvider {
         constructor(readonly injectable: SomeInjectable) {}
       }
@@ -2133,7 +2272,10 @@ describe('TestBed', () => {
       value?: string;
     }
 
-    @Component({template: '{{injectedString.value}}'})
+    @Component({
+      template: '{{injectedString.value}}',
+      standalone: false,
+    })
     class AppComponent {
       constructor(public injectedString: InjectedString) {}
     }
@@ -2153,9 +2295,9 @@ describe('TestBed', () => {
       imports: [TestingModule],
       declarations: [AppComponent],
       providers: [{provide: InjectedString, useValue: {value: 'initial'}}],
-    }).compileComponents();
+    });
 
-    TestBed.overrideProvider(InjectedString, {useValue: {value: 'changed'}}).compileComponents();
+    TestBed.overrideProvider(InjectedString, {useValue: {value: 'changed'}});
 
     const fixture = TestBed.createComponent(AppComponent);
     fixture.detectChanges();
@@ -2166,12 +2308,8 @@ describe('TestBed', () => {
     describe('injection flags', () => {
       it('should be able to optionally inject a token', () => {
         const TOKEN = new InjectionToken<string>('TOKEN');
-
         expect(TestBed.inject(TOKEN, undefined, {optional: true})).toBeNull();
-        expect(TestBed.inject(TOKEN, undefined, InjectFlags.Optional)).toBeNull();
-
         expect(TestBed.inject(TOKEN, undefined, {optional: true})).toBeNull();
-        expect(TestBed.inject(TOKEN, undefined, InjectFlags.Optional)).toBeNull();
       });
 
       it('should include `null` into the result type when the optional flag is used', () => {
@@ -2194,11 +2332,7 @@ describe('TestBed', () => {
         });
 
         expect(TestBed.inject(TOKEN)).toBe('from TestBed');
-
         expect(TestBed.inject(TOKEN, undefined, {skipSelf: true, optional: true})).toBeNull();
-        expect(
-          TestBed.inject(TOKEN, undefined, InjectFlags.SkipSelf | InjectFlags.Optional),
-        ).toBeNull();
       });
     });
   });
@@ -2215,6 +2349,113 @@ describe('TestBed', () => {
     }
 
     expect(TestBed.runInInjectionContext(functionThatUsesInject)).toEqual(expectedValue);
+  });
+
+  describe('TestBed.tick', () => {
+    @Component({
+      template: '{{state()}}',
+    })
+    class Thing1 {
+      state = signal(1);
+    }
+
+    describe('with zone change detection', () => {
+      it('should update fixtures with autoDetect', () => {
+        TestBed.configureTestingModule({
+          providers: [
+            {provide: ComponentFixtureAutoDetect, useValue: true},
+            provideZoneChangeDetection(),
+          ],
+        });
+        const {nativeElement, componentInstance} = TestBed.createComponent(Thing1);
+        expect(nativeElement.textContent).toBe('1');
+
+        componentInstance.state.set(2);
+        TestBed.tick();
+        expect(nativeElement.textContent).toBe('2');
+      });
+
+      it('should update fixtures without autoDetect', () => {
+        const {nativeElement, componentInstance} = TestBed.createComponent(Thing1);
+        expect(nativeElement.textContent).toBe(''); // change detection didn't run yet
+
+        componentInstance.state.set(2);
+        TestBed.tick();
+        expect(nativeElement.textContent).toBe('2');
+      });
+    });
+
+    describe('with zoneless change detection', () => {
+      beforeEach(() => {
+        TestBed.configureTestingModule({
+          providers: [provideZonelessChangeDetection()],
+        });
+      });
+
+      it('should update fixtures with zoneless', async () => {
+        const fixture = TestBed.createComponent(Thing1);
+        await fixture.whenStable();
+
+        const {nativeElement, componentInstance} = fixture;
+        expect(nativeElement.textContent).toBe('1');
+
+        componentInstance.state.set(2);
+        TestBed.tick();
+        expect(nativeElement.textContent).toBe('2');
+      });
+    });
+  });
+
+  describe('inferTagName', () => {
+    it('should not infer the tag name of the root component by default', () => {
+      @Component({selector: 'my-test-comp[foo]', template: ''})
+      class TestComp {}
+
+      const fixture = TestBed.createComponent(TestComp);
+      expect(fixture.nativeElement.tagName).toBe('DIV');
+    });
+
+    it('should be able to opt into inferring the tag of the root component from the selector', () => {
+      @Component({selector: 'my-test-comp[foo]', template: ''})
+      class TestComp {}
+
+      const fixture = TestBed.createComponent(TestComp, {inferTagName: true});
+      expect(fixture.nativeElement.tagName).toBe('MY-TEST-COMP');
+    });
+
+    it('should fall back to `div` if the test component does not have a tag selector', () => {
+      @Component({selector: '[foo]', template: ''})
+      class TestComp {}
+
+      const fixture = TestBed.createComponent(TestComp, {inferTagName: true});
+      expect(fixture.nativeElement.tagName).toBe('DIV');
+    });
+
+    it('should fall back to `ng-component` if the test component does not have any selector', () => {
+      @Component({template: ''})
+      class TestComp {}
+
+      const fixture = TestBed.createComponent(TestComp, {inferTagName: true});
+      expect(fixture.nativeElement.tagName).toBe('NG-COMPONENT');
+    });
+
+    it('should be able to opt into inferring the tag name through configureTestingModule', () => {
+      @Component({selector: 'my-test-comp', template: ''})
+      class TestComp {}
+
+      TestBed.configureTestingModule({inferTagName: true});
+      const fixture = TestBed.createComponent(TestComp);
+      expect(fixture.nativeElement.tagName).toBe('MY-TEST-COMP');
+    });
+
+    it('should give precedence to inferTagName from createComponent over configureTestingModule', () => {
+      @Component({selector: 'my-test-comp', template: ''})
+      class TestComp {}
+
+      TestBed.configureTestingModule({inferTagName: false});
+      const fixture = TestBed.createComponent(TestComp);
+      expect(fixture.nativeElement.tagName).toBe('DIV');
+    });
   });
 });
 
@@ -2237,6 +2478,28 @@ describe('TestBed defer block behavior', () => {
     expect(TestBedImpl.INSTANCE.getDeferBlockBehavior()).toBe(DeferBlockBehavior.Manual);
     TestBed.resetTestingModule();
     expect(TestBedImpl.INSTANCE.getDeferBlockBehavior()).toBe(DeferBlockBehavior.Playthrough);
+  });
+});
+
+describe('TestBed animations behavior', () => {
+  beforeEach(() => {
+    TestBed.resetTestingModule();
+  });
+
+  it('should default animations behavior to disabled', () => {
+    expect(TestBedImpl.INSTANCE.getAnimationsEnabled()).toBe(false);
+  });
+
+  it('should be able to configure animations behavior', () => {
+    TestBed.configureTestingModule({animationsEnabled: true});
+    expect(TestBedImpl.INSTANCE.getAnimationsEnabled()).toBe(true);
+  });
+
+  it('should reset the animations behavior back to the default when TestBed is reset', () => {
+    TestBed.configureTestingModule({animationsEnabled: true});
+    expect(TestBedImpl.INSTANCE.getAnimationsEnabled()).toBe(true);
+    TestBed.resetTestingModule();
+    expect(TestBedImpl.INSTANCE.getAnimationsEnabled()).toBe(false);
   });
 });
 
@@ -2302,7 +2565,10 @@ describe('TestBed module teardown', () => {
   });
 
   it('should re-throw errors that were thrown during fixture cleanup', () => {
-    @Component({template: ''})
+    @Component({
+      template: '',
+      standalone: false,
+    })
     class ThrowsOnDestroy {
       ngOnDestroy() {
         throw Error('oh no');
@@ -2323,7 +2589,10 @@ describe('TestBed module teardown', () => {
   });
 
   it('should not interrupt fixture destruction if an error is thrown', () => {
-    @Component({template: ''})
+    @Component({
+      template: '',
+      standalone: false,
+    })
     class ThrowsOnDestroy {
       ngOnDestroy() {
         throw Error('oh no');
@@ -2354,7 +2623,10 @@ describe('TestBed module teardown', () => {
       }
     }
 
-    @Component({template: ''})
+    @Component({
+      template: '',
+      standalone: false,
+    })
     class App {
       constructor(_service: ThrowsOnDestroy) {}
     }
@@ -2377,7 +2649,10 @@ describe('TestBed module teardown', () => {
       }
     }
 
-    @Component({template: ''})
+    @Component({
+      template: '',
+      standalone: false,
+    })
     class App {
       constructor(_service: ThrowsOnDestroy) {}
     }
@@ -2398,12 +2673,14 @@ describe('TestBed module teardown', () => {
     @Component({
       template: '<span>Hello</span>',
       styles: [`span {color: hotpink;}`],
+      standalone: false,
     })
     class StyledComp1 {}
 
     @Component({
       template: '<div>Hello</div>',
       styles: [`div {color: red;}`],
+      standalone: false,
     })
     class StyledComp2 {}
 

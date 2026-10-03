@@ -3,10 +3,10 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 import {AbsoluteFsPath, PathManipulation} from '@angular/compiler-cli/private/localize';
-import {ɵParsedMessage, ɵSourceLocation} from '@angular/localize';
+import {ɵParsedMessage, ɵSourceLocation} from '../../../../index';
 import {TranslationSerializer} from './translation_serializer';
 import {consolidateMessages, hasLocation} from './utils';
 
@@ -15,7 +15,7 @@ import {consolidateMessages, hasLocation} from './utils';
  *
  * See https://github.com/google/app-resource-bundle/wiki/ApplicationResourceBundleSpecification
  *
- * ```
+ * ```json
  * {
  *   "@@locale": "en-US",
  *   "message-id": "Target message string",

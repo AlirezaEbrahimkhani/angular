@@ -3,10 +3,10 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {isTrustedTypesSink} from '@angular/compiler/src/schema/trusted_types_sinks';
+import {isTrustedTypesSink} from '../../src/schema/trusted_types_sinks';
 
 describe('isTrustedTypesSink', () => {
   it('should classify Trusted Types sinks', () => {

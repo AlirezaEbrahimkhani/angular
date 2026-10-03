@@ -3,11 +3,11 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {HostTree} from '@angular-devkit/schematics';
-import {UnitTestTree} from '@angular-devkit/schematics/testing';
+import {UnitTestTree} from '@angular-devkit/schematics/testing/index.js';
 
 import {getProjectTsConfigPaths} from '../utils/project_tsconfig_paths';
 

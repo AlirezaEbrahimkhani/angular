@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 import {setAngularJSGlobal} from '../../src/angular1';
 
@@ -78,7 +78,7 @@ export function createWithEachNg1VersionFn(setNg1: typeof setAngularJSGlobal) {
                       `\n[${new Date().toISOString()}] Retrying to load "${scriptUrl}" in ${delay}ms...`,
                     );
 
-                    document.body.removeChild(script);
+                    script.remove();
                     setTimeout(() => loadScript(scriptUrl, --retry).then(resolve, reject), delay);
                   }
                 : () => {
@@ -91,10 +91,10 @@ export function createWithEachNg1VersionFn(setNg1: typeof setAngularJSGlobal) {
                     reject(`An error occurred while loading "${scriptUrl}".`);
                   };
             script.onload = () => {
-              document.body.removeChild(script);
+              script.remove();
               resolve();
             };
-            script.src = `base/npm/node_modules/${scriptUrl}`;
+            script.src = `/node_modules/${scriptUrl}`;
             document.body.appendChild(script);
           });
         }
@@ -176,4 +176,5 @@ export function nodes(html: string) {
   return Array.prototype.slice.call(div.childNodes);
 }
 
-export const withEachNg1Version = createWithEachNg1VersionFn(setAngularJSGlobal);
+export const withEachNg1Version: (specSuite: () => void) => void =
+  createWithEachNg1VersionFn(setAngularJSGlobal);

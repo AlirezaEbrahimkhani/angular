@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {InjectionToken} from './injection_token';
@@ -16,5 +16,5 @@ export type InjectorScope = 'root' | 'platform' | 'environment';
  * they are provided in the root scope.
  */
 export const INJECTOR_SCOPE = new InjectionToken<InjectorScope | null>(
-  ngDevMode ? 'Set Injector scope.' : '',
+  typeof ngDevMode !== undefined && ngDevMode ? 'Set Injector scope.' : '',
 );

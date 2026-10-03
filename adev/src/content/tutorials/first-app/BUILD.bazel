@@ -1,10 +1,18 @@
-load("@npm//@angular/docs:index.bzl", "generate_guides", "generate_tutorial")
+load("//adev/shared-docs:index.bzl", "generate_guides", "generate_tutorial")
 
 package(default_visibility = ["//adev:__subpackages__"])
 
 generate_guides(
     name = "first-app-guides",
-    srcs = glob(["**/*.md"]),
+    srcs = glob(
+        [
+            "**/*.md",
+        ],
+        exclude = [
+            "**/node_modules/**/*.md",
+        ],
+    ),
+    api_manifest = "//adev/src/assets:docs_api_manifest",
     data = [
         ":files",
     ],

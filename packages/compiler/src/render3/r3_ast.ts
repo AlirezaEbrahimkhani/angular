@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {SecurityContext} from '../core';
@@ -133,7 +133,7 @@ export class BoundEvent implements Node {
     const target: string | null =
       event.type === ParsedEventType.Regular ? event.targetOrPhase : null;
     const phase: string | null =
-      event.type === ParsedEventType.Animation ? event.targetOrPhase : null;
+      event.type === ParsedEventType.LegacyAnimation ? event.targetOrPhase : null;
     if (event.keySpan === undefined) {
       throw new Error(
         `Unexpected state: keySpan must be defined for bound event but was not for ${event.name}: ${event.sourceSpan}`,
@@ -162,11 +162,14 @@ export class Element implements Node {
     public attributes: TextAttribute[],
     public inputs: BoundAttribute[],
     public outputs: BoundEvent[],
+    public directives: Directive[],
     public children: Node[],
     public references: Reference[],
+    public isSelfClosing: boolean,
     public sourceSpan: ParseSourceSpan,
     public startSourceSpan: ParseSourceSpan,
     public endSourceSpan: ParseSourceSpan | null,
+    readonly isVoid: boolean,
     public i18n?: I18nMeta,
   ) {}
   visit<Result>(visitor: Visitor<Result>): Result {
@@ -180,6 +183,7 @@ export abstract class DeferredTrigger implements Node {
     public sourceSpan: ParseSourceSpan,
     public prefetchSpan: ParseSourceSpan | null,
     public whenOrOnSourceSpan: ParseSourceSpan | null,
+    public hydrateSpan: ParseSourceSpan | null,
   ) {}
 
   visit<Result>(visitor: Visitor<Result>): Result {
@@ -193,12 +197,15 @@ export class BoundDeferredTrigger extends DeferredTrigger {
     sourceSpan: ParseSourceSpan,
     prefetchSpan: ParseSourceSpan | null,
     whenSourceSpan: ParseSourceSpan,
+    hydrateSpan: ParseSourceSpan | null,
   ) {
     // BoundDeferredTrigger is for 'when' triggers. These aren't really "triggers" and don't have a
     // nameSpan. Trigger names are the built in event triggers like hover, interaction, etc.
-    super(/** nameSpan */ null, sourceSpan, prefetchSpan, whenSourceSpan);
+    super(/** nameSpan */ null, sourceSpan, prefetchSpan, whenSourceSpan, hydrateSpan);
   }
 }
+
+export class NeverDeferredTrigger extends DeferredTrigger {}
 
 export class IdleDeferredTrigger extends DeferredTrigger {}
 
@@ -211,8 +218,9 @@ export class HoverDeferredTrigger extends DeferredTrigger {
     sourceSpan: ParseSourceSpan,
     prefetchSpan: ParseSourceSpan | null,
     onSourceSpan: ParseSourceSpan | null,
+    hydrateSpan: ParseSourceSpan | null,
   ) {
-    super(nameSpan, sourceSpan, prefetchSpan, onSourceSpan);
+    super(nameSpan, sourceSpan, prefetchSpan, onSourceSpan, hydrateSpan);
   }
 }
 
@@ -223,8 +231,9 @@ export class TimerDeferredTrigger extends DeferredTrigger {
     sourceSpan: ParseSourceSpan,
     prefetchSpan: ParseSourceSpan | null,
     onSourceSpan: ParseSourceSpan | null,
+    hydrateSpan: ParseSourceSpan | null,
   ) {
-    super(nameSpan, sourceSpan, prefetchSpan, onSourceSpan);
+    super(nameSpan, sourceSpan, prefetchSpan, onSourceSpan, hydrateSpan);
   }
 }
 
@@ -235,8 +244,9 @@ export class InteractionDeferredTrigger extends DeferredTrigger {
     sourceSpan: ParseSourceSpan,
     prefetchSpan: ParseSourceSpan | null,
     onSourceSpan: ParseSourceSpan | null,
+    hydrateSpan: ParseSourceSpan | null,
   ) {
-    super(nameSpan, sourceSpan, prefetchSpan, onSourceSpan);
+    super(nameSpan, sourceSpan, prefetchSpan, onSourceSpan, hydrateSpan);
   }
 }
 
@@ -247,8 +257,9 @@ export class ViewportDeferredTrigger extends DeferredTrigger {
     sourceSpan: ParseSourceSpan,
     prefetchSpan: ParseSourceSpan | null,
     onSourceSpan: ParseSourceSpan | null,
+    hydrateSpan: ParseSourceSpan | null,
   ) {
-    super(nameSpan, sourceSpan, prefetchSpan, onSourceSpan);
+    super(nameSpan, sourceSpan, prefetchSpan, onSourceSpan, hydrateSpan);
   }
 }
 
@@ -323,18 +334,22 @@ export interface DeferredBlockTriggers {
   timer?: TimerDeferredTrigger;
   interaction?: InteractionDeferredTrigger;
   viewport?: ViewportDeferredTrigger;
+  never?: NeverDeferredTrigger;
 }
 
 export class DeferredBlock extends BlockNode implements Node {
   readonly triggers: Readonly<DeferredBlockTriggers>;
   readonly prefetchTriggers: Readonly<DeferredBlockTriggers>;
+  readonly hydrateTriggers: Readonly<DeferredBlockTriggers>;
   private readonly definedTriggers: (keyof DeferredBlockTriggers)[];
   private readonly definedPrefetchTriggers: (keyof DeferredBlockTriggers)[];
+  private readonly definedHydrateTriggers: (keyof DeferredBlockTriggers)[];
 
   constructor(
     public children: Node[],
     triggers: DeferredBlockTriggers,
     prefetchTriggers: DeferredBlockTriggers,
+    hydrateTriggers: DeferredBlockTriggers,
     public placeholder: DeferredBlockPlaceholder | null,
     public loading: DeferredBlockLoading | null,
     public error: DeferredBlockError | null,
@@ -348,10 +363,12 @@ export class DeferredBlock extends BlockNode implements Node {
     super(nameSpan, sourceSpan, startSourceSpan, endSourceSpan);
     this.triggers = triggers;
     this.prefetchTriggers = prefetchTriggers;
+    this.hydrateTriggers = hydrateTriggers;
     // We cache the keys since we know that they won't change and we
     // don't want to enumarate them every time we're traversing the AST.
     this.definedTriggers = Object.keys(triggers) as (keyof DeferredBlockTriggers)[];
     this.definedPrefetchTriggers = Object.keys(prefetchTriggers) as (keyof DeferredBlockTriggers)[];
+    this.definedHydrateTriggers = Object.keys(hydrateTriggers) as (keyof DeferredBlockTriggers)[];
   }
 
   visit<Result>(visitor: Visitor<Result>): Result {
@@ -359,6 +376,8 @@ export class DeferredBlock extends BlockNode implements Node {
   }
 
   visitAll(visitor: Visitor<unknown>): void {
+    // Visit the hydrate triggers first to match their insertion order.
+    this.visitTriggers(this.definedHydrateTriggers, this.hydrateTriggers, visitor);
     this.visitTriggers(this.definedTriggers, this.triggers, visitor);
     this.visitTriggers(this.definedPrefetchTriggers, this.prefetchTriggers, visitor);
     visitAll(visitor, this.children);
@@ -522,6 +541,45 @@ export class LetDeclaration implements Node {
   }
 }
 
+export class Component implements Node {
+  constructor(
+    public componentName: string,
+    public tagName: string | null,
+    public fullName: string,
+    public attributes: TextAttribute[],
+    public inputs: BoundAttribute[],
+    public outputs: BoundEvent[],
+    public directives: Directive[],
+    public children: Node[],
+    public references: Reference[],
+    public isSelfClosing: boolean,
+    public sourceSpan: ParseSourceSpan,
+    public startSourceSpan: ParseSourceSpan,
+    public endSourceSpan: ParseSourceSpan | null,
+    public i18n?: I18nMeta,
+  ) {}
+  visit<Result>(visitor: Visitor<Result>): Result {
+    return visitor.visitComponent(this);
+  }
+}
+
+export class Directive implements Node {
+  constructor(
+    public name: string,
+    public attributes: TextAttribute[],
+    public inputs: BoundAttribute[],
+    public outputs: BoundEvent[],
+    public references: Reference[],
+    public sourceSpan: ParseSourceSpan,
+    public startSourceSpan: ParseSourceSpan,
+    public endSourceSpan: ParseSourceSpan | null,
+    public i18n?: I18nMeta,
+  ) {}
+  visit<Result>(visitor: Visitor<Result>): Result {
+    return visitor.visitDirective(this);
+  }
+}
+
 export class Template implements Node {
   constructor(
     // tagName is the name of the container element, if applicable.
@@ -532,10 +590,12 @@ export class Template implements Node {
     public attributes: TextAttribute[],
     public inputs: BoundAttribute[],
     public outputs: BoundEvent[],
+    public directives: Directive[],
     public templateAttrs: (BoundAttribute | TextAttribute)[],
     public children: Node[],
     public references: Reference[],
     public variables: Variable[],
+    public isSelfClosing: boolean,
     public sourceSpan: ParseSourceSpan,
     public startSourceSpan: ParseSourceSpan,
     public endSourceSpan: ParseSourceSpan | null,
@@ -553,7 +613,10 @@ export class Content implements Node {
     public selector: string,
     public attributes: TextAttribute[],
     public children: Node[],
+    public isSelfClosing: boolean,
     public sourceSpan: ParseSourceSpan,
+    public startSourceSpan: ParseSourceSpan,
+    public endSourceSpan: ParseSourceSpan | null,
     public i18n?: I18nMeta,
   ) {}
   visit<Result>(visitor: Visitor<Result>): Result {
@@ -599,6 +662,27 @@ export class Icu implements Node {
   }
 }
 
+/**
+ * AST node that represents the host element of a directive.
+ * This node is used only for type checking purposes and cannot be produced from a user's template.
+ */
+export class HostElement implements Node {
+  constructor(
+    readonly tagNames: string[],
+    readonly bindings: BoundAttribute[],
+    readonly listeners: BoundEvent[],
+    readonly sourceSpan: ParseSourceSpan,
+  ) {
+    if (tagNames.length === 0) {
+      throw new Error('HostElement must have at least one tag name.');
+    }
+  }
+
+  visit<Result>(): Result {
+    throw new Error(`HostElement cannot be visited`);
+  }
+}
+
 export interface Visitor<Result = any> {
   // Returning a truthy value from `visit()` will prevent `visitAll()` from the call to the typed
   // method and result returned will become the result included in `visitAll()`s result array.
@@ -628,6 +712,8 @@ export interface Visitor<Result = any> {
   visitIfBlockBranch(block: IfBlockBranch): Result;
   visitUnknownBlock(block: UnknownBlock): Result;
   visitLetDeclaration(decl: LetDeclaration): Result;
+  visitComponent(component: Component): Result;
+  visitDirective(directive: Directive): Result;
 }
 
 export class RecursiveVisitor implements Visitor<void> {
@@ -635,6 +721,7 @@ export class RecursiveVisitor implements Visitor<void> {
     visitAll(this, element.attributes);
     visitAll(this, element.inputs);
     visitAll(this, element.outputs);
+    visitAll(this, element.directives);
     visitAll(this, element.children);
     visitAll(this, element.references);
   }
@@ -642,6 +729,7 @@ export class RecursiveVisitor implements Visitor<void> {
     visitAll(this, template.attributes);
     visitAll(this, template.inputs);
     visitAll(this, template.outputs);
+    visitAll(this, template.directives);
     visitAll(this, template.children);
     visitAll(this, template.references);
     visitAll(this, template.variables);
@@ -683,6 +771,20 @@ export class RecursiveVisitor implements Visitor<void> {
   visitContent(content: Content): void {
     visitAll(this, content.children);
   }
+  visitComponent(component: Component): void {
+    visitAll(this, component.attributes);
+    visitAll(this, component.inputs);
+    visitAll(this, component.outputs);
+    visitAll(this, component.directives);
+    visitAll(this, component.children);
+    visitAll(this, component.references);
+  }
+  visitDirective(directive: Directive): void {
+    visitAll(this, directive.attributes);
+    visitAll(this, directive.inputs);
+    visitAll(this, directive.outputs);
+    visitAll(this, directive.references);
+  }
   visitVariable(variable: Variable): void {}
   visitReference(reference: Reference): void {}
   visitTextAttribute(attribute: TextAttribute): void {}
@@ -700,7 +802,7 @@ export function visitAll<Result>(visitor: Visitor<Result>, nodes: Node[]): Resul
   const result: Result[] = [];
   if (visitor.visit) {
     for (const node of nodes) {
-      visitor.visit(node) || node.visit(visitor);
+      visitor.visit(node);
     }
   } else {
     for (const node of nodes) {

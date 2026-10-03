@@ -1,8 +1,7 @@
-import {Component} from '@angular/core';
+import {Component, inject} from '@angular/core';
 import {SwUpdate} from '@angular/service-worker';
 
 @Component({
-  standalone: true,
   selector: 'app-root',
   templateUrl: './app.component.html',
 })
@@ -10,7 +9,7 @@ export class AppComponent {
   title = 'Service Workers';
   updateCheckText = '';
 
-  constructor(private update: SwUpdate) {}
+  private update = inject(SwUpdate);
 
   updateCheck(): void {
     this.update

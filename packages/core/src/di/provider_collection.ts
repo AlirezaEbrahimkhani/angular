@@ -3,14 +3,14 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {RuntimeError, RuntimeErrorCode} from '../errors';
 import {Type} from '../interface/type';
-import {getComponentDef} from '../render3/definition';
+import {getComponentDef} from '../render3/def_getters';
 import {getFactoryDef} from '../render3/definition_factory';
-import {throwCyclicDependencyError, throwInvalidProviderError} from '../render3/errors_di';
+import {cyclicDependencyErrorWithDetails, throwInvalidProviderError} from '../render3/errors_di';
 import {stringifyForError} from '../render3/util/stringify_utils';
 import {deepForEach} from '../util/array_utils';
 import {EMPTY_ARRAY} from '../util/empty';
@@ -27,7 +27,6 @@ import {
   EnvironmentProviders,
   ExistingProvider,
   FactoryProvider,
-  ImportedNgModuleProviders,
   InternalEnvironmentProviders,
   isEnvironmentProviders,
   ModuleWithProviders,
@@ -41,6 +40,8 @@ import {INJECTOR_DEF_TYPES} from './internal_tokens';
 /**
  * Wrap an array of `Provider`s into `EnvironmentProviders`, preventing them from being accidentally
  * referenced in `@Component` in a component injector.
+ *
+ * @publicApi
  */
 export function makeEnvironmentProviders(
   providers: (Provider | EnvironmentProviders)[],
@@ -48,6 +49,43 @@ export function makeEnvironmentProviders(
   return {
     ɵproviders: providers,
   } as unknown as EnvironmentProviders;
+}
+
+/**
+ * @description
+ * This function is used to provide initialization functions that will be executed upon construction
+ * of an environment injector.
+ *
+ * Note that the provided initializer is run in the injection context.
+ *
+ * Previously, this was achieved using the `ENVIRONMENT_INITIALIZER` token which is now deprecated.
+ *
+ * @see {@link ENVIRONMENT_INITIALIZER}
+ *
+ * @usageNotes
+ * The following example illustrates how to configure an initialization function using
+ * `provideEnvironmentInitializer()`
+ * ```ts
+ * createEnvironmentInjector(
+ *   [
+ *     provideEnvironmentInitializer(() => {
+ *       console.log('environment initialized');
+ *     }),
+ *   ],
+ *   parentInjector
+ * );
+ * ```
+ *
+ * @publicApi
+ */
+export function provideEnvironmentInitializer(initializerFn: () => void): EnvironmentProviders {
+  return makeEnvironmentProviders([
+    {
+      provide: ENVIRONMENT_INITIALIZER,
+      multi: true,
+      useValue: initializerFn,
+    },
+  ]);
 }
 
 /**
@@ -79,7 +117,7 @@ type WalkProviderTreeVisitor = (
  * @usageNotes
  * The results of the `importProvidersFrom` call can be used in the `bootstrapApplication` call:
  *
- * ```typescript
+ * ```ts
  * await bootstrapApplication(RootComponent, {
  *   providers: [
  *     importProvidersFrom(NgModuleOne, NgModuleTwo)
@@ -90,7 +128,7 @@ type WalkProviderTreeVisitor = (
  * You can also use the `importProvidersFrom` results in the `providers` field of a route, when a
  * standalone component is used:
  *
- * ```typescript
+ * ```ts
  * export const ROUTES: Route[] = [
  *   {
  *     path: 'foo',
@@ -232,8 +270,8 @@ export function walkProviderTree(
   // Check for circular dependencies.
   if (ngDevMode && parents.indexOf(defType) !== -1) {
     const defName = stringify(defType);
-    const path = parents.map(stringify);
-    throwCyclicDependencyError(defName, path);
+    const path = parents.map(stringify).concat(defName);
+    throw cyclicDependencyErrorWithDetails(defName, path);
   }
 
   // Check for multiple imports of the same module
@@ -365,7 +403,7 @@ function deepForEachProvider(
   }
 }
 
-export const USE_VALUE = getClosureSafeProperty<ValueProvider>({
+export const USE_VALUE: string = getClosureSafeProperty<ValueProvider>({
   provide: String,
   useValue: getClosureSafeProperty,
 });

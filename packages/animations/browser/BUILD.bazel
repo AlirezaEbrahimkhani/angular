@@ -1,10 +1,10 @@
-load("//tools:defaults.bzl", "generate_api_docs", "ng_module")
+load("//tools:defaults.bzl", "generate_api_docs", "ng_project")
 
 package(default_visibility = ["//visibility:public"])
 
 exports_files(["package.json"])
 
-ng_module(
+ng_project(
     name = "browser",
     srcs = glob(
         [
@@ -30,7 +30,6 @@ generate_api_docs(
     name = "animations_browser_docs",
     srcs = [
         ":files_for_docgen",
-        "//packages:common_files_and_deps_for_docs",
         "//packages/animations:files_for_docgen",
     ],
     entry_point = ":index.ts",

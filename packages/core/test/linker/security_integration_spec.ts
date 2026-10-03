@@ -3,19 +3,26 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {Component, Directive, HostBinding, Input, NO_ERRORS_SCHEMA} from '@angular/core';
-import {ComponentFixture, getTestBed, TestBed} from '@angular/core/testing';
-import {DomSanitizer} from '@angular/platform-browser/src/security/dom_sanitization_service';
+import {Component, Directive, HostBinding, Input, NO_ERRORS_SCHEMA} from '../../src/core';
+import {ComponentFixture, getTestBed, TestBed} from '../../testing';
+import {DomSanitizer} from '@angular/platform-browser';
 
-@Component({selector: 'my-comp', template: ''})
+@Component({
+  selector: 'my-comp',
+  template: '',
+  standalone: false,
+})
 class SecuredComponent {
   ctxProp: any = 'some value';
 }
 
-@Directive({selector: '[onPrefixedProp]'})
+@Directive({
+  selector: '[onPrefixedProp]',
+  standalone: false,
+})
 class OnPrefixDir {
   @Input() onPrefixedProp: any;
   @Input() onclick: any;
@@ -89,7 +96,7 @@ describe('security integration tests', function () {
       const template = `<a [href]="ctxProp">Link Title</a>`;
       TestBed.overrideComponent(SecuredComponent, {set: {template}});
       const fixture = TestBed.createComponent(SecuredComponent);
-      const sanitizer: DomSanitizer = getTestBed().get(DomSanitizer);
+      const sanitizer = getTestBed().inject(DomSanitizer);
 
       const e = fixture.debugElement.children[0].nativeElement;
       const ci = fixture.componentInstance;
@@ -103,7 +110,7 @@ describe('security integration tests', function () {
       const template = `<a [href]="ctxProp">Link Title</a>`;
       TestBed.overrideComponent(SecuredComponent, {set: {template}});
       const fixture = TestBed.createComponent(SecuredComponent);
-      const sanitizer: DomSanitizer = getTestBed().get(DomSanitizer);
+      const sanitizer = getTestBed().inject(DomSanitizer);
 
       const trusted = sanitizer.bypassSecurityTrustScript('javascript:alert(1)');
       const ci = fixture.componentInstance;
@@ -115,7 +122,7 @@ describe('security integration tests', function () {
       const template = `<a href="/foo/{{ctxProp}}">Link Title</a>`;
       TestBed.overrideComponent(SecuredComponent, {set: {template}});
       const fixture = TestBed.createComponent(SecuredComponent);
-      const sanitizer: DomSanitizer = getTestBed().get(DomSanitizer);
+      const sanitizer: DomSanitizer = getTestBed().inject(DomSanitizer);
 
       const e = fixture.debugElement.children[0].nativeElement;
       const trusted = sanitizer.bypassSecurityTrustUrl('bar/baz');
@@ -131,10 +138,12 @@ describe('security integration tests', function () {
       const e = fixture.debugElement.children[0].nativeElement;
       const ci = fixture.componentInstance;
       ci.ctxProp = 'hello';
+      fixture.changeDetectorRef.markForCheck();
       fixture.detectChanges();
       expect(e.getAttribute('href')).toMatch(/.*\/?hello$/);
 
       ci.ctxProp = 'javascript:alert(1)';
+      fixture.changeDetectorRef.markForCheck();
       fixture.detectChanges();
       expect(e.getAttribute('href')).toEqual('unsafe:javascript:alert(1)');
     }
@@ -156,7 +165,10 @@ describe('security integration tests', function () {
     });
 
     it('should escape unsafe properties if they are used in host bindings', () => {
-      @Directive({selector: '[dirHref]'})
+      @Directive({
+        selector: '[dirHref]',
+        standalone: false,
+      })
       class HrefDirective {
         @HostBinding('href') @Input() dirHref: string | undefined;
       }
@@ -170,7 +182,10 @@ describe('security integration tests', function () {
     });
 
     it('should escape unsafe attributes if they are used in host bindings', () => {
-      @Directive({selector: '[dirHref]'})
+      @Directive({
+        selector: '[dirHref]',
+        standalone: false,
+      })
       class HrefDirective {
         @HostBinding('attr.href') @Input() dirHref: string | undefined;
       }
@@ -202,18 +217,22 @@ describe('security integration tests', function () {
       const ci = fixture.componentInstance;
       // Make sure binding harmless values works.
       ci.ctxProp = 'some <p>text</p>';
+      fixture.changeDetectorRef.markForCheck();
       fixture.detectChanges();
       expect(e.innerHTML).toEqual('some <p>text</p>');
 
       ci.ctxProp = 'ha <script>evil()</script>';
+      fixture.changeDetectorRef.markForCheck();
       fixture.detectChanges();
       expect(e.innerHTML).toEqual('ha ');
 
       ci.ctxProp = 'also <img src="x" onerror="evil()"> evil';
+      fixture.changeDetectorRef.markForCheck();
       fixture.detectChanges();
       expect(e.innerHTML).toEqual('also <img src="x"> evil');
 
       ci.ctxProp = 'also <iframe srcdoc="evil"></iframe> evil';
+      fixture.changeDetectorRef.markForCheck();
       fixture.detectChanges();
       expect(e.innerHTML).toEqual('also  evil');
     });

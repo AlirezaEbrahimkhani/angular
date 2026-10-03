@@ -3,21 +3,24 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {Component, inject, signal, provideExperimentalZonelessChangeDetection} from '@angular/core';
+import {Component, inject, signal, provideZonelessChangeDetection} from '@angular/core';
 import {ComponentFixture, TestBed} from '@angular/core/testing';
 import {By} from '@angular/platform-browser';
-import {Router, RouterLink, RouterModule, provideRouter} from '@angular/router';
+import {Router, RouterLink, RouterModule, provideRouter} from '../index';
 
 describe('RouterLink', () => {
   beforeEach(() => {
-    TestBed.configureTestingModule({providers: [provideExperimentalZonelessChangeDetection()]});
+    TestBed.configureTestingModule({providers: [provideZonelessChangeDetection()]});
   });
 
   it('does not modify tabindex if already set on non-anchor element', async () => {
-    @Component({template: `<div [routerLink]="link" tabindex="1"></div>`})
+    @Component({
+      template: `<div [routerLink]="link" tabindex="1"></div>`,
+      standalone: false,
+    })
     class LinkComponent {
       link: string | null | undefined = '/';
     }
@@ -44,6 +47,7 @@ describe('RouterLink', () => {
           [skipLocationChange]="skipLocationChange()"
           [replaceUrl]="replaceUrl()"></div>
       `,
+      standalone: false,
     })
     class LinkComponent {
       link = signal<string | null | undefined>('/');
@@ -124,6 +128,7 @@ describe('RouterLink', () => {
             [skipLocationChange]="skipLocationChange()"
             [replaceUrl]="replaceUrl()"></a>
         `,
+        standalone: false,
       })
       class LinkComponent {
         link = signal<string | null | undefined>('/');
@@ -184,7 +189,10 @@ describe('RouterLink', () => {
     });
 
     it('should handle routerLink in svg templates', async () => {
-      @Component({template: `<svg><a routerLink="test"></a></svg>`})
+      @Component({
+        template: `<svg><a routerLink="test"></a></svg>`,
+        standalone: false,
+      })
       class LinkComponent {}
 
       TestBed.configureTestingModule({
@@ -199,9 +207,88 @@ describe('RouterLink', () => {
     });
   });
 
+  // Avoid executing in node environment because customElements is not defined.
+  if (typeof customElements === 'object') {
+    describe('on a custom element anchor', () => {
+      /** Simple anchor element imitation. */
+      class CustomAnchor extends HTMLElement {
+        static get observedAttributes(): string[] {
+          return ['href'];
+        }
+
+        get href(): string {
+          return this.getAttribute('href') ?? '';
+        }
+        set href(value: string) {
+          this.setAttribute('href', value);
+        }
+
+        constructor() {
+          super();
+          const shadow = this.attachShadow({mode: 'open'});
+          shadow.innerHTML = '<a><slot></slot></a>';
+        }
+
+        attributedChangedCallback(name: string, _oldValue: string | null, newValue: string | null) {
+          if (name === 'href') {
+            const anchor = this.shadowRoot!.querySelector('a')!;
+            if (newValue === null) {
+              anchor.removeAttribute('href');
+            } else {
+              anchor.setAttribute('href', newValue);
+            }
+          }
+        }
+      }
+
+      if (!customElements.get('custom-anchor')) {
+        customElements.define('custom-anchor', CustomAnchor);
+      }
+
+      @Component({
+        template: `
+          <custom-anchor [routerLink]="link()"></custom-anchor>
+        `,
+        standalone: false,
+      })
+      class LinkComponent {
+        link = signal<string | null | undefined>('/');
+      }
+      let fixture: ComponentFixture<LinkComponent>;
+      let link: HTMLAnchorElement;
+
+      beforeEach(async () => {
+        TestBed.configureTestingModule({
+          imports: [RouterModule.forRoot([])],
+          declarations: [LinkComponent],
+        });
+        fixture = TestBed.createComponent(LinkComponent);
+        await fixture.whenStable();
+        link = fixture.debugElement.query(By.css('custom-anchor')).nativeElement;
+      });
+
+      it('does not touch tabindex', async () => {
+        expect(link.outerHTML).not.toContain('tabindex');
+      });
+
+      it('null, removes href', async () => {
+        expect(link.outerHTML).toContain('href');
+        fixture.componentInstance.link.set(null);
+        await fixture.whenStable();
+        expect(link.outerHTML).not.toContain('href');
+      });
+
+      it('undefined, removes href', async () => {
+        expect(link.outerHTML).toContain('href');
+        fixture.componentInstance.link.set(undefined);
+        await fixture.whenStable();
+        expect(link.outerHTML).not.toContain('href');
+      });
+    });
+  }
+
   it('can use a UrlTree as the input', async () => {
     @Component({
-      standalone: true,
       template: '<a [routerLink]="urlTree">link</a>',
       imports: [RouterLink],
     })
@@ -215,9 +302,8 @@ describe('RouterLink', () => {
     expect(fixture.nativeElement.innerHTML).toContain('href="/a/b/c"');
   });
 
-  it('cannnot use a UrlTree with queryParams', () => {
+  it('cannot use a UrlTree with queryParams', () => {
     @Component({
-      standalone: true,
       template: '<a [routerLink]="urlTree" [queryParams]="{}">link</a>',
       imports: [RouterLink],
     })

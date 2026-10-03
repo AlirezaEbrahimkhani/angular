@@ -3,11 +3,11 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {computed, signal} from '@angular/core';
-import {createWatch} from '@angular/core/primitives/signals';
+import {computed, signal} from '../../src/core';
+import {createWatch} from '../../primitives/signals';
 
 import {flushEffects, resetEffects, testingEffect} from './effect_util';
 

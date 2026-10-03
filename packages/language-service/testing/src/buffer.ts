@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import ts from 'typescript';
@@ -70,6 +70,17 @@ export class OpenBuffer {
    */
   getDefinitionAndBoundSpan(): ts.DefinitionInfoAndBoundSpan | undefined {
     return this.ngLS.getDefinitionAndBoundSpan(this.scriptInfo.fileName, this._cursor);
+  }
+
+  getEncodedSemanticClassifications(
+    span?: ts.TextSpan,
+    format?: ts.SemanticClassificationFormat,
+  ): ts.Classifications {
+    return this.ngLS.getEncodedSemanticClassifications(
+      this.scriptInfo.fileName,
+      span ?? {start: 0, length: this.scriptInfo.getSnapshot().getLength()},
+      format ?? ts.SemanticClassificationFormat.TwentyTwenty,
+    );
   }
 
   getCompletionsAtPosition(

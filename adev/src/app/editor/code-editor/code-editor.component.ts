@@ -6,29 +6,37 @@
  * found in the LICENSE file at https://angular.dev/license
  */
 
-import {NgFor, NgIf} from '@angular/common';
+import {Location} from '@angular/common';
 import {
-  AfterViewInit,
   ChangeDetectionStrategy,
   Component,
   DestroyRef,
   ElementRef,
-  OnDestroy,
-  ViewChild,
+  EnvironmentInjector,
+  afterRenderEffect,
+  effect,
   inject,
+  input,
   signal,
+  untracked,
+  viewChild,
 } from '@angular/core';
 import {takeUntilDestroyed} from '@angular/core/rxjs-interop';
 import {MatTabGroup, MatTabsModule} from '@angular/material/tabs';
-import {debounceTime, map} from 'rxjs';
+import {Title} from '@angular/platform-browser';
+import {debounceTime, from, map, switchMap} from 'rxjs';
 
 import {TerminalType} from '../terminal/terminal-handler.service';
-import {EmbeddedTutorialManager} from '../embedded-tutorial-manager.service';
 
 import {CodeMirrorEditor} from './code-mirror-editor.service';
 import {DiagnosticWithLocation, DiagnosticsState} from './services/diagnostics-state.service';
 import {DownloadManager} from '../download-manager.service';
+import {StackBlitzOpener} from '../stackblitz-opener.service';
 import {ClickOutside, IconComponent} from '@angular/docs';
+import {CdkMenu, CdkMenuItem, CdkMenuTrigger} from '@angular/cdk/menu';
+import {FirebaseStudioLauncher} from '../firebase-studio-launcher.service';
+import {MatTooltip} from '@angular/material/tooltip';
+import {injectEmbeddedTutorialManager} from '../inject-embedded-tutorial-manager';
 
 export const REQUIRED_FILES = new Set([
   'src/main.ts',
@@ -36,44 +44,43 @@ export const REQUIRED_FILES = new Set([
   'src/app/app.component.ts',
 ]);
 
+const ANGULAR_DEV = 'https://angular.dev';
+
 @Component({
   selector: 'docs-tutorial-code-editor',
-  standalone: true,
   templateUrl: './code-editor.component.html',
   styleUrls: ['./code-editor.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [NgIf, NgFor, MatTabsModule, IconComponent, ClickOutside],
+  imports: [
+    MatTabsModule,
+    MatTooltip,
+    IconComponent,
+    ClickOutside,
+    CdkMenu,
+    CdkMenuItem,
+    CdkMenuTrigger,
+  ],
 })
-export class CodeEditor implements AfterViewInit, OnDestroy {
-  @ViewChild('codeEditorWrapper') private codeEditorWrapperRef!: ElementRef<HTMLDivElement>;
-  @ViewChild(MatTabGroup) private matTabGroup!: MatTabGroup;
+export class CodeEditor {
+  readonly restrictedMode = input(false);
+  readonly codeEditorWrapperRef =
+    viewChild.required<ElementRef<HTMLDivElement>>('codeEditorWrapper');
+  readonly matTabGroup = viewChild.required(MatTabGroup);
 
-  private createFileInputRef?: ElementRef<HTMLInputElement>;
-  @ViewChild('createFileInput') protected set setFileInputRef(
-    element: ElementRef<HTMLInputElement>,
-  ) {
-    if (element) {
-      element.nativeElement.focus();
-      this.createFileInputRef = element;
-    }
-  }
+  readonly createFileInputRef = viewChild<ElementRef<HTMLInputElement>>('createFileInput');
 
-  private renameFileInputRef?: ElementRef<HTMLInputElement>;
-  @ViewChild('renameFileInput') protected set setRenameFileInputRef(
-    element: ElementRef<HTMLInputElement>,
-  ) {
-    if (element) {
-      element.nativeElement.focus();
-      this.renameFileInputRef = element;
-    }
-  }
+  readonly renameFileInputRef = viewChild<ElementRef<HTMLInputElement>>('renameFileInput');
 
   private readonly destroyRef = inject(DestroyRef);
 
   private readonly codeMirrorEditor = inject(CodeMirrorEditor);
   private readonly diagnosticsState = inject(DiagnosticsState);
   private readonly downloadManager = inject(DownloadManager);
-  private readonly embeddedTutorialManager = inject(EmbeddedTutorialManager);
+  private readonly stackblitzOpener = inject(StackBlitzOpener);
+  private readonly firebaseStudioLauncher = inject(FirebaseStudioLauncher);
+  private readonly title = inject(Title);
+  private readonly location = inject(Location);
+  private readonly environmentInjector = inject(EnvironmentInjector);
 
   private readonly errors$ = this.diagnosticsState.diagnostics$.pipe(
     // Display errors one second after code update
@@ -92,63 +99,95 @@ export class CodeEditor implements AfterViewInit, OnDestroy {
 
   readonly TerminalType = TerminalType;
 
-  readonly displayErrorsBox = signal<boolean>(false);
-  readonly errors = signal<DiagnosticWithLocation[]>([]);
-  readonly files = this.codeMirrorEditor.openFiles;
-  readonly isCreatingFile = signal<boolean>(false);
-  readonly isRenamingFile = signal<boolean>(false);
+  protected readonly displayErrorsBox = signal<boolean>(false);
+  protected readonly errors = signal<DiagnosticWithLocation[]>([]);
+  protected readonly files = this.codeMirrorEditor.openFiles;
+  protected readonly isCreatingFile = signal<boolean>(false);
+  protected readonly isRenamingFile = signal<boolean>(false);
 
-  ngAfterViewInit() {
-    this.codeMirrorEditor.init(this.codeEditorWrapperRef.nativeElement);
-    this.listenToDiagnosticsChange();
+  constructor() {
+    afterRenderEffect(() => {
+      const createFileInput = this.createFileInputRef();
+      createFileInput?.nativeElement.focus();
+    });
 
-    this.listenToTabChange();
-    this.setSelectedTabOnTutorialChange();
+    afterRenderEffect(() => {
+      const renameFileInput = this.renameFileInputRef();
+      renameFileInput?.nativeElement.focus();
+    });
+
+    effect((cleanupFn) => {
+      const parent = this.codeEditorWrapperRef().nativeElement;
+
+      untracked(() => {
+        this.codeMirrorEditor.init(parent);
+        this.listenToDiagnosticsChange();
+
+        this.listenToTabChange();
+        this.setSelectedTabOnTutorialChange();
+      });
+
+      cleanupFn(() => this.codeMirrorEditor.disable());
+    });
   }
 
-  ngOnDestroy(): void {
-    this.codeMirrorEditor.disable();
+  protected openCurrentSolutionInFirebaseStudio(): void {
+    this.firebaseStudioLauncher.openCurrentSolutionInFirebaseStudio();
   }
 
-  async downloadCurrentCodeEditorState(): Promise<void> {
-    const name = this.embeddedTutorialManager.tutorialId();
+  protected async openCurrentCodeInStackBlitz(): Promise<void> {
+    const title = this.title.getTitle();
+
+    const path = this.location.path();
+    const editorUrl = `${ANGULAR_DEV}${path}`;
+    const description = `Angular.dev example generated from [${editorUrl}](${editorUrl})`;
+
+    await this.stackblitzOpener.openCurrentSolutionInStackBlitz({title, description});
+  }
+
+  protected async downloadCurrentCodeEditorState(): Promise<void> {
+    const embeddedTutorialManager = await injectEmbeddedTutorialManager(this.environmentInjector);
+    const name = embeddedTutorialManager.tutorialId();
     await this.downloadManager.downloadCurrentStateOfTheSolution(name);
   }
 
-  closeErrorsBox(): void {
+  protected closeErrorsBox(): void {
     this.displayErrorsBox.set(false);
   }
 
-  closeRenameFile(): void {
+  protected closeRenameFile(): void {
     this.isRenamingFile.set(false);
   }
 
-  canRenameFile = (filename: string) => this.canDeleteFile(filename);
+  protected canRenameFile = (filename: string) => this.canDeleteFile(filename);
 
-  canDeleteFile(filename: string) {
-    return !REQUIRED_FILES.has(filename);
+  protected canDeleteFile(filename: string) {
+    return !REQUIRED_FILES.has(filename) && !this.restrictedMode();
   }
 
-  async deleteFile(filename: string) {
+  protected canCreateFile = () => !this.restrictedMode();
+
+  protected async deleteFile(filename: string) {
     await this.codeMirrorEditor.deleteFile(filename);
-    this.matTabGroup.selectedIndex = 0;
+    this.matTabGroup().selectedIndex = 0;
   }
 
-  onAddButtonClick() {
+  protected onAddButtonClick() {
     this.isCreatingFile.set(true);
-    this.matTabGroup.selectedIndex = this.files().length;
+    this.matTabGroup().selectedIndex = this.files().length;
   }
 
-  onRenameButtonClick() {
+  protected onRenameButtonClick() {
     this.isRenamingFile.set(true);
   }
 
-  async renameFile(event: SubmitEvent, oldPath: string) {
-    if (!this.renameFileInputRef) return;
+  protected async renameFile(event: SubmitEvent, oldPath: string) {
+    const renameFileInput = this.renameFileInputRef();
+    if (!renameFileInput) return;
 
     event.preventDefault();
 
-    const renameFileInputValue = this.renameFileInputRef.nativeElement.value;
+    const renameFileInputValue = renameFileInput.nativeElement.value;
 
     if (renameFileInputValue) {
       if (renameFileInputValue.includes('..')) {
@@ -170,12 +209,13 @@ export class CodeEditor implements AfterViewInit, OnDestroy {
     this.isRenamingFile.set(false);
   }
 
-  async createFile(event: SubmitEvent) {
-    if (!this.createFileInputRef) return;
+  protected async createFile(event: SubmitEvent) {
+    const fileInput = this.createFileInputRef();
+    if (!fileInput) return;
 
     event.preventDefault();
 
-    const newFileInputValue = this.createFileInputRef.nativeElement.value;
+    const newFileInputValue = fileInput.nativeElement.value;
 
     if (newFileInputValue) {
       if (newFileInputValue.includes('..')) {
@@ -205,17 +245,23 @@ export class CodeEditor implements AfterViewInit, OnDestroy {
   }
 
   private setSelectedTabOnTutorialChange() {
-    this.embeddedTutorialManager.tutorialChanged$
-      .pipe(takeUntilDestroyed(this.destroyRef))
+    // Using `from` to prevent injecting the embedded tutorial manager once the
+    // injector is destroyed (this may happen in unit tests when the test ends
+    // before `injectAsync` runs, causing an error).
+    from(injectEmbeddedTutorialManager(this.environmentInjector))
+      .pipe(
+        switchMap((embeddedTutorialManager) => embeddedTutorialManager.tutorialChanged$),
+        takeUntilDestroyed(this.destroyRef),
+      )
       .subscribe(() => {
         // selected file on project change is always the first
-        this.matTabGroup.selectedIndex = 0;
+        this.matTabGroup().selectedIndex = 0;
       });
   }
 
   private listenToTabChange() {
-    this.matTabGroup.selectedIndexChange
-      .pipe(takeUntilDestroyed(this.destroyRef))
+    this.matTabGroup()
+      .selectedIndexChange.pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((index) => {
         const selectedFile = this.files()[index];
 

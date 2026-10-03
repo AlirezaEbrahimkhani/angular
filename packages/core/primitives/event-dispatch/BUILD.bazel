@@ -1,15 +1,15 @@
-load("//tools:defaults.bzl", "esbuild", "ts_library", "tsec_test")
+load("@aspect_rules_esbuild//esbuild:defs.bzl", "esbuild")
+load("//tools:defaults.bzl", "ts_project", "tsec_test")
 
 package(default_visibility = ["//visibility:public"])
 
-ts_library(
+ts_project(
     name = "event-dispatch",
     srcs = glob(
         [
             "**/*.ts",
         ],
     ),
-    module_name = "@angular/core/primitives/event-dispatch",
     deps = [
         "//packages/core/src/util",  # Implicit dependency on ngDevMode
     ],
@@ -17,8 +17,8 @@ ts_library(
 
 tsec_test(
     name = "tsec_test",
-    target = "event-dispatch",
-    tsconfig = "//packages:tsec_config",
+    target = ":event-dispatch",
+    tsconfig = "//packages/core:tsconfig_build",
 )
 
 filegroup(
@@ -32,16 +32,16 @@ filegroup(
 
 esbuild(
     name = "contract_bundle_min",
-    args = {
-        "sourcemap": False,
+    config = {
         "resolveExtensions": [
             ".mjs",
+            ".js",
         ],
         "legalComments": "none",
     },
-    entry_point = ":contract_binary.ts",
+    entry_point = ":contract_binary.js",
     format = "iife",
     minify = True,
-    sourcemap = "inline",
+    sourcemap = "external",
     deps = [":event-dispatch"],
 )

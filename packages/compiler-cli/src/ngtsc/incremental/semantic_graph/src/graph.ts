@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {Expression, ExternalExpr} from '@angular/compiler';
@@ -54,7 +54,7 @@ export class SemanticDepGraph {
 
   // Note: the explicit type annotation is used to work around a CI failure on Windows:
   // error TS2742: The inferred type of 'symbolByDecl' cannot be named without a reference to
-  // '../../../../../../../external/npm/node_modules/typescript/lib/typescript'. This is likely
+  // '../../../../../../../external/_main/node_modules/typescript/lib/typescript'. This is likely
   // not portable. A type annotation is necessary.
   readonly symbolByDecl: Map<ClassDeclaration, SemanticSymbol> = new Map<
     ClassDeclaration,

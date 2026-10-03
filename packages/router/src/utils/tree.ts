@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 export class Tree<T> {
@@ -100,7 +100,11 @@ export class TreeNode<T> {
 }
 
 // Return the list of T indexed by outlet name
-export function nodeChildrenAsMap<T extends {outlet: string}>(node: TreeNode<T> | null) {
+export function nodeChildrenAsMap<T extends {outlet: string}>(
+  node: TreeNode<T> | null,
+): {
+  [outlet: string]: TreeNode<T>;
+} {
   const map: {[outlet: string]: TreeNode<T>} = {};
 
   if (node) {

@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {
@@ -42,7 +42,7 @@ import {AsyncValidator, AsyncValidatorFn, Validator, ValidatorFn} from '../valid
  * Token to provide to turn off the ngModel warning on formControl and formControlName.
  */
 export const NG_MODEL_WITH_FORM_CONTROL_WARNING = new InjectionToken(
-  ngDevMode ? 'NgModelWithFormControlWarning' : '',
+  typeof ngDevMode !== undefined && ngDevMode ? 'NgModelWithFormControlWarning' : '',
 );
 
 const formControlBinding: Provider = {
@@ -71,11 +71,16 @@ const formControlBinding: Provider = {
  * @ngModule ReactiveFormsModule
  * @publicApi
  */
-@Directive({selector: '[formControl]', providers: [formControlBinding], exportAs: 'ngForm'})
+@Directive({
+  selector: '[formControl]',
+  providers: [formControlBinding],
+  exportAs: 'ngForm',
+  standalone: false,
+})
 export class FormControlDirective extends NgControl implements OnChanges, OnDestroy {
   /**
    * Internal reference to the view model value.
-   * @nodoc
+   * @docs-private
    */
   viewModel: any;
 
@@ -83,7 +88,6 @@ export class FormControlDirective extends NgControl implements OnChanges, OnDest
    * @description
    * Tracks the `FormControl` instance bound to the directive.
    */
-  // TODO(issue/24571): remove '!'.
   @Input('formControl') form!: FormControl;
 
   /**
@@ -143,7 +147,7 @@ export class FormControlDirective extends NgControl implements OnChanges, OnDest
     this.valueAccessor = selectValueAccessor(this, valueAccessors);
   }
 
-  /** @nodoc */
+  /** @docs-private */
   ngOnChanges(changes: SimpleChanges): void {
     if (this._isControlChanged(changes)) {
       const previousForm = changes['form'].previousValue;
@@ -162,7 +166,7 @@ export class FormControlDirective extends NgControl implements OnChanges, OnDest
     }
   }
 
-  /** @nodoc */
+  /** @docs-private */
   ngOnDestroy() {
     if (this.form) {
       cleanUpControl(this.form, this, /* validateControlPresenceOnChange */ false);

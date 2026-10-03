@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {Injector} from '../di/injector';
@@ -12,7 +12,8 @@ import {Type} from '../interface/type';
 import {ComponentRef} from '../linker/component_factory';
 
 import {ComponentFactory} from './component_ref';
-import {getComponentDef} from './definition';
+import {getComponentDef} from './def_getters';
+import {Binding, DirectiveWithBindings} from './dynamic_bindings';
 import {assertComponentDef} from './errors';
 
 /**
@@ -27,9 +28,8 @@ import {assertComponentDef} from './errors';
  * Note: the example uses standalone components, but the function can also be used for
  * non-standalone components (declared in an NgModule) as well.
  *
- * ```typescript
+ * ```angular-ts
  * @Component({
- *   standalone: true,
  *   template: `Hello {{ name }}!`
  * })
  * class HelloComponent {
@@ -37,7 +37,6 @@ import {assertComponentDef} from './errors';
  * }
  *
  * @Component({
- *   standalone: true,
  *   template: `<div id="hello-component-host"></div>`
  * })
  * class RootComponent {}
@@ -69,7 +68,12 @@ import {assertComponentDef} from './errors';
  *  * `elementInjector` (optional): An `ElementInjector` instance, see additional info about it
  * [here](guide/di/hierarchical-dependency-injection#elementinjector).
  *  * `projectableNodes` (optional): A list of DOM nodes that should be projected through
- *                      [`<ng-content>`](api/core/ng-content) of the new component instance.
+ * [`<ng-content>`](api/core/ng-content) of the new component instance, e.g.,
+ * `[[element1, element2]]`: projects `element1` and `element2` into the same `<ng-content>`.
+ * `[[element1, element2], [element3]]`: projects `element1` and `element2` into one `<ng-content>`,
+ * and `element3` into a separate `<ng-content>`.
+ *  * `directives` (optional): Directives that should be applied to the component.
+ *  * `bindings` (optional): Bindings to apply to the root component.
  * @returns ComponentRef instance that represents a given Component.
  *
  * @publicApi
@@ -81,6 +85,8 @@ export function createComponent<C>(
     hostElement?: Element;
     elementInjector?: Injector;
     projectableNodes?: Node[][];
+    directives?: (Type<unknown> | DirectiveWithBindings<unknown>)[];
+    bindings?: Binding[];
   },
 ): ComponentRef<C> {
   ngDevMode && assertComponentDef(component);
@@ -92,6 +98,8 @@ export function createComponent<C>(
     options.projectableNodes,
     options.hostElement,
     options.environmentInjector,
+    options.directives,
+    options.bindings,
   );
 }
 
@@ -147,9 +155,8 @@ export interface ComponentMirror<C> {
  * The example below demonstrates how to use the function and how the fields
  * of the returned object map to the component metadata.
  *
- * ```typescript
+ * ```angular-ts
  * @Component({
- *   standalone: true,
  *   selector: 'foo-component',
  *   template: `
  *     <ng-content></ng-content>

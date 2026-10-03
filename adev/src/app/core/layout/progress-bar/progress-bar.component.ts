@@ -6,16 +6,9 @@
  * found in the LICENSE file at https://angular.dev/license
  */
 
-import {
-  ChangeDetectionStrategy,
-  Component,
-  inject,
-  OnInit,
-  PLATFORM_ID,
-  ViewChild,
-} from '@angular/core';
-import {isPlatformBrowser} from '@angular/common';
-import {NgProgressComponent} from 'ngx-progressbar';
+import {ChangeDetectionStrategy, Component, inject, PLATFORM_ID, viewChild} from '@angular/core';
+import {isPlatformServer} from '@angular/common';
+import {NgProgressbar, NgProgressRef} from 'ngx-progressbar';
 import {
   NavigationCancel,
   NavigationEnd,
@@ -31,21 +24,18 @@ export const PROGRESS_BAR_DELAY = 30;
 
 @Component({
   selector: 'adev-progress-bar',
-  standalone: true,
-  imports: [NgProgressComponent],
-  template: `
-    <ng-progress aria-label="Page load progress" />
-  `,
+  imports: [NgProgressbar],
+  template: `<ng-progress aria-label="Page load progress" />`,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class ProgressBarComponent implements OnInit {
+export class ProgressBarComponent {
   private readonly router = inject(Router);
 
-  @ViewChild(NgProgressComponent, {static: true}) progressBar!: NgProgressComponent;
+  readonly progressBar = viewChild.required(NgProgressRef);
 
-  isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
+  isServer = isPlatformServer(inject(PLATFORM_ID));
 
-  ngOnInit() {
+  constructor() {
     this.setupPageNavigationDimming();
   }
 
@@ -53,7 +43,7 @@ export class ProgressBarComponent implements OnInit {
    * Dims the main router-outlet content when navigating to a new page.
    */
   private setupPageNavigationDimming() {
-    if (!this.isBrowser) {
+    if (this.isServer) {
       return;
     }
     this.router.events
@@ -62,7 +52,7 @@ export class ProgressBarComponent implements OnInit {
         map(() => {
           // Only apply set the property if the navigation is not "immediate"
           return setTimeout(() => {
-            this.progressBar.start();
+            this.progressBar().start();
           }, PROGRESS_BAR_DELAY);
         }),
         switchMap((timeoutId) => {
@@ -83,7 +73,7 @@ export class ProgressBarComponent implements OnInit {
       .subscribe((timeoutId) => {
         // When the navigation finishes, prevent the navigating class from being applied in the timeout.
         clearTimeout(timeoutId);
-        this.progressBar.complete();
+        this.progressBar().complete();
       });
   }
 }

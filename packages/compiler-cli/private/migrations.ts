@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 /**
@@ -11,7 +11,8 @@
  * package requires for migration schematics.
  */
 
-export {forwardRefResolver} from '../src/ngtsc/annotations';
+export {createForwardRefResolver} from '../src/ngtsc/annotations';
+export {AbsoluteFsPath} from '../src/ngtsc/file_system';
 export {Reference} from '../src/ngtsc/imports';
 export {
   DynamicValue,
@@ -27,3 +28,4 @@ export {
   PotentialImportMode,
   TemplateTypeChecker,
 } from '../src/ngtsc/typecheck/api';
+export {ImportManager} from '../src/ngtsc/translator';

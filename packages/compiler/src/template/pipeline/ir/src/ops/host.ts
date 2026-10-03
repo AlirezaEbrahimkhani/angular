@@ -3,13 +3,13 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import * as o from '../../../../../../src/output/output_ast';
 import {ParseSourceSpan} from '../../../../../../src/parse_util';
 import {SecurityContext} from '../../../../../core';
-import {OpKind} from '../enums';
+import {BindingKind, OpKind} from '../enums';
 import {Op, XrefId} from '../operations';
 import {ConsumesVarsTrait, TRAIT_CONSUMES_VARS} from '../traits';
 
@@ -18,13 +18,13 @@ import {NEW_OP} from './shared';
 import type {Interpolation, UpdateOp} from './update';
 
 /**
- * Logical operation representing a host binding to a property.
+ * Logical operation representing a binding to a native DOM property.
  */
-export interface HostPropertyOp extends Op<UpdateOp>, ConsumesVarsTrait {
-  kind: OpKind.HostProperty;
+export interface DomPropertyOp extends Op<UpdateOp>, ConsumesVarsTrait {
+  kind: OpKind.DomProperty;
   name: string;
   expression: o.Expression | Interpolation;
-  isAnimationTrigger: boolean;
+  bindingKind: BindingKind;
 
   i18nContext: XrefId | null;
 
@@ -32,22 +32,22 @@ export interface HostPropertyOp extends Op<UpdateOp>, ConsumesVarsTrait {
 
   sanitizer: o.Expression | null;
 
-  sourceSpan: ParseSourceSpan | null;
+  sourceSpan: ParseSourceSpan;
 }
 
-export function createHostPropertyOp(
+export function createDomPropertyOp(
   name: string,
   expression: o.Expression | Interpolation,
-  isAnimationTrigger: boolean,
+  bindingKind: BindingKind,
   i18nContext: XrefId | null,
   securityContext: SecurityContext | SecurityContext[],
-  sourceSpan: ParseSourceSpan | null,
-): HostPropertyOp {
+  sourceSpan: ParseSourceSpan,
+): DomPropertyOp {
   return {
-    kind: OpKind.HostProperty,
+    kind: OpKind.DomProperty,
     name,
     expression,
-    isAnimationTrigger,
+    bindingKind,
     i18nContext,
     securityContext,
     sanitizer: null,

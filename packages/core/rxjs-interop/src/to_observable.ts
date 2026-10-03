@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {
@@ -14,13 +14,13 @@ import {
   Injector,
   Signal,
   untracked,
-} from '@angular/core';
+} from '../../src/core';
 import {Observable, ReplaySubject} from 'rxjs';
 
 /**
  * Options for `toObservable`.
  *
- * @developerPreview
+ * @publicApi 20.0
  */
 export interface ToObservableOptions {
   /**
@@ -34,15 +34,18 @@ export interface ToObservableOptions {
 
 /**
  * Exposes the value of an Angular `Signal` as an RxJS `Observable`.
+ * As it reflects a state, the observable will always emit the latest value upon subscription.
  *
  * The signal's value will be propagated into the `Observable`'s subscribers using an `effect`.
  *
  * `toObservable` must be called in an injection context unless an injector is provided via options.
  *
- * @developerPreview
+ * @publicApi 20.0
  */
 export function toObservable<T>(source: Signal<T>, options?: ToObservableOptions): Observable<T> {
-  !options?.injector && assertInInjectionContext(toObservable);
+  if (ngDevMode && !options?.injector) {
+    assertInInjectionContext(toObservable);
+  }
   const injector = options?.injector ?? inject(Injector);
   const subject = new ReplaySubject<T>(1);
 

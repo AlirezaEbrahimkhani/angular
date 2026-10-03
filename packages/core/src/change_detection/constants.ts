@@ -3,15 +3,15 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 /**
  * The strategy that the default change detector uses to detect changes.
  * When set, takes effect the next time change detection is triggered.
  *
- * @see [Change detection usage](/api/core/ChangeDetectorRef?tab=usage-notes)
- * @see [Skipping component subtrees](/best-practices/skipping-subtrees)
+ * @see {@link /api/core/ChangeDetectorRef?tab=usage-notes Change detection usage}
+ * @see {@link /best-practices/skipping-subtrees Skipping component subtrees}
  *
  * @publicApi
  */

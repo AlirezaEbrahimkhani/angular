@@ -3,19 +3,19 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {ApplicationRef, ExperimentalPendingTasks} from '@angular/core';
-import {TestBed} from '@angular/core/testing';
-import {EMPTY, of} from 'rxjs';
-import {map, take, withLatestFrom} from 'rxjs/operators';
+import {ApplicationRef, PendingTasks, ErrorHandler} from '../../src/core';
+import {TestBed} from '../../testing';
+import {EMPTY, firstValueFrom, of} from 'rxjs';
+import {map, withLatestFrom} from 'rxjs/operators';
 
-import {PendingTasks} from '../../src/pending_tasks';
+import {PendingTasksInternal} from '../../src/pending_tasks_internal';
 
 describe('PendingTasks', () => {
   it('should wait until all tasks are completed', async () => {
-    const pendingTasks = TestBed.inject(PendingTasks);
+    const pendingTasks = TestBed.inject(PendingTasksInternal);
     const taskA = pendingTasks.add();
     const taskB = pendingTasks.add();
     const taskC = pendingTasks.add();
@@ -27,7 +27,7 @@ describe('PendingTasks', () => {
   });
 
   it('should allow calls to remove the same task multiple times', async () => {
-    const pendingTasks = TestBed.inject(PendingTasks);
+    const pendingTasks = TestBed.inject(PendingTasksInternal);
     expect(await hasPendingTasks(pendingTasks)).toBeFalse();
 
     const taskA = pendingTasks.add();
@@ -41,7 +41,7 @@ describe('PendingTasks', () => {
   });
 
   it('should be tolerant to removal of non-existent ids', async () => {
-    const pendingTasks = TestBed.inject(PendingTasks);
+    const pendingTasks = TestBed.inject(PendingTasksInternal);
     expect(await hasPendingTasks(pendingTasks)).toBeFalse();
 
     pendingTasks.remove(Math.random());
@@ -53,7 +53,7 @@ describe('PendingTasks', () => {
 
   it('contributes to applicationRef stableness', async () => {
     const appRef = TestBed.inject(ApplicationRef);
-    const pendingTasks = TestBed.inject(PendingTasks);
+    const pendingTasks = TestBed.inject(PendingTasksInternal);
 
     const taskA = pendingTasks.add();
     await expectAsync(applicationRefIsStable(appRef)).toBeResolvedTo(false);
@@ -67,26 +67,62 @@ describe('PendingTasks', () => {
   });
 });
 
-describe('public ExperimentalPendingTasks', () => {
+describe('public PendingTasks', () => {
   it('should allow adding and removing tasks influencing stability', async () => {
     const appRef = TestBed.inject(ApplicationRef);
-    const pendingTasks = TestBed.inject(ExperimentalPendingTasks);
+    const pendingTasks = TestBed.inject(PendingTasks);
 
-    const taskA = pendingTasks.add();
+    const removeTaskA = pendingTasks.add();
     await expectAsync(applicationRefIsStable(appRef)).toBeResolvedTo(false);
-    taskA();
+    removeTaskA();
+    // stability is delayed until a tick happens
+    await expectAsync(applicationRefIsStable(appRef)).toBeResolvedTo(false);
+    TestBed.inject(ApplicationRef).tick();
     await expectAsync(applicationRefIsStable(appRef)).toBeResolvedTo(true);
+  });
+
+  it('should allow blocking stability with run', async () => {
+    const appRef = TestBed.inject(ApplicationRef);
+    const pendingTasks = TestBed.inject(PendingTasks);
+
+    let resolveFn: () => void;
+    pendingTasks.run(() => {
+      return new Promise<void>((r) => {
+        resolveFn = r;
+      });
+    });
+    await expectAsync(applicationRefIsStable(appRef)).toBeResolvedTo(false);
+    resolveFn!();
+    await expectAsync(TestBed.inject(ApplicationRef).whenStable()).toBeResolved();
+  });
+
+  it('should stop blocking stability if run promise rejects', async () => {
+    const appRef = TestBed.inject(ApplicationRef);
+    const pendingTasks = TestBed.inject(PendingTasks);
+    const errorHandler = TestBed.inject(ErrorHandler);
+    const spy = spyOn(errorHandler, 'handleError');
+
+    let rejectFn: () => void;
+    pendingTasks.run(() => {
+      return new Promise<void>((_, reject) => {
+        rejectFn = reject;
+      });
+    });
+    await expectAsync(applicationRefIsStable(appRef)).toBeResolvedTo(false);
+    rejectFn!();
+    await expectAsync(appRef.whenStable()).toBeResolved();
+    expect(spy).toHaveBeenCalled();
   });
 });
 
 function applicationRefIsStable(applicationRef: ApplicationRef) {
-  return applicationRef.isStable.pipe(take(1)).toPromise();
+  return firstValueFrom(applicationRef.isStable);
 }
 
-function hasPendingTasks(pendingTasks: PendingTasks): Promise<boolean> {
+function hasPendingTasks(pendingTasks: PendingTasksInternal): Promise<boolean> {
   return of(EMPTY)
     .pipe(
-      withLatestFrom(pendingTasks.hasPendingTasks),
+      withLatestFrom(pendingTasks.hasPendingTasksObservable),
       map(([_, hasPendingTasks]) => hasPendingTasks),
     )
     .toPromise() as Promise<boolean>;

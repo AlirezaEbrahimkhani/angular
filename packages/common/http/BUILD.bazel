@@ -1,10 +1,10 @@
-load("//tools:defaults.bzl", "api_golden_test", "generate_api_docs", "ng_module")
+load("//tools:defaults.bzl", "api_golden_test", "generate_api_docs", "ng_project")
 
 package(default_visibility = ["//visibility:public"])
 
 exports_files(["package.json"])
 
-ng_module(
+ng_project(
     name = "http",
     srcs = glob(
         [
@@ -13,9 +13,10 @@ ng_module(
         ],
     ),
     deps = [
+        "//:node_modules/rxjs",
+        "//:node_modules/zone.js",
         "//packages/common",
         "//packages/core",
-        "@npm//rxjs",
     ],
 )
 
@@ -33,8 +34,8 @@ api_golden_test(
         "//goldens:public-api",
         "//packages/common/http",
     ],
-    entry_point = "angular/packages/common/http/src/errors.d.ts",
-    golden = "angular/goldens/public-api/common/http/errors.api.md",
+    entry_point = "src/errors.d.ts",
+    golden = "goldens/public-api/common/http/errors.api.md",
 )
 
 generate_api_docs(

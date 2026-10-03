@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {NodeNavigationStep, REFERENCE_NODE_BODY, REFERENCE_NODE_HOST} from './interfaces';
@@ -15,7 +15,7 @@ import {NodeNavigationStep, REFERENCE_NODE_BODY, REFERENCE_NODE_HOST} from './in
  *  - the `b` char which indicates that the lookup should start from the `document.body`
  *  - the `h` char to start lookup from the component host node (`lView[HOST]`)
  */
-const REF_EXTRACTOR_REGEXP = new RegExp(
+const REF_EXTRACTOR_REGEXP = /* @__PURE__ */ new RegExp(
   `^(\\d+)*(${REFERENCE_NODE_BODY}|${REFERENCE_NODE_HOST})*(.*)`,
 );
 

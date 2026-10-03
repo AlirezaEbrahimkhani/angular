@@ -3,8 +3,9 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
+import {FactoryTarget} from '../../compiler_facade_interface';
 import {ChangeDetectionStrategy, ViewEncapsulation} from '../../core';
 import * as o from '../../output/output_ast';
 
@@ -228,11 +229,6 @@ export interface R3DeclareComponentMetadata extends R3DeclareDirectiveMetadata {
   encapsulation?: ViewEncapsulation;
 
   /**
-   * Overrides the default interpolation start and end delimiters. Defaults to {{ and }}.
-   */
-  interpolation?: [string, string];
-
-  /**
    * Whether whitespace in the template should be preserved. Defaults to false.
    */
   preserveWhitespaces?: boolean;
@@ -441,14 +437,6 @@ export interface R3DeclareFactoryMetadata extends R3PartialDeclaration {
    * Type of the target being created by the factory.
    */
   target: FactoryTarget;
-}
-
-export enum FactoryTarget {
-  Directive = 0,
-  Component = 1,
-  Injectable = 2,
-  Pipe = 3,
-  NgModule = 4,
 }
 
 /**

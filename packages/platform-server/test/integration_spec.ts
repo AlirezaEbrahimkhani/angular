@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 import '@angular/compiler';
 
@@ -40,13 +40,18 @@ import {
   TransferState,
   Type,
   ViewEncapsulation,
-  ɵPendingTasks as PendingTasks,
-  ɵwhenStable as whenStable,
+  PendingTasks,
+  APP_INITIALIZER,
+  inject,
+  getPlatform,
+  provideNgReflectAttributes,
+  ɵSSR_CONTENT_INTEGRITY_MARKER as SSR_CONTENT_INTEGRITY_MARKER,
+  provideZoneChangeDetection,
 } from '@angular/core';
-import {SSR_CONTENT_INTEGRITY_MARKER} from '@angular/core/src/hydration/utils';
 import {TestBed} from '@angular/core/testing';
 import {
   bootstrapApplication,
+  BootstrapContext,
   BrowserModule,
   provideClientHydration,
   Title,
@@ -59,11 +64,12 @@ import {
   provideServerRendering,
   renderModule,
   ServerModule,
-} from '@angular/platform-server';
+} from '../index';
 import {provideRouter, RouterOutlet, Routes} from '@angular/router';
 import {Observable} from 'rxjs';
 
 import {renderApplication, SERVER_CONTEXT} from '../src/utils';
+import {BrowserAnimationsModule, provideAnimations} from '@angular/platform-browser/animations';
 
 const APP_CONFIG: ApplicationConfig = {
   providers: [provideServerRendering()],
@@ -72,8 +78,13 @@ const APP_CONFIG: ApplicationConfig = {
 function getStandaloneBootstrapFn(
   component: Type<unknown>,
   providers: Array<Provider | EnvironmentProviders> = [],
-): () => Promise<ApplicationRef> {
-  return () => bootstrapApplication(component, mergeApplicationConfig(APP_CONFIG, {providers}));
+): (context: BootstrapContext) => Promise<ApplicationRef> {
+  return (context: BootstrapContext) =>
+    bootstrapApplication(
+      component,
+      mergeApplicationConfig(APP_CONFIG, {providers: [...providers, provideNgReflectAttributes()]}),
+      context,
+    );
 }
 
 function createMyServerApp(standalone: boolean) {
@@ -83,6 +94,7 @@ function createMyServerApp(standalone: boolean) {
     template: `Works!`,
   })
   class MyServerApp {}
+
   return MyServerApp;
 }
 
@@ -106,13 +118,14 @@ function createAppWithPendingTask(standalone: boolean) {
 
     constructor() {
       const pendingTasks = coreInject(PendingTasks);
-      const taskId = pendingTasks.add();
+      const removeTask = pendingTasks.add();
       setTimeout(() => {
-        pendingTasks.remove(taskId);
+        removeTask();
         this.completed = 'Yes';
       });
     }
   }
+
   return PendingTasksApp;
 }
 
@@ -124,6 +137,7 @@ const PendingTasksAppStandalone = createAppWithPendingTask(true);
   exports: [PendingTasksApp],
   imports: [ServerModule],
   bootstrap: [PendingTasksApp],
+  providers: [provideZoneChangeDetection()],
 })
 export class PendingTasksAppModule {}
 
@@ -176,7 +190,12 @@ function asyncRejectRenderHook() {
 }
 
 const RenderHookProviders = [
-  {provide: BEFORE_APP_SERIALIZED, useFactory: getTitleRenderHook, multi: true, deps: [DOCUMENT]},
+  {
+    provide: BEFORE_APP_SERIALIZED,
+    useFactory: getTitleRenderHook,
+    multi: true,
+    deps: [DOCUMENT],
+  },
 ];
 
 @NgModule({
@@ -187,9 +206,19 @@ const RenderHookProviders = [
 class RenderHookModule {}
 
 const MultiRenderHookProviders = [
-  {provide: BEFORE_APP_SERIALIZED, useFactory: getTitleRenderHook, multi: true, deps: [DOCUMENT]},
+  {
+    provide: BEFORE_APP_SERIALIZED,
+    useFactory: getTitleRenderHook,
+    multi: true,
+    deps: [DOCUMENT],
+  },
   {provide: BEFORE_APP_SERIALIZED, useValue: exceptionRenderHook, multi: true},
-  {provide: BEFORE_APP_SERIALIZED, useFactory: getMetaRenderHook, multi: true, deps: [DOCUMENT]},
+  {
+    provide: BEFORE_APP_SERIALIZED,
+    useFactory: getMetaRenderHook,
+    multi: true,
+    deps: [DOCUMENT],
+  },
 ];
 
 @NgModule({
@@ -216,14 +245,23 @@ const AsyncRenderHookProviders = [
 class AsyncRenderHookModule {}
 
 const AsyncMultiRenderHookProviders = [
-  {provide: BEFORE_APP_SERIALIZED, useFactory: getMetaRenderHook, multi: true, deps: [DOCUMENT]},
+  {
+    provide: BEFORE_APP_SERIALIZED,
+    useFactory: getMetaRenderHook,
+    multi: true,
+    deps: [DOCUMENT],
+  },
   {
     provide: BEFORE_APP_SERIALIZED,
     useFactory: getAsyncTitleRenderHook,
     multi: true,
     deps: [DOCUMENT],
   },
-  {provide: BEFORE_APP_SERIALIZED, useFactory: asyncRejectRenderHook, multi: true},
+  {
+    provide: BEFORE_APP_SERIALIZED,
+    useFactory: asyncRejectRenderHook,
+    multi: true,
+  },
 ];
 
 @NgModule({
@@ -233,21 +271,38 @@ const AsyncMultiRenderHookProviders = [
 })
 class AsyncMultiRenderHookModule {}
 
-@Component({selector: 'app', template: `Works too!`})
+@Component({
+  selector: 'app',
+  template: `Works too!`,
+  standalone: false,
+})
 class MyServerApp2 {}
 
-@NgModule({declarations: [MyServerApp2], imports: [ServerModule], bootstrap: [MyServerApp2]})
+@NgModule({
+  declarations: [MyServerApp2],
+  imports: [ServerModule],
+  bootstrap: [MyServerApp2],
+})
 class ExampleModule2 {}
 
-@Component({selector: 'app', template: ``})
+@Component({
+  selector: 'app',
+  template: ``,
+  standalone: false,
+})
 class TitleApp {
   constructor(private title: Title) {}
+
   ngOnInit() {
     this.title.setTitle('Test App Title');
   }
 }
 
-@NgModule({declarations: [TitleApp], imports: [ServerModule], bootstrap: [TitleApp]})
+@NgModule({
+  declarations: [TitleApp],
+  imports: [ServerModule],
+  bootstrap: [TitleApp],
+})
 class TitleAppModule {}
 
 function createMyAsyncServerApp(standalone: boolean) {
@@ -274,16 +329,20 @@ function createMyAsyncServerApp(standalone: boolean) {
       );
     }
   }
+
   return MyAsyncServerApp;
 }
 
 const MyAsyncServerApp = createMyAsyncServerApp(false);
-const MyAsyncServerAppStandalone = getStandaloneBootstrapFn(createMyAsyncServerApp(true));
+const MyAsyncServerAppStandalone = getStandaloneBootstrapFn(createMyAsyncServerApp(true), [
+  provideZoneChangeDetection(),
+]);
 
 @NgModule({
   declarations: [MyAsyncServerApp],
   imports: [BrowserModule, ServerModule],
   bootstrap: [MyAsyncServerApp],
+  providers: [provideZoneChangeDetection()],
 })
 class AsyncServerModule {}
 
@@ -294,6 +353,7 @@ function createSVGComponent(standalone: boolean) {
     standalone,
   })
   class SVGComponent {}
+
   return SVGComponent;
 }
 
@@ -312,10 +372,10 @@ function createMyAnimationApp(standalone: boolean) {
     standalone,
     selector: 'app',
     template: `
-  <div [@myAnimation]="state">
-    <svg *ngIf="true"></svg>
-    {{text}}
-  </div>`,
+      <div [@myAnimation]="state">
+        <svg *ngIf="true"></svg>
+        {{text}}
+      </div>`,
     animations: [
       trigger('myAnimation', [
         state('void', style({'opacity': '0'})),
@@ -333,19 +393,23 @@ function createMyAnimationApp(standalone: boolean) {
   })
   class MyAnimationApp {
     state = 'active';
+
     constructor(private builder: AnimationBuilder) {}
 
     text = 'Works!';
   }
+
   return MyAnimationApp;
 }
 
 const MyAnimationApp = createMyAnimationApp(false);
-const MyAnimationAppStandalone = getStandaloneBootstrapFn(createMyAnimationApp(true));
+const MyAnimationAppStandalone = getStandaloneBootstrapFn(createMyAnimationApp(true), [
+  provideAnimations(),
+]);
 
 @NgModule({
   declarations: [MyAnimationApp],
-  imports: [BrowserModule, ServerModule],
+  imports: [BrowserModule, BrowserAnimationsModule, ServerModule],
   bootstrap: [MyAnimationApp],
 })
 class AnimationServerModule {}
@@ -354,10 +418,12 @@ function createMyStylesApp(standalone: boolean) {
   @Component({
     standalone,
     selector: 'app',
-    template: `<div>Works!</div>`,
+    template: `
+      <div>Works!</div>`,
     styles: ['div {color: blue; } :host { color: red; }'],
   })
   class MyStylesApp {}
+
   return MyStylesApp;
 }
 
@@ -375,14 +441,17 @@ function createMyTransferStateApp(standalone: boolean) {
   @Component({
     standalone,
     selector: 'app',
-    template: `<div>Works!</div>`,
+    template: `
+      <div>Works!</div>`,
   })
   class MyStylesApp {
     state = coreInject(TransferState);
+
     constructor() {
       this.state.set(makeStateKey<string>('some-key'), 'some-value');
     }
   }
+
   return MyStylesApp;
 }
 
@@ -395,6 +464,14 @@ const MyTransferStateAppStandalone = getStandaloneBootstrapFn(createMyTransferSt
   bootstrap: [MyTransferStateApp],
 })
 class MyTransferStateModule {}
+
+@NgModule({
+  declarations: [MyTransferStateApp],
+  imports: [BrowserModule, ServerModule],
+  providers: [provideServerRendering()],
+  bootstrap: [MyTransferStateApp],
+})
+class DoubleTransferStateModule {}
 
 @NgModule({
   bootstrap: [MyServerApp],
@@ -414,14 +491,28 @@ export class MyHttpInterceptor implements HttpInterceptor {
 @NgModule({
   bootstrap: [MyServerApp],
   imports: [MyServerAppModule, ServerModule, HttpClientModule, HttpClientTestingModule],
-  providers: [{provide: HTTP_INTERCEPTORS, multi: true, useClass: MyHttpInterceptor}],
+  providers: [
+    {
+      provide: HTTP_INTERCEPTORS,
+      multi: true,
+      useClass: MyHttpInterceptor,
+    },
+  ],
 })
 export class HttpInterceptorExampleModule {}
 
-@Component({selector: 'app', template: `<img [src]="'link'">`})
+@Component({
+  selector: 'app',
+  template: `<img [src]="'link'">`,
+  standalone: false,
+})
 class ImageApp {}
 
-@NgModule({declarations: [ImageApp], imports: [ServerModule], bootstrap: [ImageApp]})
+@NgModule({
+  declarations: [ImageApp],
+  imports: [ServerModule],
+  bootstrap: [ImageApp],
+})
 class ImageExampleModule {}
 
 function createShadowDomEncapsulationApp(standalone: boolean) {
@@ -433,6 +524,7 @@ function createShadowDomEncapsulationApp(standalone: boolean) {
     styles: [':host { color: red; }'],
   })
   class ShadowDomEncapsulationApp {}
+
   return ShadowDomEncapsulationApp;
 }
 
@@ -465,6 +557,7 @@ function createFalseAttributesComponents(standalone: boolean) {
     imports: standalone ? [MyChildComponent] : [],
   })
   class MyHostComponent {}
+
   return [MyHostComponent, MyChildComponent];
 }
 
@@ -477,6 +570,7 @@ const MyHostComponentStandalone = getStandaloneBootstrapFn(
   declarations: [MyHostComponent, MyChildComponent],
   bootstrap: [MyHostComponent],
   imports: [ServerModule, BrowserModule],
+  providers: [provideNgReflectAttributes()],
 })
 class FalseAttributesModule {}
 
@@ -489,6 +583,7 @@ function createMyInputComponent(standalone: boolean) {
   class MyInputComponent {
     @Input() name = '';
   }
+
   return MyInputComponent;
 }
 
@@ -510,8 +605,10 @@ function createHTMLTypesApp(standalone: boolean) {
   })
   class HTMLTypesApp {
     html = '<b>foo</b> bar';
+
     constructor(@Inject(DOCUMENT) doc: Document) {}
   }
+
   return HTMLTypesApp;
 }
 
@@ -534,6 +631,7 @@ function createMyHiddenComponent(standalone: boolean) {
   class MyHiddenComponent {
     @Input() name = '';
   }
+
   return MyHiddenComponent;
 }
 
@@ -555,7 +653,7 @@ class HiddenModule {}
       destroyPlatform();
     });
 
-    afterAll(() => {
+    afterEach(() => {
       destroyPlatform();
     });
 
@@ -668,7 +766,10 @@ class HiddenModule {}
         const platform = platformServer([
           {
             provide: INITIAL_CONFIG,
-            useValue: {document: '<app></app>', url: 'http://test.com/deep/path?query#hash'},
+            useValue: {
+              document: '<app></app>',
+              url: 'http://test.com/deep/path?query#hash',
+            },
           },
         ]);
 
@@ -684,7 +785,10 @@ class HiddenModule {}
         const platform = platformServer([
           {
             provide: INITIAL_CONFIG,
-            useValue: {document: '<app></app>', url: 'http://test.com:80/deep/path?query#hash'},
+            useValue: {
+              document: '<app></app>',
+              url: 'http://test.com:80/deep/path?query#hash',
+            },
           },
         ]);
 
@@ -703,7 +807,10 @@ class HiddenModule {}
         const platform = platformServer([
           {
             provide: INITIAL_CONFIG,
-            useValue: {document: '<app></app>', url: 'http://test.com/deep/path'},
+            useValue: {
+              document: '<app></app>',
+              url: 'http://test.com/deep/path',
+            },
           },
         ]);
 
@@ -757,12 +864,22 @@ class HiddenModule {}
         doc = '<html><head></head><body><app></app></body></html>';
       });
 
+      afterEach(() => {
+        doc = '<html><head></head><body><app></app></body></html>';
+        TestBed.resetTestingModule();
+      });
+
       it('using long form should work', async () => {
-        const platform = platformServer([{provide: INITIAL_CONFIG, useValue: {document: doc}}]);
+        const platform = platformServer([
+          {
+            provide: INITIAL_CONFIG,
+            useValue: {document: doc},
+          },
+        ]);
 
         const moduleRef = await platform.bootstrapModule(AsyncServerModule);
         const applicationRef = moduleRef.injector.get(ApplicationRef);
-        await whenStable(applicationRef);
+        await applicationRef.whenStable();
         // Note: the `ng-server-context` is not present in this output, since
         // `renderModule` or `renderApplication` functions are not used here.
         const expectedOutput =
@@ -862,11 +979,17 @@ class HiddenModule {}
             },
           ];
           const bootstrap = isStandalone
-            ? renderApplication(MyStylesAppStandalone, {...options, platformProviders: providers})
-            : renderModule(ExampleStylesModule, {...options, extraProviders: providers});
+            ? renderApplication(MyStylesAppStandalone, {
+                ...options,
+                platformProviders: providers,
+              })
+            : renderModule(ExampleStylesModule, {
+                ...options,
+                extraProviders: providers,
+              });
           const output = await bootstrap;
           expect(output).toMatch(
-            /<app _nghost-ng-c\d+="" ng-version="0.0.0-PLACEHOLDER" ng-server-context="ssg">/,
+            /<app ng-version="0.0.0-PLACEHOLDER" _nghost-ng-c\d+="" ng-server-context="ssg">/,
           );
         });
 
@@ -881,8 +1004,14 @@ class HiddenModule {}
             },
           ];
           const bootstrap = isStandalone
-            ? renderApplication(MyStylesAppStandalone, {...options, platformProviders: providers})
-            : renderModule(ExampleStylesModule, {...options, extraProviders: providers});
+            ? renderApplication(MyStylesAppStandalone, {
+                ...options,
+                platformProviders: providers,
+              })
+            : renderModule(ExampleStylesModule, {
+                ...options,
+                extraProviders: providers,
+              });
           // All symbols other than [a-zA-Z0-9\-] are removed
           const output = await bootstrap;
           expect(output).toMatch(/ng-server-context="Someextrachars----"/);
@@ -915,8 +1044,14 @@ class HiddenModule {}
             },
           ];
           const bootstrap = isStandalone
-            ? renderApplication(MyStylesAppStandalone, {...options, platformProviders: providers})
-            : renderModule(ExampleStylesModule, {...options, extraProviders: providers});
+            ? renderApplication(MyStylesAppStandalone, {
+                ...options,
+                platformProviders: providers,
+              })
+            : renderModule(ExampleStylesModule, {
+                ...options,
+                extraProviders: providers,
+              });
           // All symbols other than [a-zA-Z0-9\-] are removed,
           // the `other` is used as the default.
           const output = await bootstrap;
@@ -925,18 +1060,17 @@ class HiddenModule {}
 
         it('appends SSR integrity marker comment when hydration is enabled', async () => {
           @Component({
-            standalone: true,
             selector: 'app',
             template: ``,
           })
           class SimpleApp {}
 
-          const bootstrap = renderApplication(
+          const output = await renderApplication(
             getStandaloneBootstrapFn(SimpleApp, [provideClientHydration()]),
             {document: doc},
           );
+
           // HttpClient cache and DOM hydration are enabled by default.
-          const output = await bootstrap;
           expect(output).toContain(`<body><!--${SSR_CONTENT_INTEGRITY_MARKER}-->`);
         });
 
@@ -1066,7 +1200,12 @@ class HiddenModule {}
           async () => {
             const options = {document: doc};
             const bootstrap = isStandalone
-              ? renderApplication(getStandaloneBootstrapFn(PendingTasksAppStandalone), options)
+              ? renderApplication(
+                  getStandaloneBootstrapFn(PendingTasksAppStandalone, [
+                    provideZoneChangeDetection(),
+                  ]),
+                  options,
+                )
               : renderModule(PendingTasksAppModule, options);
             const output = await bootstrap;
             expect(output).toBe(
@@ -1074,6 +1213,154 @@ class HiddenModule {}
                 '<app ng-version="0.0.0-PLACEHOLDER" ng-server-context="other">Completed: Yes</app>' +
                 '</body></html>',
             );
+          },
+        );
+
+        it(
+          `should call onOnDestroy of a service after a successful render` +
+            `(standalone: ${isStandalone})`,
+          async () => {
+            let wasServiceNgOnDestroyCalled = false;
+
+            @Injectable({providedIn: 'root'})
+            class DestroyableService {
+              ngOnDestroy() {
+                wasServiceNgOnDestroyCalled = true;
+              }
+            }
+
+            const SuccessfulAppInitializerProviders = [
+              provideZoneChangeDetection(),
+              {
+                provide: APP_INITIALIZER,
+                useFactory: () => {
+                  inject(DestroyableService);
+                  return () => Promise.resolve(); // Success in APP_INITIALIZER
+                },
+                multi: true,
+              },
+            ];
+
+            @NgModule({
+              providers: SuccessfulAppInitializerProviders,
+              imports: [MyServerAppModule, ServerModule],
+              bootstrap: [MyServerApp],
+            })
+            class ServerSuccessfulAppInitializerModule {}
+
+            const ServerSuccessfulAppInitializerAppStandalone = getStandaloneBootstrapFn(
+              createMyServerApp(true),
+              SuccessfulAppInitializerProviders,
+            );
+
+            const options = {document: doc};
+            const bootstrap = isStandalone
+              ? renderApplication(ServerSuccessfulAppInitializerAppStandalone, options)
+              : renderModule(ServerSuccessfulAppInitializerModule, options);
+            await bootstrap;
+
+            expect(getPlatform()).withContext('PlatformRef should be destroyed').toBeNull();
+            expect(wasServiceNgOnDestroyCalled)
+              .withContext('DestroyableService.ngOnDestroy() should be called')
+              .toBeTrue();
+          },
+        );
+
+        it(
+          `should call onOnDestroy of a service after some APP_INITIALIZER fails ` +
+            `(standalone: ${isStandalone})`,
+          async () => {
+            let wasServiceNgOnDestroyCalled = false;
+
+            @Injectable({providedIn: 'root'})
+            class DestroyableService {
+              ngOnDestroy() {
+                wasServiceNgOnDestroyCalled = true;
+              }
+            }
+
+            const FailingAppInitializerProviders = [
+              {
+                provide: APP_INITIALIZER,
+                useFactory: () => {
+                  inject(DestroyableService);
+                  return () => Promise.reject('Error in APP_INITIALIZER');
+                },
+                multi: true,
+              },
+            ];
+
+            @NgModule({
+              providers: FailingAppInitializerProviders,
+              imports: [MyServerAppModule, ServerModule],
+              bootstrap: [MyServerApp],
+            })
+            class ServerFailingAppInitializerModule {}
+
+            const ServerFailingAppInitializerAppStandalone = getStandaloneBootstrapFn(
+              createMyServerApp(true),
+              FailingAppInitializerProviders,
+            );
+
+            const options = {document: doc};
+            const bootstrap = isStandalone
+              ? renderApplication(ServerFailingAppInitializerAppStandalone, options)
+              : renderModule(ServerFailingAppInitializerModule, options);
+            await expectAsync(bootstrap).toBeRejectedWith('Error in APP_INITIALIZER');
+
+            expect(getPlatform()).withContext('PlatformRef should be destroyed').toBeNull();
+            expect(wasServiceNgOnDestroyCalled)
+              .withContext('DestroyableService.ngOnDestroy() should be called')
+              .toBeTrue();
+          },
+        );
+
+        it(
+          `should call onOnDestroy of a service after an error happens in a root component's constructor ` +
+            `(standalone: ${isStandalone})`,
+          async () => {
+            let wasServiceNgOnDestroyCalled = false;
+
+            @Injectable({providedIn: 'root'})
+            class DestroyableService {
+              ngOnDestroy() {
+                wasServiceNgOnDestroyCalled = true;
+              }
+            }
+
+            @Component({
+              standalone: isStandalone,
+              selector: 'app',
+              template: `Works!`,
+            })
+            class MyServerFailingConstructorApp {
+              constructor() {
+                inject(DestroyableService);
+                throw 'Error in constructor of the root component';
+              }
+            }
+
+            @NgModule({
+              declarations: [MyServerFailingConstructorApp],
+              imports: [MyServerAppModule, ServerModule],
+              bootstrap: [MyServerFailingConstructorApp],
+            })
+            class MyServerFailingConstructorAppModule {}
+
+            const MyServerFailingConstructorAppStandalone = getStandaloneBootstrapFn(
+              MyServerFailingConstructorApp,
+            );
+            const options = {document: doc};
+            const bootstrap = isStandalone
+              ? renderApplication(MyServerFailingConstructorAppStandalone, options)
+              : renderModule(MyServerFailingConstructorAppModule, options);
+            await expectAsync(bootstrap).toBeRejectedWith(
+              'Error in constructor of the root component',
+            );
+            expect(getPlatform()).withContext('PlatformRef should be destroyed').toBeNull();
+            expect(wasServiceNgOnDestroyCalled)
+              .withContext('DestroyableService.ngOnDestroy() should be called')
+              .toBeTrue();
           },
         );
       });
@@ -1084,7 +1371,6 @@ class HiddenModule {}
         const ngZone = TestBed.inject(NgZone);
 
         @Component({
-          standalone: true,
           selector: 'lazy',
           template: `LazyCmp content`,
         })
@@ -1107,9 +1393,9 @@ class HiddenModule {}
           standalone: false,
           selector: 'app',
           template: `
-          Works!
-          <router-outlet />
-        `,
+            Works!
+            <router-outlet/>
+          `,
         })
         class MyServerApp {}
 
@@ -1149,7 +1435,6 @@ class HiddenModule {}
           const http = ref.injector.get(HttpClient);
           ref.injector.get<NgZone>(NgZone).run(() => {
             http.get<string>('http://localhost/testing').subscribe((body: string) => {
-              NgZone.assertInAngularZone();
               expect(body).toEqual('success!');
             });
             mock.expectOne('http://localhost/testing').flush('success!');
@@ -1166,11 +1451,49 @@ class HiddenModule {}
           const http = ref.injector.get(HttpClient);
           ref.injector.get(NgZone).run(() => {
             http.get<string>('http://localhost/testing').subscribe((body: string) => {
-              NgZone.assertInAngularZone();
               expect(body).toEqual('success!');
             });
             mock.expectOne('http://localhost/testing').flush('success!');
           });
+        });
+      });
+
+      describe('detecting state being transferred twice', () => {
+        it(`shows a warning when server providers has been provided twice`, async () => {
+          const consoleSpy = spyOn(console, 'warn');
+          const options = {document: '<app></app>'};
+          const bootstrap = renderModule(DoubleTransferStateModule, options);
+
+          // Note: script#ng-state repeated twice below.
+          // It's a warning in v19
+          // And might become an error in v20.
+          const expectedOutput =
+            '<html><head></head><body><app ng-version="0.0.0-PLACEHOLDER" ng-server-context="other"><div>Works!</div></app>' +
+            '<script id="ng-state" type="application/json">{"some-key":"some-value"}</script><script id="ng-state" type="application/json">{"some-key":"some-value"}</script></body></html>';
+          const output = await bootstrap;
+          expect(output).toEqual(expectedOutput);
+          expect(consoleSpy).toHaveBeenCalledWith(
+            jasmine.stringMatching('Angular detected an incompatible configuration'),
+          );
+          expect(consoleSpy).toHaveBeenCalledWith(
+            jasmine.stringMatching(
+              `This can happen if the server providers have been provided more than once using different mechanisms.`,
+            ),
+          );
+        });
+
+        it(`should not show a warning when server providers were provided once`, async () => {
+          const consoleSpy = spyOn(console, 'warn');
+          const options = {document: '<app></app>'};
+          const bootstrap = renderModule(MyTransferStateModule, options);
+          const expectedOutput =
+            '<html><head></head><body><app ng-version="0.0.0-PLACEHOLDER" ng-server-context="other"><div>Works!</div></app>' +
+            '<script id="ng-state" type="application/json">{"some-key":"some-value"}</script></body></html>';
+          const output = await bootstrap;
+          expect(output).toEqual(expectedOutput);
+          expect(consoleSpy).not.toHaveBeenCalledWith(
+            jasmine.stringMatching('Angular detected an incompatible configuration'),
+          );
         });
       });
 
@@ -1183,7 +1506,10 @@ class HiddenModule {}
           const platform = platformServer([
             {
               provide: INITIAL_CONFIG,
-              useValue: {document: '<app></app>', url: 'http://localhost:4000/foo'},
+              useValue: {
+                document: '<app></app>',
+                url: 'http://localhost:4000/foo',
+              },
             },
           ]);
 
@@ -1195,7 +1521,6 @@ class HiddenModule {}
         it('should resolve relative request URLs to absolute', async () => {
           ref.injector.get(NgZone).run(() => {
             http.get('/testing').subscribe((body) => {
-              NgZone.assertInAngularZone();
               expect(body).toEqual('success!');
             });
             mock.expectOne('http://localhost:4000/testing').flush('success!');
@@ -1205,7 +1530,6 @@ class HiddenModule {}
         it(`should not replace the baseUrl of a request when it's absolute`, async () => {
           ref.injector.get(NgZone).run(() => {
             http.get('http://localhost/testing').subscribe((body) => {
-              NgZone.assertInAngularZone();
               expect(body).toEqual('success!');
             });
             mock.expectOne('http://localhost/testing').flush('success!');

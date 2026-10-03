@@ -1,35 +1,29 @@
-load("@npm//@bazel/esbuild:index.bzl", "esbuild", "esbuild_config")
-load("//tools:defaults.bzl", "ts_library")
+load("@aspect_rules_esbuild//esbuild:defs.bzl", "esbuild")
+load("//tools:defaults.bzl", "ts_project")
 
 package(default_visibility = ["//visibility:public"])
 
-ts_library(
+ts_project(
     name = "cli",
     srcs = glob(
         ["**/*.ts"],
     ),
-    tsconfig = ":tsconfig.json",
     deps = [
         "//packages/service-worker/config",
-        "@npm//@types/node",
     ],
-)
-
-esbuild_config(
-    name = "esbuild_config",
-    config_file = "esbuild.config.js",
 )
 
 esbuild(
     name = "ngsw_config",
-    config = ":esbuild_config",
+    config = "esbuild.config.js",
     entry_point = ":main.ts",
     external = [
         "@angular/service-worker",
     ],
     format = "esm",
+    metafile = False,
     platform = "node",
-    target = "node12",
+    target = "node20",
     deps = [
         ":cli",
     ],

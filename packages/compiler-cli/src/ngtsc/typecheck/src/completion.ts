@@ -3,17 +3,15 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {
   AST,
   EmptyExpr,
   ImplicitReceiver,
-  LetDeclaration,
   LiteralPrimitive,
   PropertyRead,
-  PropertyWrite,
   SafePropertyRead,
   TmplAstLetDeclaration,
   TmplAstNode,
@@ -34,7 +32,7 @@ import {
 } from '../api';
 
 import {ExpressionIdentifier, findFirstMatchingNode} from './comments';
-import {TemplateData} from './context';
+import {TypeCheckData} from './context';
 
 /**
  * Powers autocompletion for a specific component.
@@ -44,6 +42,10 @@ import {TemplateData} from './context';
  */
 export class CompletionEngine {
   private componentContext: TcbLocation | null;
+  /**
+   * Get the `TcbLocation` for the global context, which is the location of the `this` variable.
+   */
+  private globalTsContext: TcbLocation | null;
 
   /**
    * Cache of completions for various levels of the template, including the root template (`null`).
@@ -61,7 +63,7 @@ export class CompletionEngine {
 
   constructor(
     private tcb: ts.Node,
-    private data: TemplateData,
+    private data: TypeCheckData,
     private tcbPath: AbsoluteFsPath,
     private tcbIsShim: boolean,
   ) {
@@ -80,9 +82,19 @@ export class CompletionEngine {
         // for the component context.
         positionInFile: globalRead.name.getStart(),
       };
+      this.globalTsContext = {
+        tcbPath: this.tcbPath,
+        isShimFile: this.tcbIsShim,
+        positionInFile: globalRead.name.getStart() - 1,
+      };
     } else {
       this.componentContext = null;
+      this.globalTsContext = null;
     }
+  }
+
+  getGlobalTsContext(): TcbLocation | null {
+    return this.globalTsContext;
   }
 
   /**
@@ -142,16 +154,14 @@ export class CompletionEngine {
     };
   }
 
-  getExpressionCompletionLocation(
-    expr: PropertyRead | PropertyWrite | SafePropertyRead,
-  ): TcbLocation | null {
+  getExpressionCompletionLocation(expr: PropertyRead | SafePropertyRead): TcbLocation | null {
     if (this.expressionCompletionCache.has(expr)) {
       return this.expressionCompletionCache.get(expr)!;
     }
 
     // Completion works inside property reads and method calls.
     let tsExpr: ts.PropertyAccessExpression | null = null;
-    if (expr instanceof PropertyRead || expr instanceof PropertyWrite) {
+    if (expr instanceof PropertyRead) {
       // Non-safe navigation operations are trivial: `foo.bar` or `foo.bar()`
       tsExpr = findFirstMatchingNode(this.tcb, {
         filter: ts.isPropertyAccessExpression,

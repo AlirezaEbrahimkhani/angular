@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import fs from 'fs';
@@ -13,6 +13,7 @@ import url from 'url';
 
 /** Currently-configured tests. */
 const TESTS = new Map<string, (value: string) => string>([
+  ['linked_signal_signature_test', (v) => `WritableSignal<${v}>`],
   [
     'signal_input_signature_test',
     (v) => (v.includes(',') ? `InputSignalWithTransform<${v}>` : `InputSignal<${v}>`),

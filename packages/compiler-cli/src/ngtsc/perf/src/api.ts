@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 /**
@@ -100,6 +100,11 @@ export enum PerfPhase {
   TtcDiagnostics,
 
   /**
+   * Time spent computing template type-checking suggestion diagnostics.
+   */
+  TtcSuggestionDiagnostics,
+
+  /**
    * Time spent getting a `Symbol` from the `TemplateTypeChecker`.
    */
   TtcSymbol,
@@ -139,6 +144,11 @@ export enum PerfPhase {
   LsDiagnostics,
 
   /**
+   * Time spent by the Angular Language Service calculating suggestion diagnostics.
+   */
+  LsSuggestionDiagnostics,
+
+  /**
    * Time spent by the Angular Language Service calculating a "get component locations for template"
    * operation.
    */
@@ -155,11 +165,6 @@ export enum PerfPhase {
   OutliningSpans,
 
   /**
-   * Tracks the number of `PerfPhase`s, and must appear at the end of the list.
-   */
-  LAST,
-
-  /**
    * Time spent by the Angular Language Service calculating code fixes.
    */
   LsCodeFixes,
@@ -168,6 +173,26 @@ export enum PerfPhase {
    * Time spent by the Angular Language Service to fix all detected same type errors.
    */
   LsCodeFixesAll,
+
+  /**
+   * Time spent computing possible Angular refactorings.
+   */
+  LSComputeApplicableRefactorings,
+
+  /**
+   * Time spent computing changes for applying a given refactoring.
+   */
+  LSApplyRefactoring,
+
+  /**
+   * Time spent by the Angular Language Service calculating semantic classifications.
+   */
+  LSSemanticClassification,
+
+  /**
+   * Tracks the number of `PerfPhase`s, and must appear at the end of the list.
+   */
+  LAST,
 }
 
 /**

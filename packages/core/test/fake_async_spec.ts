@@ -3,18 +3,11 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {
-  discardPeriodicTasks,
-  fakeAsync,
-  flush,
-  flushMicrotasks,
-  inject,
-  tick,
-} from '@angular/core/testing';
-import {Log} from '@angular/core/testing/src/testing_internal';
+import {discardPeriodicTasks, fakeAsync, flush, flushMicrotasks, inject, tick} from '../testing';
+import {Log} from '../testing/src/testing_internal';
 import {EventManager} from '@angular/platform-browser';
 
 const resolvedPromise = Promise.resolve(null);
@@ -204,17 +197,23 @@ describe('fake async', () => {
 
     it('should throw an error on dangling timers', () => {
       expect(() => {
-        fakeAsync(() => {
-          setTimeout(() => {}, 10);
-        })();
+        fakeAsync(
+          () => {
+            setTimeout(() => {}, 10);
+          },
+          {flush: false},
+        )();
       }).toThrowError('1 timer(s) still in the queue.');
     });
 
     it('should throw an error on dangling periodic timers', () => {
       expect(() => {
-        fakeAsync(() => {
-          setInterval(() => {}, 10);
-        })();
+        fakeAsync(
+          () => {
+            setInterval(() => {}, 10);
+          },
+          {flush: false},
+        )();
       }).toThrowError('1 periodic timer(s) still in the queue.');
     });
 

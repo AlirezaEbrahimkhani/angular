@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 import ts from 'typescript';
 
@@ -132,7 +132,7 @@ function getOptions(
     target: ts.ScriptTarget.ES2015,
     newLine: ts.NewLineKind.LineFeed,
     module: ts.ModuleKind.ES2015,
-    moduleResolution: ts.ModuleResolutionKind.Node10,
+    moduleResolution: ts.ModuleResolutionKind.Bundler,
     typeRoots: ['node_modules/@types'],
     ...convertedCompilerOptions.options,
     enableI18nLegacyMessageIdFormat: false,

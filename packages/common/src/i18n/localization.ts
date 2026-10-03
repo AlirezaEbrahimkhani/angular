@@ -3,20 +3,20 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {Inject, Injectable, LOCALE_ID} from '@angular/core';
+import {inject, Inject, Injectable, LOCALE_ID, ɵRuntimeError as RuntimeError} from '@angular/core';
 
 import {getLocalePluralCase, Plural} from './locale_data_api';
+import {RuntimeErrorCode} from '../errors';
 
 /**
  * @publicApi
  */
 @Injectable({
   providedIn: 'root',
-  useFactory: (locale: string) => new NgLocaleLocalization(locale),
-  deps: [LOCALE_ID],
+  useFactory: () => new NgLocaleLocalization(inject(LOCALE_ID)),
 })
 export abstract class NgLocalization {
   abstract getPluralCategory(value: any, locale?: string): string;
@@ -49,7 +49,10 @@ export function getPluralCategory(
     return 'other';
   }
 
-  throw new Error(`No plural message found for value "${value}"`);
+  throw new RuntimeError(
+    RuntimeErrorCode.NO_PLURAL_MESSAGE_FOUND,
+    ngDevMode && `No plural message found for value "${value}"`,
+  );
 }
 
 /**

@@ -3,15 +3,23 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {DEFAULT_CURRENCY_CODE, Inject, LOCALE_ID, Pipe, PipeTransform} from '@angular/core';
+import {
+  DEFAULT_CURRENCY_CODE,
+  Inject,
+  LOCALE_ID,
+  Pipe,
+  PipeTransform,
+  ɵRuntimeError as RuntimeError,
+} from '@angular/core';
 
 import {formatCurrency, formatNumber, formatPercent} from '../i18n/format_number';
 import {getCurrencySymbol} from '../i18n/locale_data_api';
 
 import {invalidPipeArgumentError} from './invalid_pipe_argument_error';
+import {RuntimeErrorCode} from '../errors';
 
 /**
  * @ngModule CommonModule
@@ -72,24 +80,16 @@ import {invalidPipeArgumentError} from './invalid_pipe_argument_error';
  * according to various format specifications,
  * where the caller's default locale is `en-US`.
  *
- * <code-example path="common/pipes/ts/number_pipe.ts" region='NumberPipe'></code-example>
+ * {@example common/pipes/ts/number_pipe.ts region='NumberPipe'}
  *
  * @publicApi
  */
 @Pipe({
   name: 'number',
-  standalone: true,
 })
 export class DecimalPipe implements PipeTransform {
   constructor(@Inject(LOCALE_ID) private _locale: string) {}
 
-  transform(value: number | string, digitsInfo?: string, locale?: string): string | null;
-  transform(value: null | undefined, digitsInfo?: string, locale?: string): null;
-  transform(
-    value: number | string | null | undefined,
-    digitsInfo?: string,
-    locale?: string,
-  ): string | null;
   /**
    * @param value The value to be formatted.
    * @param digitsInfo Sets digit and decimal representation.
@@ -97,6 +97,13 @@ export class DecimalPipe implements PipeTransform {
    * @param locale Specifies what locale format rules to use.
    * [See more](#locale).
    */
+  transform(value: number | string, digitsInfo?: string, locale?: string): string | null;
+  transform(value: null | undefined, digitsInfo?: string, locale?: string): null;
+  transform(
+    value: number | string | null | undefined,
+    digitsInfo?: string,
+    locale?: string,
+  ): string | null;
   transform(
     value: number | string | null | undefined,
     digitsInfo?: string,
@@ -131,13 +138,12 @@ export class DecimalPipe implements PipeTransform {
  * into text strings, according to various format specifications,
  * where the caller's default locale is `en-US`.
  *
- * <code-example path="common/pipes/ts/percent_pipe.ts" region='PercentPipe'></code-example>
+ * {@example common/pipes/ts/percent_pipe.ts region='PercentPipe'}
  *
  * @publicApi
  */
 @Pipe({
   name: 'percent',
-  standalone: true,
 })
 export class PercentPipe implements PipeTransform {
   constructor(@Inject(LOCALE_ID) private _locale: string) {}
@@ -198,41 +204,18 @@ export class PercentPipe implements PipeTransform {
  * into text strings, according to various format specifications,
  * where the caller's default locale is `en-US`.
  *
- * <code-example path="common/pipes/ts/currency_pipe.ts" region='CurrencyPipe'></code-example>
+ * {@example common/pipes/ts/currency_pipe.ts region='CurrencyPipe'}
  *
  * @publicApi
  */
 @Pipe({
   name: 'currency',
-  standalone: true,
 })
 export class CurrencyPipe implements PipeTransform {
   constructor(
     @Inject(LOCALE_ID) private _locale: string,
     @Inject(DEFAULT_CURRENCY_CODE) private _defaultCurrencyCode: string = 'USD',
   ) {}
-
-  transform(
-    value: number | string,
-    currencyCode?: string,
-    display?: 'code' | 'symbol' | 'symbol-narrow' | string | boolean,
-    digitsInfo?: string,
-    locale?: string,
-  ): string | null;
-  transform(
-    value: null | undefined,
-    currencyCode?: string,
-    display?: 'code' | 'symbol' | 'symbol-narrow' | string | boolean,
-    digitsInfo?: string,
-    locale?: string,
-  ): null;
-  transform(
-    value: number | string | null | undefined,
-    currencyCode?: string,
-    display?: 'code' | 'symbol' | 'symbol-narrow' | string | boolean,
-    digitsInfo?: string,
-    locale?: string,
-  ): string | null;
   /**
    *
    * @param value The number to be formatted as currency.
@@ -267,6 +250,27 @@ export class CurrencyPipe implements PipeTransform {
    * See [Setting your app locale](guide/i18n/locale-id).
    */
   transform(
+    value: number | string,
+    currencyCode?: string,
+    display?: 'code' | 'symbol' | 'symbol-narrow' | string | boolean,
+    digitsInfo?: string,
+    locale?: string,
+  ): string | null;
+  transform(
+    value: null | undefined,
+    currencyCode?: string,
+    display?: 'code' | 'symbol' | 'symbol-narrow' | string | boolean,
+    digitsInfo?: string,
+    locale?: string,
+  ): null;
+  transform(
+    value: number | string | null | undefined,
+    currencyCode?: string,
+    display?: 'code' | 'symbol' | 'symbol-narrow' | string | boolean,
+    digitsInfo?: string,
+    locale?: string,
+  ): string | null;
+  transform(
     value: number | string | null | undefined,
     currencyCode: string = this._defaultCurrencyCode,
     display: 'code' | 'symbol' | 'symbol-narrow' | string | boolean = 'symbol',
@@ -278,7 +282,7 @@ export class CurrencyPipe implements PipeTransform {
     locale ||= this._locale;
 
     if (typeof display === 'boolean') {
-      if ((typeof ngDevMode === 'undefined' || ngDevMode) && <any>console && <any>console.warn) {
+      if (typeof ngDevMode === 'undefined' || ngDevMode) {
         console.warn(
           `Warning: the currency pipe has been changed in Angular v5. The symbolDisplay option (third parameter) is now a string instead of a boolean. The accepted values are "code", "symbol" or "symbol-narrow".`,
         );
@@ -317,7 +321,10 @@ function strToNumber(value: number | string): number {
     return Number(value);
   }
   if (typeof value !== 'number') {
-    throw new Error(`${value} is not a number`);
+    throw new RuntimeError(
+      RuntimeErrorCode.VALUE_NOT_A_NUMBER,
+      ngDevMode && `${value} is not a number`,
+    );
   }
   return value;
 }

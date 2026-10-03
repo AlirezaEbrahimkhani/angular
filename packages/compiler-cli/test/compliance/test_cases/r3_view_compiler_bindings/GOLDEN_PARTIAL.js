@@ -11,7 +11,6 @@ i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "0.0.0-PLACEHOLDE
             type: Component,
             args: [{
                     selector: 'some-elem',
-                    standalone: true,
                     template: ``,
                     inputs: ['attr1', 'prop1', 'attrInterp1', 'propInterp1'],
                 }]
@@ -19,7 +18,7 @@ i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "0.0.0-PLACEHOLDE
 export class MyCmp {
 }
 MyCmp.ɵfac = i0.ɵɵngDeclareFactory({ minVersion: "12.0.0", version: "0.0.0-PLACEHOLDER", ngImport: i0, type: MyCmp, deps: [], target: i0.ɵɵFactoryTarget.Component });
-MyCmp.ɵcmp = i0.ɵɵngDeclareComponent({ minVersion: "14.0.0", version: "0.0.0-PLACEHOLDER", type: MyCmp, isStandalone: true, selector: "my-cmp", host: { attributes: { "literal1": "foo" }, listeners: { "event1": "foo()" }, properties: { "attr.attr1": "foo", "prop1": "foo", "class.class1": "false", "style.style1": "true", "class": "foo", "style": "foo" } }, ngImport: i0, template: `
+MyCmp.ɵcmp = i0.ɵɵngDeclareComponent({ minVersion: "14.0.0", version: "0.0.0-PLACEHOLDER", type: MyCmp, isStandalone: true, selector: "my-cmp", host: { attributes: { "literal1": "foo" }, listeners: { "event1": "foo()" }, properties: { "attr.attr1": "foo", "id": "foo", "class.class1": "false", "style.style1": "true", "class": "foo", "style": "foo" } }, ngImport: i0, template: `
 		<some-elem
 			literal1="foo"
 			(event1)="foo()"
@@ -37,13 +36,12 @@ i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "0.0.0-PLACEHOLDE
             type: Component,
             args: [{
                     selector: 'my-cmp',
-                    standalone: true,
                     imports: [SomeCmp],
                     host: {
                         'literal1': 'foo',
                         '(event1)': 'foo()',
                         '[attr.attr1]': 'foo',
-                        '[prop1]': 'foo',
+                        '[id]': 'foo',
                         '[class.class1]': 'false',
                         '[style.style1]': 'true',
                         '[class]': 'foo',
@@ -62,7 +60,7 @@ i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "0.0.0-PLACEHOLDE
 			attr.attrInterp1="interp {{foo}}"
 			propInterp1="interp {{foo}}"
 			/>
-	`
+	`,
                 }]
         }] });
 

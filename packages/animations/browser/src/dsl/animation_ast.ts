@@ -3,14 +3,14 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 import {
   AnimateTimings,
   AnimationMetadataType,
   AnimationOptions,
   ɵStyleDataMap,
-} from '@angular/animations';
+} from '../../../src/animations';
 
 const EMPTY_ANIMATION_OPTIONS: AnimationOptions = {};
 

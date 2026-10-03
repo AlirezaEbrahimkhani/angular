@@ -3,16 +3,15 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import * as e from '../../../src/expression_parser/ast';
 import {Lexer} from '../../../src/expression_parser/lexer';
 import {Parser} from '../../../src/expression_parser/parser';
 import * as html from '../../../src/ml_parser/ast';
-import {DEFAULT_INTERPOLATION_CONFIG, InterpolationConfig} from '../../../src/ml_parser/defaults';
 import {HtmlParser} from '../../../src/ml_parser/html_parser';
-import {WhitespaceVisitor} from '../../../src/ml_parser/html_whitespaces';
+import {WhitespaceVisitor, visitAllWithSiblings} from '../../../src/ml_parser/html_whitespaces';
 import {ParseTreeResult} from '../../../src/ml_parser/parser';
 import * as a from '../../../src/render3/r3_ast';
 import {htmlAstToRender3Ast, Render3ParseResult} from '../../../src/render3/r3_template_transform';
@@ -105,11 +104,13 @@ export function findExpression(tmpl: a.Node[], expr: string): e.AST | null {
 }
 
 function findExpressionInNode(node: a.Node, expr: string): e.AST | null {
-  if (node instanceof a.Element || node instanceof a.Template) {
+  if (node instanceof a.Element || node instanceof a.Template || node instanceof a.Component) {
     return findExpression([...node.inputs, ...node.outputs, ...node.children], expr);
+  } else if (node instanceof a.Directive) {
+    return findExpression([...node.inputs, ...node.outputs], expr);
   } else if (node instanceof a.BoundAttribute || node instanceof a.BoundText) {
     const ts = toStringExpression(node.value);
-    return toStringExpression(node.value) === expr ? node.value : null;
+    return ts === expr ? node.value : null;
   } else if (node instanceof a.BoundEvent) {
     return toStringExpression(node.handler) === expr ? node.handler : null;
   } else {
@@ -148,12 +149,14 @@ export function parseR3(
     preserveWhitespaces?: boolean;
     leadingTriviaChars?: string[];
     ignoreError?: boolean;
+    selectorlessEnabled?: boolean;
   } = {},
 ): Render3ParseResult {
   const htmlParser = new HtmlParser();
   const parseResult = htmlParser.parse(input, 'path:://to/template', {
     tokenizeExpansionForms: true,
     leadingTriviaChars: options.leadingTriviaChars ?? LEADING_TRIVIA_CHARS,
+    selectorlessEnabled: options.selectorlessEnabled,
   });
 
   if (parseResult.errors.length > 0 && !options.ignoreError) {
@@ -164,7 +167,10 @@ export function parseR3(
   let htmlNodes = processI18nMeta(parseResult).rootNodes;
 
   if (!options.preserveWhitespaces) {
-    htmlNodes = html.visitAll(new WhitespaceVisitor(), htmlNodes);
+    htmlNodes = visitAllWithSiblings(
+      new WhitespaceVisitor(true /* preserveSignificantWhitespace */),
+      htmlNodes,
+    );
   }
 
   const expressionParser = new Parser(new Lexer());
@@ -175,12 +181,7 @@ export function parseR3(
     ['onEvent'],
     ['onEvent'],
   );
-  const bindingParser = new BindingParser(
-    expressionParser,
-    DEFAULT_INTERPOLATION_CONFIG,
-    schemaRegistry,
-    [],
-  );
+  const bindingParser = new BindingParser(expressionParser, schemaRegistry, []);
   const r3Result = htmlAstToRender3Ast(htmlNodes, bindingParser, {collectCommentNodes: false});
 
   if (r3Result.errors.length > 0 && !options.ignoreError) {
@@ -191,15 +192,9 @@ export function parseR3(
   return r3Result;
 }
 
-export function processI18nMeta(
-  htmlAstWithErrors: ParseTreeResult,
-  interpolationConfig: InterpolationConfig = DEFAULT_INTERPOLATION_CONFIG,
-): ParseTreeResult {
+export function processI18nMeta(htmlAstWithErrors: ParseTreeResult): ParseTreeResult {
   return new ParseTreeResult(
-    html.visitAll(
-      new I18nMetaVisitor(interpolationConfig, /* keepI18nAttrs */ false),
-      htmlAstWithErrors.rootNodes,
-    ),
+    html.visitAll(new I18nMetaVisitor(/* keepI18nAttrs */ false), htmlAstWithErrors.rootNodes),
     htmlAstWithErrors.errors,
   );
 }

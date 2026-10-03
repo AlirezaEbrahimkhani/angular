@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {I18nMeta} from '../i18n/i18n_ast';
@@ -24,7 +24,9 @@ export type Node =
   | ExpansionCase
   | Text
   | Block
-  | BlockParameter;
+  | BlockParameter
+  | Component
+  | Directive;
 
 export abstract class NodeWithI18n implements BaseNode {
   constructor(
@@ -99,10 +101,13 @@ export class Element extends NodeWithI18n {
   constructor(
     public name: string,
     public attrs: Attribute[],
+    readonly directives: Directive[],
     public children: Node[],
+    readonly isSelfClosing: boolean,
     sourceSpan: ParseSourceSpan,
     public startSourceSpan: ParseSourceSpan,
     public endSourceSpan: ParseSourceSpan | null = null,
+    readonly isVoid: boolean,
     i18n?: I18nMeta,
   ) {
     super(sourceSpan, i18n);
@@ -138,6 +143,42 @@ export class Block extends NodeWithI18n {
 
   override visit(visitor: Visitor, context: any) {
     return visitor.visitBlock(this, context);
+  }
+}
+
+export class Component extends NodeWithI18n {
+  constructor(
+    readonly componentName: string,
+    readonly tagName: string | null,
+    readonly fullName: string,
+    public attrs: Attribute[],
+    readonly directives: Directive[],
+    readonly children: Node[],
+    readonly isSelfClosing: boolean,
+    sourceSpan: ParseSourceSpan,
+    readonly startSourceSpan: ParseSourceSpan,
+    public endSourceSpan: ParseSourceSpan | null = null,
+    i18n?: I18nMeta,
+  ) {
+    super(sourceSpan, i18n);
+  }
+
+  override visit(visitor: Visitor, context: any): any {
+    return visitor.visitComponent(this, context);
+  }
+}
+
+export class Directive implements BaseNode {
+  constructor(
+    readonly name: string,
+    readonly attrs: Attribute[],
+    readonly sourceSpan: ParseSourceSpan,
+    readonly startSourceSpan: ParseSourceSpan,
+    readonly endSourceSpan: ParseSourceSpan | null = null,
+  ) {}
+
+  visit(visitor: Visitor, context: any): any {
+    return visitor.visitDirective(this, context);
   }
 }
 
@@ -180,6 +221,8 @@ export interface Visitor {
   visitBlock(block: Block, context: any): any;
   visitBlockParameter(parameter: BlockParameter, context: any): any;
   visitLetDeclaration(decl: LetDeclaration, context: any): any;
+  visitComponent(component: Component, context: any): any;
+  visitDirective(directive: Directive, context: any): any;
 }
 
 export function visitAll(visitor: Visitor, nodes: Node[], context: any = null): any[] {
@@ -203,6 +246,7 @@ export class RecursiveVisitor implements Visitor {
   visitElement(ast: Element, context: any): any {
     this.visitChildren(context, (visit) => {
       visit(ast.attrs);
+      visit(ast.directives);
       visit(ast.children);
     });
   }
@@ -230,7 +274,20 @@ export class RecursiveVisitor implements Visitor {
 
   visitLetDeclaration(decl: LetDeclaration, context: any) {}
 
-  private visitChildren<T extends Node>(
+  visitComponent(component: Component, context: any) {
+    this.visitChildren(context, (visit) => {
+      visit(component.attrs);
+      visit(component.children);
+    });
+  }
+
+  visitDirective(directive: Directive, context: any) {
+    this.visitChildren(context, (visit) => {
+      visit(directive.attrs);
+    });
+  }
+
+  private visitChildren(
     context: any,
     cb: (visit: <V extends Node>(children: V[] | undefined) => void) => void,
   ) {

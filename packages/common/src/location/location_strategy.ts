@@ -3,12 +3,18 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {Inject, inject, Injectable, InjectionToken, OnDestroy, Optional} from '@angular/core';
-
-import {DOCUMENT} from '../dom_tokens';
+import {
+  DOCUMENT,
+  Inject,
+  inject,
+  Injectable,
+  InjectionToken,
+  OnDestroy,
+  Optional,
+} from '@angular/core';
 
 import {LocationChangeListener, PlatformLocation} from './platform_location';
 import {joinWithSlash, normalizeQueryParams} from './util';
@@ -22,7 +28,7 @@ import {joinWithSlash, normalizeQueryParams} from './util';
  * interact with application route state.
  *
  * For instance, `HashLocationStrategy` produces URLs like
- * <code class="no-auto-link">http://example.com#/foo</code>,
+ * <code class="no-auto-link">http://example.com/#/foo</code>,
  * and `PathLocationStrategy` produces
  * <code class="no-auto-link">http://example.com/foo</code> as an equivalent URL.
  *
@@ -57,7 +63,7 @@ export abstract class LocationStrategy {
  * The following example shows how to use this token to configure the root app injector
  * with a base href value, so that the DI framework can supply the dependency anywhere in the app.
  *
- * ```typescript
+ * ```ts
  * import {NgModule} from '@angular/core';
  * import {APP_BASE_HREF} from '@angular/common';
  *
@@ -69,7 +75,9 @@ export abstract class LocationStrategy {
  *
  * @publicApi
  */
-export const APP_BASE_HREF = new InjectionToken<string>(ngDevMode ? 'appBaseHref' : '');
+export const APP_BASE_HREF = new InjectionToken<string>(
+  typeof ngDevMode !== undefined && ngDevMode ? 'appBaseHref' : '',
+);
 
 /**
  * @description
@@ -120,7 +128,7 @@ export class PathLocationStrategy extends LocationStrategy implements OnDestroy 
       '';
   }
 
-  /** @nodoc */
+  /** @docs-private */
   ngOnDestroy(): void {
     while (this._removeListenerFns.length) {
       this._removeListenerFns.pop()!();

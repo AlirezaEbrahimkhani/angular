@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 import ts from 'typescript';
 
@@ -98,6 +98,7 @@ runInEachFileSystem(() => {
 
         @Component({
           template: '<div external></div>',
+          standalone: false,
         })
         export class MyComponent {}
       `,
@@ -131,6 +132,45 @@ runInEachFileSystem(() => {
   The symbol is not exported from ${absoluteFrom('/node_modules/lib/index.d.ts')} (module 'lib').`);
       expect(diags[0].file!.fileName).toEqual(absoluteFrom('/app/comp.ts'));
       expect(getDiagnosticSourceCode(diags[0])).toEqual('MyComponent');
+    });
+
+    it('should be possible to use a directive outside of `rootDir` when no `rootDirs` are set.', () => {
+      env.write(
+        'tsconfig.json',
+        JSON.stringify(
+          {
+            extends: './tsconfig-base.json',
+            compilerOptions: {rootDir: './app'},
+          },
+          null,
+          2,
+        ),
+      );
+      env.write(
+        '/app/module.ts',
+        `
+          import {NgModule} from '@angular/core';
+          import {ExternalDir} from '../lib/dir';
+
+          @NgModule({
+            imports: [ExternalDir],
+          })
+          export class MyModule {}
+    `,
+      );
+      env.write(
+        '/lib/dir.d.ts',
+        `
+          import {ɵɵDirectiveDeclaration} from '@angular/core';
+
+          export class ExternalDir {
+            static ɵdir: ɵɵDirectiveDeclaration<ExternalDir, '[external]', never, never, never, never, never, true>;
+          }
+    `,
+      );
+
+      const diags = env.driveDiagnostics();
+      expect(diags.length).toBe(0);
     });
   });
 });

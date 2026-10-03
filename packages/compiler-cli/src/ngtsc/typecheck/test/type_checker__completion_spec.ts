@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {ParseTemplateOptions, TmplAstTemplate} from '@angular/compiler';
@@ -97,48 +97,6 @@ runInEachFileSystem(() => {
       expect(innerContext.get('one')?.kind).toBe(CompletionKind.LetDeclaration);
       expect(innerContext.get('three')?.kind).toBe(CompletionKind.LetDeclaration);
       expect(innerContext.get('two')?.kind).toBe(CompletionKind.LetDeclaration);
-    });
-  });
-
-  describe('TemplateTypeChecker scopes', () => {
-    it('should get directives and pipes in scope for a component', () => {
-      const MAIN_TS = absoluteFrom('/main.ts');
-      const {program, templateTypeChecker} = setup([
-        {
-          fileName: MAIN_TS,
-          templates: {
-            'SomeCmp': 'Not important',
-          },
-          declarations: [
-            {
-              type: 'directive',
-              file: MAIN_TS,
-              name: 'OtherDir',
-              selector: 'other-dir',
-            },
-            {
-              type: 'pipe',
-              file: MAIN_TS,
-              name: 'OtherPipe',
-              pipeName: 'otherPipe',
-            },
-          ],
-          source: `
-            export class SomeCmp {}
-            export class OtherDir {}
-            export class OtherPipe {}
-            export class SomeCmpModule {}
-          `,
-        },
-      ]);
-      const sf = getSourceFileOrError(program, MAIN_TS);
-      const SomeCmp = getClass(sf, 'SomeCmp');
-
-      let directives = templateTypeChecker.getPotentialTemplateDirectives(SomeCmp) ?? [];
-      directives = directives.filter((d) => d.isInScope);
-      const pipes = templateTypeChecker.getPotentialPipes(SomeCmp) ?? [];
-      expect(directives.map((dir) => dir.selector)).toEqual(['other-dir']);
-      expect(pipes.map((pipe) => pipe.name)).toEqual(['otherPipe']);
     });
   });
 });

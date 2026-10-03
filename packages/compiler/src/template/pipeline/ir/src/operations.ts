@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {OpKind} from './enums';
@@ -226,7 +226,7 @@ export class OpList<OpT extends Op<OpT>> {
 
     let prev: OpT = oldPrev!;
     for (const newOp of newOps) {
-      this.assertIsUnowned(newOp);
+      OpList.assertIsUnowned(newOp);
       newOp.debugListId = listId;
 
       prev!.next = newOp;
@@ -276,7 +276,7 @@ export class OpList<OpT extends Op<OpT>> {
   static insertBefore<OpT extends Op<OpT>>(op: OpT | OpT[], target: OpT): void {
     if (Array.isArray(op)) {
       for (const o of op) {
-        this.insertBefore(o, target);
+        OpList.insertBefore(o, target);
       }
       return;
     }

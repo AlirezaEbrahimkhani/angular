@@ -3,10 +3,10 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {computed, isSignal, signal} from '@angular/core';
+import {computed, isSignal, signal} from '../../src/core';
 
 describe('isSignal', () => {
   it('should return true for writable signal', () => {

@@ -3,19 +3,19 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {ResourceLoader} from '@angular/compiler';
 import {
   ApplicationInitStatus,
-  ɵChangeDetectionScheduler as ChangeDetectionScheduler,
-  ɵChangeDetectionSchedulerImpl as ChangeDetectionSchedulerImpl,
+  ɵINTERNAL_APPLICATION_ERROR_HANDLER as INTERNAL_APPLICATION_ERROR_HANDLER,
   Compiler,
   COMPILER_OPTIONS,
   Component,
   Directive,
   Injector,
+  inject,
   InjectorType,
   LOCALE_ID,
   ModuleWithComponentFactories,
@@ -35,13 +35,13 @@ import {
   ɵcompilePipe as compilePipe,
   ɵDEFAULT_LOCALE_ID as DEFAULT_LOCALE_ID,
   ɵDEFER_BLOCK_CONFIG as DEFER_BLOCK_CONFIG,
-  ɵDeferBlockBehavior as DeferBlockBehavior,
   ɵdepsTracker as depsTracker,
   ɵDirectiveDef as DirectiveDef,
   ɵgenerateStandaloneInDeclarationsError,
   ɵgetAsyncClassMetadataFn as getAsyncClassMetadataFn,
   ɵgetInjectableDef as getInjectableDef,
   ɵInternalEnvironmentProviders as InternalEnvironmentProviders,
+  ɵprovideZonelessChangeDetectionInternal as provideZonelessChangeDetectionInternal,
   ɵinternalProvideZoneChangeDetection as internalProvideZoneChangeDetection,
   ɵisComponentDefPendingResolution,
   ɵisEnvironmentProviders as isEnvironmentProviders,
@@ -60,9 +60,12 @@ import {
   ɵrestoreComponentResolutionQueue,
   ɵsetLocaleId as setLocaleId,
   ɵtransitiveScopesFor as transitiveScopesFor,
-  ɵUSE_RUNTIME_DEPS_TRACKER_FOR_JIT as USE_RUNTIME_DEPS_TRACKER_FOR_JIT,
   ɵɵInjectableDeclaration as InjectableDeclaration,
-} from '@angular/core';
+  NgZone,
+  ErrorHandler,
+  ENVIRONMENT_INITIALIZER,
+  ɵANIMATIONS_DISABLED as ANIMATIONS_DISABLED,
+} from '../../src/core';
 
 import {ComponentDef, ComponentType} from '../../src/render3';
 
@@ -74,12 +77,22 @@ import {
   PipeResolver,
   Resolver,
 } from './resolvers';
-import {DEFER_BLOCK_DEFAULT_BEHAVIOR, TestModuleMetadata} from './test_bed_common';
+import {
+  ANIMATIONS_ENABLED_DEFAULT,
+  DEFER_BLOCK_DEFAULT_BEHAVIOR,
+  TestModuleMetadata,
+} from './test_bed_common';
+import {
+  RETHROW_APPLICATION_ERRORS_DEFAULT,
+  TestBedApplicationErrorHandler,
+} from './application_error_handler';
 
 enum TestingModuleOverride {
   DECLARATION,
   OVERRIDE_TEMPLATE,
 }
+
+const ZONELESS_BY_DEFAULT = true;
 
 function isTestingModuleOverride(value: unknown): value is TestingModuleOverride {
   return (
@@ -95,7 +108,7 @@ function assertNoStandaloneComponents(
   types.forEach((type) => {
     if (!getAsyncClassMetadataFn(type)) {
       const component = resolver.resolve(type);
-      if (component && component.standalone) {
+      if (component && (component.standalone == null || component.standalone)) {
         throw new Error(ɵgenerateStandaloneInDeclarationsError(type, location));
       }
     }
@@ -181,7 +194,9 @@ export class TestBedCompiler {
   private testModuleType: NgModuleType<any>;
   private testModuleRef: NgModuleRef<any> | null = null;
 
+  private animationsEnabled = ANIMATIONS_ENABLED_DEFAULT;
   private deferBlockBehavior = DEFER_BLOCK_DEFAULT_BEHAVIOR;
+  private rethrowApplicationTickErrors = RETHROW_APPLICATION_ERRORS_DEFAULT;
 
   constructor(
     private platform: PlatformRef,
@@ -224,12 +239,13 @@ export class TestBedCompiler {
     }
 
     this.deferBlockBehavior = moduleDef.deferBlockBehavior ?? DEFER_BLOCK_DEFAULT_BEHAVIOR;
+    this.animationsEnabled = moduleDef.animationsEnabled ?? ANIMATIONS_ENABLED_DEFAULT;
+    this.rethrowApplicationTickErrors =
+      moduleDef.rethrowApplicationErrors ?? RETHROW_APPLICATION_ERRORS_DEFAULT;
   }
 
   overrideModule(ngModule: Type<any>, override: MetadataOverride<NgModule>): void {
-    if (USE_RUNTIME_DEPS_TRACKER_FOR_JIT) {
-      depsTracker.clearScopeCacheFor(ngModule);
-    }
+    depsTracker.clearScopeCacheFor(ngModule);
     this.overriddenModules.add(ngModule as NgModuleType<any>);
 
     // Compile the module right away.
@@ -501,9 +517,7 @@ export class TestBedCompiler {
       }
 
       this.maybeStoreNgDef(NG_COMP_DEF, declaration);
-      if (USE_RUNTIME_DEPS_TRACKER_FOR_JIT) {
-        depsTracker.clearScopeCacheFor(declaration);
-      }
+      depsTracker.clearScopeCacheFor(declaration);
       compileComponent(declaration, metadata);
     });
     this.pendingComponents.clear();
@@ -540,12 +554,7 @@ export class TestBedCompiler {
       const affectedModules = this.collectModulesAffectedByOverrides(testingModuleDef.imports);
       if (affectedModules.size > 0) {
         affectedModules.forEach((moduleType) => {
-          if (!USE_RUNTIME_DEPS_TRACKER_FOR_JIT) {
-            this.storeFieldOfDefOnType(moduleType as any, NG_MOD_DEF, 'transitiveCompileScopes');
-            (moduleType as any)[NG_MOD_DEF].transitiveCompileScopes = null;
-          } else {
-            depsTracker.clearScopeCacheFor(moduleType);
-          }
+          depsTracker.clearScopeCacheFor(moduleType);
         });
       }
     }
@@ -900,9 +909,7 @@ export class TestBedCompiler {
     // Restore initial component/directive/pipe defs
     this.initialNgDefs.forEach(
       (defs: Map<string, PropertyDescriptor | undefined>, type: Type<any>) => {
-        if (USE_RUNTIME_DEPS_TRACKER_FOR_JIT) {
-          depsTracker.clearScopeCacheFor(type);
-        }
+        depsTracker.clearScopeCacheFor(type);
         defs.forEach((descriptor, prop) => {
           if (!descriptor) {
             // Delete operations are generally undesirable since they have performance
@@ -930,14 +937,41 @@ export class TestBedCompiler {
     compileNgModuleDefs(RootScopeModule as NgModuleType<any>, {
       providers: [
         ...this.rootProviderOverrides,
-        internalProvideZoneChangeDetection({}),
-        {provide: ChangeDetectionScheduler, useExisting: ChangeDetectionSchedulerImpl},
+        provideZonelessChangeDetectionInternal(),
+        ZONELESS_BY_DEFAULT ? [] : internalProvideZoneChangeDetection({}),
+        TestBedApplicationErrorHandler,
+        {
+          provide: ENVIRONMENT_INITIALIZER,
+          multi: true,
+          useValue: () => {
+            inject(ErrorHandler);
+          },
+        },
       ],
     });
 
     const providers = [
       {provide: Compiler, useFactory: () => new R3TestCompiler(this)},
       {provide: DEFER_BLOCK_CONFIG, useValue: {behavior: this.deferBlockBehavior}},
+      {
+        provide: ANIMATIONS_DISABLED,
+        useValue: !this.animationsEnabled,
+      },
+      {
+        provide: INTERNAL_APPLICATION_ERROR_HANDLER,
+        useFactory: () => {
+          if (this.rethrowApplicationTickErrors) {
+            const handler = inject(TestBedApplicationErrorHandler);
+            return (e: unknown) => {
+              handler.handleError(e);
+            };
+          } else {
+            const userErrorHandler = inject(ErrorHandler);
+            const ngZone = inject(NgZone);
+            return (e: unknown) => ngZone.runOutsideAngular(() => userErrorHandler.handleError(e));
+          }
+        },
+      },
       ...this.providers,
       ...this.providerOverrides,
     ];
@@ -963,7 +997,7 @@ export class TestBedCompiler {
     }
 
     const providers: StaticProvider[] = [];
-    const compilerOptions = this.platform.injector.get(COMPILER_OPTIONS);
+    const compilerOptions = this.platform.injector.get(COMPILER_OPTIONS, []);
     compilerOptions.forEach((opts) => {
       if (opts.providers) {
         providers.push(opts.providers);

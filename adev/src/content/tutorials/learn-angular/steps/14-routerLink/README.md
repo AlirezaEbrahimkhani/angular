@@ -2,6 +2,8 @@
 
 In the app's current state, the entire page refreshes when we click on an internal link that exists within the app. While this may not seem significant with a small app, this can have performance implications for larger pages with more content where users have to redownload assets and run calculations again.
 
+Note: Learn more about [adding routes to your application in the in-depth guide](/guide/routing/common-router-tasks#add-your-routes-to-your-application).
+
 In this activity, you'll learn how to leverage the `RouterLink` directive to make the most use of Angular Router.
 
 <hr>
@@ -10,14 +12,13 @@ In this activity, you'll learn how to leverage the `RouterLink` directive to mak
 
 <docs-step title="Import `RouterLink` directive">
 
-In `app.component.ts` add the `RouterLink` directive import to the existing import statement from `@angular/router` and add it to the `imports` array of your component decorator.
+In `app.ts` add the `RouterLink` directive import to the existing import statement from `@angular/router` and add it to the `imports` array of your component decorator.
 
 ```ts
 ...
 import { RouterLink, RouterOutlet } from '@angular/router';
 
 @Component({
-  standalone: true,
   imports: [RouterLink, RouterOutlet],
   ...
 })
@@ -29,12 +30,11 @@ import { RouterLink, RouterOutlet } from '@angular/router';
 
 To use the `RouterLink` directive, replace the `href` attributes with `routerLink`. Update the template with this change.
 
-```ts
+```angular-ts
 import { RouterLink, RouterOutlet } from '@angular/router';
 
 @Component({
   ...
-  standalone: true,
   template: `
     ...
     <a routerLink="/">Home</a>

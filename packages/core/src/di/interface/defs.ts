@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {Type} from '../../interface/type';
@@ -178,13 +178,6 @@ export function ɵɵdefineInjectable<T>(opts: {
 }
 
 /**
- * @deprecated in v8, delete after v10. This API should be used only by generated code, and that
- * code should now use ɵɵdefineInjectable instead.
- * @publicApi
- */
-export const defineInjectable = ɵɵdefineInjectable;
-
-/**
  * Construct an `InjectorDef` which configures an injector.
  *
  * This should be assigned to a static injector def (`ɵinj`) field on a type, which will then be an
@@ -212,7 +205,7 @@ export function ɵɵdefineInjector(options: {providers?: any[]; imports?: any[]}
  * @param type A type which may have its own (non-inherited) `ɵprov`.
  */
 export function getInjectableDef<T>(type: any): ɵɵInjectableDeclaration<T> | null {
-  return getOwnDefinition(type, NG_PROV_DEF) || getOwnDefinition(type, NG_INJECTABLE_DEF);
+  return getOwnDefinition(type, NG_PROV_DEF);
 }
 
 export function isInjectable(type: any): boolean {
@@ -224,7 +217,8 @@ export function isInjectable(type: any): boolean {
  * class of `type`.
  */
 function getOwnDefinition<T>(type: any, field: string): ɵɵInjectableDeclaration<T> | null {
-  return type.hasOwnProperty(field) ? type[field] : null;
+  // if the ɵprov prop exist but is undefined we still want to return null
+  return (type.hasOwnProperty(field) && type[field]) || null;
 }
 
 /**
@@ -236,7 +230,8 @@ function getOwnDefinition<T>(type: any, field: string): ɵɵInjectableDeclaratio
  *     scenario if we find the `ɵprov` on an ancestor only.
  */
 export function getInheritedInjectableDef<T>(type: any): ɵɵInjectableDeclaration<T> | null {
-  const def = type && (type[NG_PROV_DEF] || type[NG_INJECTABLE_DEF]);
+  // if the ɵprov prop exist but is undefined we still want to return null
+  const def = type?.[NG_PROV_DEF] ?? null;
 
   if (def) {
     ngDevMode &&
@@ -256,14 +251,8 @@ export function getInheritedInjectableDef<T>(type: any): ɵɵInjectableDeclarati
  * @param type type which may have an injector def (`ɵinj`)
  */
 export function getInjectorDef<T>(type: any): ɵɵInjectorDef<T> | null {
-  return type && (type.hasOwnProperty(NG_INJ_DEF) || type.hasOwnProperty(NG_INJECTOR_DEF))
-    ? (type as any)[NG_INJ_DEF]
-    : null;
+  return type && type.hasOwnProperty(NG_INJ_DEF) ? (type as any)[NG_INJ_DEF] : null;
 }
 
-export const NG_PROV_DEF = getClosureSafeProperty({ɵprov: getClosureSafeProperty});
-export const NG_INJ_DEF = getClosureSafeProperty({ɵinj: getClosureSafeProperty});
-
-// We need to keep these around so we can read off old defs if new defs are unavailable
-export const NG_INJECTABLE_DEF = getClosureSafeProperty({ngInjectableDef: getClosureSafeProperty});
-export const NG_INJECTOR_DEF = getClosureSafeProperty({ngInjectorDef: getClosureSafeProperty});
+export const NG_PROV_DEF: string = getClosureSafeProperty({ɵprov: getClosureSafeProperty});
+export const NG_INJ_DEF: string = getClosureSafeProperty({ɵinj: getClosureSafeProperty});

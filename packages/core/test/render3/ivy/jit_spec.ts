@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {
@@ -24,12 +24,13 @@ import {
   ViewChildren,
   ɵNgModuleDef as NgModuleDef,
   ɵɵngDeclareComponent as ngDeclareComponent,
-} from '@angular/core';
-import {Injectable} from '@angular/core/src/di/injectable';
-import {setCurrentInjector, ɵɵinject} from '@angular/core/src/di/injector_compatibility';
-import {ɵɵdefineInjectable, ɵɵInjectorDef} from '@angular/core/src/di/interface/defs';
-import {FactoryFn} from '@angular/core/src/render3/definition_factory';
-import {ComponentDef, PipeDef} from '@angular/core/src/render3/interfaces/definition';
+} from '../../../src/core';
+import {Injectable} from '../../../src/di/injectable';
+import {setCurrentInjector, ɵɵinject} from '../../../src/di/injector_compatibility';
+import {ɵɵdefineInjectable, ɵɵInjectorDef} from '../../../src/di/interface/defs';
+import {FactoryFn} from '../../../src/render3/definition_factory';
+import {ComponentDef, PipeDef} from '../../../src/render3/interfaces/definition';
+import {InputFlags} from '../../../src/render3/interfaces/input_flags';
 
 describe('render3 jit', () => {
   let injector: any;
@@ -45,6 +46,7 @@ describe('render3 jit', () => {
     @Component({
       template: 'test',
       selector: 'test-cmp',
+      standalone: false,
     })
     class SomeCmp {}
     const SomeCmpAny = SomeCmp as any;
@@ -57,12 +59,14 @@ describe('render3 jit', () => {
     @Component({
       selector: 'inner-cmp',
       template: 'Inner!',
+      standalone: false,
     })
     class InnerCmp {}
 
     class OuterCmp {
       static ɵcmp = ngDeclareComponent({
         template: '<inner-cmp></inner-cmp>',
+        version: '18.0.0',
         type: OuterCmp,
         components: [
           {
@@ -85,6 +89,7 @@ describe('render3 jit', () => {
     @Component({
       selector: 'inner-cmp',
       template: 'Inner!',
+      standalone: false,
     })
     class InnerCmp {}
 
@@ -92,6 +97,7 @@ describe('render3 jit', () => {
       static ɵcmp = ngDeclareComponent({
         template: '<inner-cmp></inner-cmp>',
         type: OuterCmp,
+        version: '18.0.0',
         dependencies: [
           {
             kind: 'component',
@@ -212,6 +218,7 @@ describe('render3 jit', () => {
     @Component({
       template: 'foo',
       selector: 'foo',
+      standalone: false,
     })
     class Cmp {}
 
@@ -238,6 +245,7 @@ describe('render3 jit', () => {
     @Component({
       template: 'foo',
       selector: 'foo',
+      standalone: false,
     })
     class Cmp {}
 
@@ -292,6 +300,7 @@ describe('render3 jit', () => {
     @Component({
       template: 'foo',
       selector: 'foo',
+      standalone: false,
     })
     class Cmp {}
     const cmpDef: ComponentDef<Cmp> = (Cmp as any).ɵcmp;
@@ -316,6 +325,7 @@ describe('render3 jit', () => {
         '[class.red]': 'isRed',
         '(click)': 'onClick()',
       },
+      standalone: false,
     })
     class Cmp {
       @HostBinding('class.green') green: boolean = false;
@@ -331,7 +341,11 @@ describe('render3 jit', () => {
   });
 
   it('should compile @Pipes without errors', () => {
-    @Pipe({name: 'test-pipe', pure: false})
+    @Pipe({
+      name: 'test-pipe',
+      pure: false,
+      standalone: false,
+    })
     class P {}
 
     const pipeDef = (P as any).ɵpipe as PipeDef<P>;
@@ -345,7 +359,10 @@ describe('render3 jit', () => {
   });
 
   it('should default @Pipe to pure: true', () => {
-    @Pipe({name: 'test-pipe'})
+    @Pipe({
+      name: 'test-pipe',
+      standalone: false,
+    })
     class P {}
 
     const pipeDef = (P as any).ɵpipe as PipeDef<P>;
@@ -356,31 +373,36 @@ describe('render3 jit', () => {
     @Component({
       selector: 'input-comp',
       template: 'test',
+      standalone: false,
     })
     class InputComp {
       @Input('publicName') privateName = 'name1';
     }
 
     const InputCompAny = InputComp as any;
-    expect(InputCompAny.ɵcmp.inputs).toEqual({publicName: 'privateName'});
+    expect(InputCompAny.ɵcmp.inputs).toEqual({publicName: ['privateName', InputFlags.None, null]});
     expect(InputCompAny.ɵcmp.declaredInputs).toEqual({publicName: 'privateName'});
   });
 
   it('should add @Input properties to a directive', () => {
     @Directive({
       selector: '[dir]',
+      standalone: false,
     })
     class InputDir {
       @Input('publicName') privateName = 'name1';
     }
 
     const InputDirAny = InputDir as any;
-    expect(InputDirAny.ɵdir.inputs).toEqual({publicName: 'privateName'});
+    expect(InputDirAny.ɵdir.inputs).toEqual({publicName: ['privateName', InputFlags.None, null]});
     expect(InputDirAny.ɵdir.declaredInputs).toEqual({publicName: 'privateName'});
   });
 
   it('should compile ContentChildren query with string predicate on a directive', () => {
-    @Directive({selector: '[test]'})
+    @Directive({
+      selector: '[test]',
+      standalone: false,
+    })
     class TestDirective {
       @ContentChildren('foo') foos: QueryList<ElementRef> | undefined;
     }
@@ -389,7 +411,10 @@ describe('render3 jit', () => {
   });
 
   it('should compile ContentChild query with string predicate on a directive', () => {
-    @Directive({selector: '[test]'})
+    @Directive({
+      selector: '[test]',
+      standalone: false,
+    })
     class TestDirective {
       @ContentChild('foo') foo: ElementRef | undefined;
     }
@@ -400,7 +425,10 @@ describe('render3 jit', () => {
   it('should compile ContentChildren query with type predicate on a directive', () => {
     class SomeDir {}
 
-    @Directive({selector: '[test]'})
+    @Directive({
+      selector: '[test]',
+      standalone: false,
+    })
     class TestDirective {
       @ContentChildren(SomeDir) dirs: QueryList<SomeDir> | undefined;
     }
@@ -411,7 +439,10 @@ describe('render3 jit', () => {
   it('should compile ContentChild query with type predicate on a directive', () => {
     class SomeDir {}
 
-    @Directive({selector: '[test]'})
+    @Directive({
+      selector: '[test]',
+      standalone: false,
+    })
     class TestDirective {
       @ContentChild(SomeDir) dir: SomeDir | undefined;
     }
@@ -420,7 +451,11 @@ describe('render3 jit', () => {
   });
 
   it('should compile ViewChild query on a component', () => {
-    @Component({selector: 'test', template: ''})
+    @Component({
+      selector: 'test',
+      template: '',
+      standalone: false,
+    })
     class TestComponent {
       @ViewChild('foo') foo: ElementRef | undefined;
     }
@@ -429,7 +464,11 @@ describe('render3 jit', () => {
   });
 
   it('should compile ViewChildren query on a component', () => {
-    @Component({selector: 'test', template: ''})
+    @Component({
+      selector: 'test',
+      template: '',
+      standalone: false,
+    })
     class TestComponent {
       @ViewChildren('foo') foos: QueryList<ElementRef> | undefined;
     }
@@ -467,7 +506,10 @@ describe('render3 jit', () => {
         constructor(first: Legit) {}
       }
 
-      @Directive({selector: 'test'})
+      @Directive({
+        selector: 'test',
+        standalone: false,
+      })
       class TestDir extends BaseDir {}
 
       const TestDirAny = TestDir as any;

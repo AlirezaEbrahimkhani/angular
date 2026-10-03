@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 import ts from 'typescript';
 
@@ -35,7 +35,7 @@ import {
   TypeCheckContextImpl,
   TypeCheckingHost,
 } from '../src/context';
-import {TemplateSourceManager} from '../src/source';
+import {DirectiveSourceManager} from '../src/source';
 import {TypeCheckFile} from '../src/type_check_file';
 import {ALL_ENABLED_CONFIG} from '../testing';
 
@@ -302,19 +302,19 @@ TestClass.ngTypeCtor({value: 'test'});
 function makePendingFile(): PendingFileTypeCheckingData {
   return {
     hasInlines: false,
-    sourceManager: new TemplateSourceManager(),
+    sourceManager: new DirectiveSourceManager(),
     shimData: new Map(),
   };
 }
 
 class TestTypeCheckingHost implements TypeCheckingHost {
-  private sourceManager = new TemplateSourceManager();
+  private sourceManager = new DirectiveSourceManager();
 
-  getSourceManager(): TemplateSourceManager {
+  getSourceManager(): DirectiveSourceManager {
     return this.sourceManager;
   }
 
-  shouldCheckComponent(): boolean {
+  shouldCheckClass(): boolean {
     return true;
   }
 

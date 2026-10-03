@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {
@@ -12,17 +12,14 @@ import {
   inject,
   InjectionToken,
   makeStateKey,
-  PLATFORM_ID,
   Provider,
   StateKey,
   TransferState,
   ɵformatRuntimeError as formatRuntimeError,
   ɵperformanceMarkFeature as performanceMarkFeature,
   ɵtruncateMiddle as truncateMiddle,
-  ɵwhenStable as whenStable,
   ɵRuntimeError as RuntimeError,
 } from '@angular/core';
-import {isPlatformServer} from '@angular/common';
 import {Observable, of} from 'rxjs';
 import {tap} from 'rxjs/operators';
 
@@ -69,7 +66,7 @@ export type HttpTransferCacheOptions = {
  *
  * When the same API endpoint is accessed via `http://internal-domain.com:8080` on the server and
  * via `https://external-domain.com` on the client, you can use the following configuration:
- * ```typescript
+ * ```ts
  * // in app.server.config.ts
  * {
  *     provide: HTTP_TRANSFER_CACHE_ORIGIN_MAP,
@@ -82,7 +79,7 @@ export type HttpTransferCacheOptions = {
  * @publicApi
  */
 export const HTTP_TRANSFER_CACHE_ORIGIN_MAP = new InjectionToken<Record<string, string>>(
-  ngDevMode ? 'HTTP_TRANSFER_CACHE_ORIGIN_MAP' : '',
+  typeof ngDevMode !== undefined && ngDevMode ? 'HTTP_TRANSFER_CACHE_ORIGIN_MAP' : '',
 );
 
 /**
@@ -116,7 +113,7 @@ interface CacheOptions extends HttpTransferCacheOptions {
 }
 
 const CACHE_OPTIONS = new InjectionToken<CacheOptions>(
-  ngDevMode ? 'HTTP_TRANSFER_STATE_CACHE_OPTIONS' : '',
+  typeof ngDevMode !== undefined && ngDevMode ? 'HTTP_TRANSFER_STATE_CACHE_OPTIONS' : '',
 );
 
 /**
@@ -150,8 +147,8 @@ export function transferCacheInterceptorFn(
   const originMap: Record<string, string> | null = inject(HTTP_TRANSFER_CACHE_ORIGIN_MAP, {
     optional: true,
   });
-  const isServer = isPlatformServer(inject(PLATFORM_ID));
-  if (originMap && !isServer) {
+
+  if (typeof ngServerMode !== 'undefined' && !ngServerMode && originMap) {
     throw new RuntimeError(
       RuntimeErrorCode.HTTP_ORIGIN_MAP_USED_IN_CLIENT,
       ngDevMode &&
@@ -161,7 +158,10 @@ export function transferCacheInterceptorFn(
     );
   }
 
-  const requestUrl = isServer && originMap ? mapRequestOriginUrl(req.url, originMap) : req.url;
+  const requestUrl =
+    typeof ngServerMode !== 'undefined' && ngServerMode && originMap
+      ? mapRequestOriginUrl(req.url, originMap)
+      : req.url;
 
   const storeKey = makeCacheKey(req, requestUrl);
   const response = transferState.get(storeKey, null);
@@ -215,21 +215,28 @@ export function transferCacheInterceptorFn(
     );
   }
 
-  // Request not found in cache. Make the request and cache it if on the server.
-  return next(req).pipe(
-    tap((event: HttpEvent<unknown>) => {
-      if (event instanceof HttpResponse && isServer) {
-        transferState.set<TransferHttpResponse>(storeKey, {
-          [BODY]: event.body,
-          [HEADERS]: getFilteredHeaders(event.headers, headersToInclude),
-          [STATUS]: event.status,
-          [STATUS_TEXT]: event.statusText,
-          [REQ_URL]: requestUrl,
-          [RESPONSE_TYPE]: req.responseType,
-        });
-      }
-    }),
-  );
+  const event$ = next(req);
+
+  if (typeof ngServerMode !== 'undefined' && ngServerMode) {
+    // Request not found in cache. Make the request and cache it if on the server.
+    return event$.pipe(
+      tap((event: HttpEvent<unknown>) => {
+        // Only cache successful HTTP responses.
+        if (event instanceof HttpResponse) {
+          transferState.set<TransferHttpResponse>(storeKey, {
+            [BODY]: event.body,
+            [HEADERS]: getFilteredHeaders(event.headers, headersToInclude),
+            [STATUS]: event.status,
+            [STATUS_TEXT]: event.statusText,
+            [REQ_URL]: requestUrl,
+            [RESPONSE_TYPE]: req.responseType,
+          });
+        }
+      }),
+    );
+  }
+
+  return event$;
 }
 
 /** @returns true when the requests contains autorization related headers. */
@@ -328,7 +335,6 @@ export function withHttpTransferCache(cacheOptions: HttpTransferCacheOptions): P
       provide: HTTP_ROOT_INTERCEPTOR_FNS,
       useValue: transferCacheInterceptorFn,
       multi: true,
-      deps: [TransferState, CACHE_OPTIONS],
     },
     {
       provide: APP_BOOTSTRAP_LISTENER,
@@ -338,7 +344,7 @@ export function withHttpTransferCache(cacheOptions: HttpTransferCacheOptions): P
         const cacheState = inject(CACHE_OPTIONS);
 
         return () => {
-          whenStable(appRef).then(() => {
+          appRef.whenStable().then(() => {
             cacheState.isCacheActive = false;
           });
         };
@@ -373,7 +379,6 @@ function appendMissingHeadersDetection(
           warningProduced.add(key);
           const truncatedUrl = truncateMiddle(url);
 
-          // TODO: create Error guide for this warning
           console.warn(
             formatRuntimeError(
               RuntimeErrorCode.HEADERS_ALTERED_BY_TRANSFER_CACHE,

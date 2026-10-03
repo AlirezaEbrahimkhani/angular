@@ -1,8 +1,9 @@
-load("//tools:defaults.bzl", "esbuild", "http_server", "ng_module", "protractor_web_test_suite", "ts_library")
+load("@aspect_rules_esbuild//esbuild:defs.bzl", "esbuild")
+load("//tools:defaults.bzl", "http_server", "ng_project", "protractor_web_test_suite", "ts_project")
 
 package(default_visibility = ["//visibility:public"])
 
-ng_module(
+ng_project(
     name = "image-directive",
     srcs = [
         "e2e/basic/basic.ts",
@@ -10,6 +11,7 @@ ng_module(
         "e2e/image-distortion/image-distortion.ts",
         "e2e/image-perf-warnings-lazy/image-perf-warnings-lazy.ts",
         "e2e/image-perf-warnings-oversized/image-perf-warnings-oversized.ts",
+        "e2e/image-perf-warnings-oversized/svg-no-perf-oversized-warnings.ts",
         "e2e/lcp-check/lcp-check.ts",
         "e2e/oversized-image/oversized-image.ts",
         "e2e/preconnect-check/preconnect-check.ts",
@@ -18,24 +20,23 @@ ng_module(
     ],
     deps = [
         "//packages/common",
+        "//packages/compiler",
         "//packages/core",
         "//packages/platform-browser",
         "//packages/router",
     ],
 )
 
-# Note: Cannot use `app_bundle` as the e2e tests rely on `ngDevMode`
-# output which would otherwise be omitted.
 esbuild(
     name = "bundle",
+    config = {
+        "resolveExtensions": [".js"],
+    },
     entry_point = ":index.ts",
+    tsconfig = "//packages/core:tsconfig_build",
     deps = [
         ":image-directive",
-        "//packages/common",
-        "//packages/core",
-        "//packages/platform-browser",
-        "//packages/router",
-        "@npm//rxjs",
+        "//packages/core:tsconfig_build",
     ],
 )
 
@@ -45,17 +46,18 @@ http_server(
         "e2e/a.png",
         "e2e/b.png",
         "e2e/logo-1500w.jpg",
+        "e2e/logo-1500w.svg",
         "e2e/logo-500w.jpg",
         "e2e/white-607x3.png",
         "index.html",
     ],
     deps = [
         ":bundle",
-        "//packages/zone.js/bundles:zone.umd.js",
+        "//:node_modules/zone.js",
     ],
 )
 
-ts_library(
+ts_project(
     name = "img_dir_e2e_tests_lib",
     testonly = True,
     srcs = ["e2e/browser-logs-util.ts"] + glob([
@@ -63,18 +65,18 @@ ts_library(
     ]),
     tsconfig = ":e2e/tsconfig-e2e.json",
     deps = [
+        "//:node_modules/@types/jasminewd2",
+        "//:node_modules/@types/node",
+        "//:node_modules/@types/selenium-webdriver",
+        "//:node_modules/protractor",
         "//packages/private/testing",
-        "@npm//@types/selenium-webdriver",
-        "@npm//protractor",
     ],
 )
 
 protractor_web_test_suite(
     name = "protractor_tests",
-    on_prepare = ":e2e/start-server.js",
     server = ":devserver",
     deps = [
         ":img_dir_e2e_tests_lib",
-        "@npm//selenium-webdriver",
     ],
 )

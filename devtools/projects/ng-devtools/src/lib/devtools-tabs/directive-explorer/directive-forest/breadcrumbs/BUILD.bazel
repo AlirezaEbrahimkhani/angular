@@ -1,14 +1,16 @@
-load("@io_bazel_rules_sass//:defs.bzl", "sass_binary")
-load("//devtools/tools:ng_module.bzl", "ng_module")
+load("//devtools/tools:defaults.bzl", "ng_project", "sass_binary")
 
 package(default_visibility = ["//visibility:public"])
 
 sass_binary(
     name = "breadcrumbs_component_styles",
     src = "breadcrumbs.component.scss",
+    deps = [
+        "//devtools/projects/ng-devtools/src/styles:typography",
+    ],
 )
 
-ng_module(
+ng_project(
     name = "breadcrumbs",
     srcs = [
         "breadcrumbs.component.ts",
@@ -18,11 +20,10 @@ ng_module(
         ":breadcrumbs_component_styles",
     ],
     deps = [
+        "//:node_modules/@angular/common",
+        "//:node_modules/@angular/core",
+        "//:node_modules/@angular/material",
+        "//:node_modules/rxjs",
         "//devtools/projects/ng-devtools/src/lib/devtools-tabs/directive-explorer/directive-forest/component-data-source",
-        "//packages/common",
-        "//packages/core",
-        "@npm//@angular/material",
-        "@npm//@types",
-        "@npm//rxjs",
     ],
 )

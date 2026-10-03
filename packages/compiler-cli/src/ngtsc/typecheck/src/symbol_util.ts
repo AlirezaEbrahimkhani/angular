@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import ts from 'typescript';
@@ -44,7 +44,9 @@ function isSignalSymbol(symbol: ts.Symbol): boolean {
       return (
         (ts.isInterfaceDeclaration(decl) || ts.isTypeAliasDeclaration(decl)) &&
         SIGNAL_FNS.has(decl.name.text) &&
-        (fileName.includes('@angular/core') || fileName.includes('angular2/rc/packages/core'))
+        (fileName.includes('@angular/core') ||
+          fileName.includes('angular2/rc/packages/core') ||
+          fileName.includes('bin/packages/core')) // for local usage in some tests
       );
     })
   );

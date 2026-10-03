@@ -1,6 +1,6 @@
-load("//tools:defaults.bzl", "jasmine_node_test", "ts_library")
+load("//tools:defaults.bzl", "jasmine_test", "ts_project")
 
-ts_library(
+ts_project(
     name = "test_lib",
     testonly = True,
     srcs = glob(
@@ -12,10 +12,9 @@ ts_library(
     ],
 )
 
-jasmine_node_test(
+jasmine_test(
     name = "test",
-    bootstrap = ["//tools/testing:node_no_angular"],
-    deps = [
+    data = [
         ":test_lib",
     ],
 )

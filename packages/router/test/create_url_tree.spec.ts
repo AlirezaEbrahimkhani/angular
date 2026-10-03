@@ -3,22 +3,24 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {Component, Injectable} from '@angular/core';
-import {ComponentFixture, fakeAsync, TestBed, tick} from '@angular/core/testing';
+import {ComponentFixture, TestBed} from '@angular/core/testing';
 import {By} from '@angular/platform-browser';
 
 import {createUrlTreeFromSnapshot} from '../src/create_url_tree';
-import {Routes} from '../src/models';
+import {QueryParamsHandling, Routes} from '../src/models';
 import {Router} from '../src/router';
 import {RouterModule} from '../src/router_module';
 import {ActivatedRoute, ActivatedRouteSnapshot} from '../src/router_state';
 import {Params, PRIMARY_OUTLET} from '../src/shared';
 import {DefaultUrlSerializer, UrlTree} from '../src/url_tree';
+import {provideRouter, withRouterConfig} from '../src';
+import {timeout} from './helpers';
 
-describe('createUrlTree', async () => {
+describe('createUrlTree', () => {
   const serializer = new DefaultUrlSerializer();
   let router: Router;
   beforeEach(() => {
@@ -46,7 +48,7 @@ describe('createUrlTree', async () => {
     ]);
   });
 
-  describe('query parameters', async () => {
+  describe('query parameters', () => {
     it('should support parameter with multiple values', async () => {
       const p1 = serializer.parse('/');
       const t1 = await createRoot(p1, ['/'], {m: ['v1', 'v2']});
@@ -114,7 +116,7 @@ describe('createUrlTree', async () => {
     expect(serializer.serialize(t)).toEqual('/%2Fone/two%2Fthree');
   });
 
-  describe('named outlets', async () => {
+  describe('named outlets', () => {
     it('should preserve secondary segments', async () => {
       const p = serializer.parse('/a/11/b(right:c)');
       const t = await createRoot(p, ['/a', 11, 'd']);
@@ -444,7 +446,7 @@ describe('createUrlTree', async () => {
     expect(segmentA.parameterMap.get('pp')).toEqual('33');
   });
 
-  describe('relative navigation', async () => {
+  describe('relative navigation', () => {
     it('should work', async () => {
       await router.navigateByUrl('/a/(c//left:cp)(left:ap)');
       const t = create(router.routerState.root.children[0], ['c2']);
@@ -574,9 +576,48 @@ describe('createUrlTree', async () => {
   });
 });
 
+describe('defaultQueryParamsHandling', () => {
+  async function setupRouter(defaultQueryParamsHandling: QueryParamsHandling): Promise<Router> {
+    TestBed.configureTestingModule({
+      providers: [
+        provideRouter(
+          [{path: '**', component: class {}}],
+          withRouterConfig({
+            defaultQueryParamsHandling,
+          }),
+        ),
+      ],
+    });
+
+    const router = TestBed.inject(Router);
+    await router.navigateByUrl('/initial?a=1');
+    return router;
+  }
+
+  it('can use "merge" as the default', async () => {
+    const router = await setupRouter('merge');
+    await router.navigate(['new'], {queryParams: {'b': 2}});
+    expect(router.url).toEqual('/new?a=1&b=2');
+  });
+
+  it('can use "perserve" as the default', async () => {
+    const router = await setupRouter('preserve');
+    await router.navigate(['new'], {queryParams: {'b': 2}});
+    expect(router.url).toEqual('/new?a=1');
+  });
+
+  it('can override the default by providing a new option', async () => {
+    const router = await setupRouter('preserve');
+    await router.navigate(['new'], {queryParams: {'b': 2}, queryParamsHandling: 'merge'});
+    expect(router.url).toEqual('/new?a=1&b=2');
+    await router.navigate(['replace'], {queryParamsHandling: 'replace'});
+    expect(router.url).toEqual('/replace');
+  });
+});
+
 async function createRoot(
   tree: UrlTree,
-  commands: any[],
+  commands: readonly any[],
   queryParams?: Params,
   fragment?: string,
 ): Promise<UrlTree> {
@@ -591,18 +632,17 @@ async function createRoot(
 
 function create(
   relativeTo: ActivatedRoute,
-  commands: any[],
+  commands: readonly any[],
   queryParams?: Params,
   fragment?: string,
 ) {
   return TestBed.inject(Router).createUrlTree(commands, {relativeTo, queryParams, fragment});
 }
 
-describe('createUrlTreeFromSnapshot', async () => {
-  it('can create a UrlTree relative to empty path named parent', fakeAsync(() => {
+describe('createUrlTreeFromSnapshot', () => {
+  it('can create a UrlTree relative to empty path named parent', async () => {
     @Component({
       template: `<router-outlet></router-outlet>`,
-      standalone: true,
       imports: [RouterModule],
     })
     class MainPageComponent {
@@ -618,12 +658,14 @@ describe('createUrlTreeFromSnapshot', async () => {
       }
     }
 
-    @Component({template: 'child works!'})
+    @Component({
+      template: 'child works!',
+      standalone: false,
+    })
     class ChildComponent {}
 
     @Component({
       template: '<router-outlet name="main-page"></router-outlet>',
-      standalone: true,
       imports: [RouterModule],
     })
     class RootCmp {}
@@ -642,13 +684,13 @@ describe('createUrlTreeFromSnapshot', async () => {
     const fixture = TestBed.createComponent(RootCmp);
 
     router.initialNavigation();
-    advance(fixture);
+    await advance(fixture);
     fixture.debugElement.query(By.directive(MainPageComponent)).componentInstance.navigate();
-    advance(fixture);
+    await advance(fixture);
     expect(fixture.nativeElement.innerHTML).toContain('child works!');
-  }));
+  });
 
-  it('can navigate to relative to `ActivatedRouteSnapshot` in guard', fakeAsync(() => {
+  it('can navigate to relative to `ActivatedRouteSnapshot` in guard', async () => {
     @Injectable({providedIn: 'root'})
     class Guard {
       constructor(private readonly router: Router) {}
@@ -659,17 +701,15 @@ describe('createUrlTreeFromSnapshot', async () => {
 
     @Component({
       template: `main`,
-      standalone: true,
       imports: [RouterModule],
     })
     class GuardedComponent {}
 
-    @Component({template: 'sibling', standalone: true})
+    @Component({template: 'sibling'})
     class SiblingComponent {}
 
     @Component({
       template: '<router-outlet></router-outlet>',
-      standalone: true,
       imports: [RouterModule],
     })
     class RootCmp {}
@@ -697,12 +737,12 @@ describe('createUrlTreeFromSnapshot', async () => {
     const fixture = TestBed.createComponent(RootCmp);
 
     router.navigateByUrl('parent/guarded');
-    advance(fixture);
+    await advance(fixture);
     expect(router.url).toEqual('/parent/sibling');
-  }));
+  });
 });
 
-function advance(fixture: ComponentFixture<unknown>) {
-  tick();
+async function advance(fixture: ComponentFixture<unknown>) {
+  await timeout();
   fixture.detectChanges();
 }

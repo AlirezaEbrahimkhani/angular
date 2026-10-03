@@ -67,9 +67,8 @@ function overrideSetup() {
       // #docregion override-component-method
       .overrideComponent(HeroDetailComponent, {
         set: {providers: [{provide: HeroDetailService, useClass: HeroDetailServiceSpy}]},
-      })
-      // #enddocregion override-component-method
-      .compileComponents();
+      });
+    // #enddocregion override-component-method
   });
   // #enddocregion setup-override
 
@@ -115,6 +114,7 @@ function overrideSetup() {
     expect(TestBed.inject(Router).url).toEqual('/heroes');
   }));
 }
+// #enddocregion override-tests
 
 ////////////////////
 import {getTestHeroes} from '../model/testing/test-hero.service';
@@ -136,7 +136,7 @@ function heroModuleSetup() {
           provideHttpClientTesting(),
         ],
       }),
-    ).compileComponents();
+    );
   });
   // #enddocregion setup-hero-module
 
@@ -172,7 +172,8 @@ function heroModuleSetup() {
     }));
 
     // #docregion title-case-pipe
-    it('should convert hero name to Title Case', () => {
+    it('should convert hero name to Title Case', async () => {
+      harness.fixture.autoDetectChanges();
       // get the name's input and display elements from the DOM
       const hostElement: HTMLElement = harness.routeNativeElement!;
       const nameInput: HTMLInputElement = hostElement.querySelector('input')!;
@@ -184,8 +185,8 @@ function heroModuleSetup() {
       // Dispatch a DOM event so that Angular learns of input value change.
       nameInput.dispatchEvent(new Event('input'));
 
-      // Tell Angular to update the display binding through the title pipe
-      harness.detectChanges();
+      // Wait for Angular to update the display binding through the title pipe
+      await harness.fixture.whenStable();
 
       expect(nameDisplay.textContent).toBe('Quick Brown  Fox');
     });
@@ -224,7 +225,7 @@ function formsModuleSetup() {
           provideRouter([{path: 'heroes/:id', component: HeroDetailComponent}]),
         ],
       }),
-    ).compileComponents();
+    );
   });
   // #enddocregion setup-forms-module
 
@@ -250,7 +251,7 @@ function sharedModuleSetup() {
           provideHttpClientTesting(),
         ],
       }),
-    ).compileComponents();
+    );
   });
   // #enddocregion setup-shared-module
 

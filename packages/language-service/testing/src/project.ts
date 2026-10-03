@@ -3,13 +3,13 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {
   InternalOptions,
   LegacyNgcOptions,
-  StrictTemplateOptions,
+  TypeCheckingOptions,
 } from '@angular/compiler-cli/src/ngtsc/core/api';
 import {
   absoluteFrom,
@@ -22,6 +22,7 @@ import {OptimizeFor, TemplateTypeChecker} from '@angular/compiler-cli/src/ngtsc/
 import ts from 'typescript';
 
 import {LanguageService} from '../../src/language_service';
+import {ApplyRefactoringProgressFn, ApplyRefactoringResult} from '../../api';
 
 import {OpenBuffer} from './buffer';
 import {patchLanguageServiceProjectsWithTestHost} from './language_service_test_cache';
@@ -44,7 +45,7 @@ function writeTsconfig(
         compilerOptions: {
           strict: true,
           experimentalDecorators: true,
-          moduleResolution: 'node',
+          moduleResolution: 'bundler',
           target: 'es2015',
           rootDir: '.',
           lib: ['dom', 'es2015'],
@@ -62,9 +63,12 @@ function writeTsconfig(
   );
 }
 
-export type TestableOptions = StrictTemplateOptions &
+export type TestableOptions = TypeCheckingOptions &
   InternalOptions &
-  Pick<LegacyNgcOptions, 'fullTemplateTypeCheck'>;
+  Pick<LegacyNgcOptions, 'fullTemplateTypeCheck'> & {
+    // This already exists in `InternalOptions`, but it's `internal` so it's stripped away.
+    _enableSelectorless?: boolean;
+  };
 
 export class Project {
   private tsProject: ts.server.Project;
@@ -172,6 +176,13 @@ export class Project {
     return diagnostics;
   }
 
+  getSuggestionDiagnosticsForFile(projectFileName: string): ts.Diagnostic[] {
+    const fileName = absoluteFrom(`/${this.name}/${projectFileName}`);
+    const diagnostics: ts.Diagnostic[] = [];
+    diagnostics.push(...this.ngLS.getSuggestionDiagnostics(fileName));
+    return diagnostics;
+  }
+
   getCodeFixesAtPosition(
     projectFileName: string,
     start: number,
@@ -179,7 +190,34 @@ export class Project {
     errorCodes: readonly number[],
   ): readonly ts.CodeFixAction[] {
     const fileName = absoluteFrom(`/${this.name}/${projectFileName}`);
-    return this.ngLS.getCodeFixesAtPosition(fileName, start, end, errorCodes, {}, {});
+    return this.ngLS.getCodeFixesAtPosition(
+      fileName,
+      start,
+      end,
+      errorCodes,
+      {},
+      {
+        includeCompletionsForModuleExports: true,
+      },
+    );
+  }
+
+  getRefactoringsAtPosition(
+    projectFileName: string,
+    positionOrRange: number | ts.TextRange,
+  ): readonly ts.ApplicableRefactorInfo[] {
+    const fileName = absoluteFrom(`/${this.name}/${projectFileName}`);
+    return this.ngLS.getPossibleRefactorings(fileName, positionOrRange);
+  }
+
+  applyRefactoring(
+    projectFileName: string,
+    positionOrRange: number | ts.TextRange,
+    refactorName: string,
+    reportProgress: ApplyRefactoringProgressFn,
+  ): Promise<ApplyRefactoringResult | undefined> {
+    const fileName = absoluteFrom(`/${this.name}/${projectFileName}`);
+    return this.ngLS.applyRefactoring(fileName, positionOrRange, refactorName, reportProgress);
   }
 
   getCombinedCodeFix(projectFileName: string, fixId: string): ts.CombinedCodeActions {

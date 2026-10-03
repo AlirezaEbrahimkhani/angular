@@ -3,19 +3,19 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
-import {DocEntry} from '@angular/compiler-cli/src/ngtsc/docs';
+import {DocEntry} from '../../../src/ngtsc/docs';
 import {
   ClassEntry,
   DirectiveEntry,
   EntryType,
   MemberTags,
   PropertyEntry,
-} from '@angular/compiler-cli/src/ngtsc/docs/src/entities';
-import {runInEachFileSystem} from '@angular/compiler-cli/src/ngtsc/file_system/testing';
-import {loadStandardTestFiles} from '@angular/compiler-cli/src/ngtsc/testing';
+} from '../../../src/ngtsc/docs/src/entities';
+import {runInEachFileSystem} from '../../../src/ngtsc/file_system/testing';
+import {loadStandardTestFiles} from '../../../src/ngtsc/testing';
 
 import {NgtscTestEnvironment} from '../env';
 
@@ -36,7 +36,6 @@ runInEachFileSystem(() => {
         `
         import {Directive} from '@angular/core';
         @Directive({
-          standalone: true,
           selector: 'user-profile',
           exportAs: 'userProfile',
         })
@@ -61,7 +60,6 @@ runInEachFileSystem(() => {
         `
         import {Component} from '@angular/core';
         @Component({
-          standalone: true,
           selector: 'user-profile',
           exportAs: 'userProfile',
           template: '',
@@ -146,7 +144,6 @@ runInEachFileSystem(() => {
         `
         import {Directive, EventEmitter, Input, Output} from '@angular/core';
         @Directive({
-          standalone: true,
           selector: 'user-profile',
           exportAs: 'userProfile',
         })
@@ -203,7 +200,6 @@ runInEachFileSystem(() => {
         `
         import {Component, EventEmitter, Input, Output} from '@angular/core';
         @Component({
-          standalone: true,
           selector: 'user-profile',
           exportAs: 'userProfile',
           template: '',
@@ -251,7 +247,6 @@ runInEachFileSystem(() => {
         `
         import {Component, EventEmitter, Input, Output} from '@angular/core';
         @Component({
-          standalone: true,
           selector: 'user-profile',
           exportAs: 'userProfile',
           template: '',

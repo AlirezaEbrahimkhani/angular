@@ -3,24 +3,24 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {NgLocalization} from '@angular/common';
-import {Serializer} from '@angular/compiler/src/i18n';
-import {MessageBundle} from '@angular/compiler/src/i18n/message_bundle';
-import {DEFAULT_INTERPOLATION_CONFIG} from '@angular/compiler/src/ml_parser/defaults';
-import {HtmlParser} from '@angular/compiler/src/ml_parser/html_parser';
-import {ResourceLoader} from '@angular/compiler/src/resource_loader';
+import {Serializer} from '../../src/i18n';
+import {MessageBundle} from '../../src/i18n/message_bundle';
+import {HtmlParser} from '../../src/ml_parser/html_parser';
+import {ResourceLoader} from '../../src/resource_loader';
 import {Component, DebugElement, TRANSLATIONS, TRANSLATIONS_FORMAT} from '@angular/core';
 import {ComponentFixture, TestBed} from '@angular/core/testing';
-import {By} from '@angular/platform-browser/src/dom/debug/by';
-import {stringifyElement} from '@angular/platform-browser/testing/src/browser_util';
-import {expect} from '@angular/platform-browser/testing/src/matchers';
+import {By} from '@angular/platform-browser';
+import {stringifyElement} from '@angular/private/testing';
+import {expect} from '@angular/private/testing/matchers';
 
 @Component({
   selector: 'i18n-cmp',
   template: '',
+  standalone: false,
 })
 export class I18nComponent {
   count?: number;
@@ -203,6 +203,6 @@ export function createComponent(html: string) {
 
 export function serializeTranslations(html: string, serializer: Serializer) {
   const catalog = new MessageBundle(new HtmlParser(), [], {});
-  catalog.updateFromTemplate(html, 'file.ts', DEFAULT_INTERPOLATION_CONFIG);
+  catalog.updateFromTemplate(html, 'file.ts');
   return catalog.write(serializer);
 }

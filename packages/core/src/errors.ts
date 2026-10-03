@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {ERROR_DETAILS_PAGE_BASE_URL} from './error_details_base_url';
@@ -43,6 +43,7 @@ export const enum RuntimeErrorCode {
   MISSING_INJECTION_TOKEN = 208,
   INVALID_MULTI_PROVIDER = -209,
   MISSING_DOCUMENT = 210,
+  INVALID_APP_ID = 211,
 
   // Template Errors
   MULTIPLE_COMPONENTS_MATCH = -300,
@@ -60,10 +61,13 @@ export const enum RuntimeErrorCode {
   HOST_DIRECTIVE_CONFLICTING_ALIAS = 312,
   MULTIPLE_MATCHING_PIPES = 313,
   UNINITIALIZED_LET_ACCESS = 314,
+  NO_BINDING_TARGET = 315,
+  INVALID_BINDING_TARGET = 316,
+  INVALID_SET_INPUT_CALL = 317,
 
   // Bootstrap Errors
   MULTIPLE_PLATFORMS = 400,
-  PLATFORM_NOT_FOUND = 401,
+  PLATFORM_NOT_FOUND = -401,
   MISSING_REQUIRED_INJECTABLE_IN_BOOTSTRAP = 402,
   BOOTSTRAP_COMPONENTS_NOT_FOUND = -403,
   PLATFORM_ALREADY_DESTROYED = 404,
@@ -81,14 +85,15 @@ export const enum RuntimeErrorCode {
   MISSING_HYDRATION_ANNOTATIONS = -505,
   HYDRATION_STABLE_TIMEDOUT = -506,
   MISSING_SSR_CONTENT_INTEGRITY_MARKER = -507,
+  MISCONFIGURED_INCREMENTAL_HYDRATION = 508,
 
   // Signal Errors
   SIGNAL_WRITE_FROM_ILLEGAL_CONTEXT = 600,
   REQUIRE_SYNC_WITHOUT_SYNC_EMIT = 601,
   ASSERTION_NOT_INSIDE_REACTIVE_CONTEXT = -602,
 
-  // Styling Errors
-
+  // Animation Errors
+  ANIMATE_INVALID_VALUE = 650,
   // Declarations Errors
 
   // i18n Errors
@@ -96,7 +101,8 @@ export const enum RuntimeErrorCode {
   MISSING_LOCALE_DATA = 701,
 
   // Defer errors (750-799 range)
-  DEFER_LOADING_FAILED = 750,
+  DEFER_LOADING_FAILED = -750,
+  DEFER_IN_HMR_MODE = -751,
 
   // standalone errors
   IMPORT_PROVIDERS_FROM_STANDALONE = 800,
@@ -118,6 +124,10 @@ export const enum RuntimeErrorCode {
   COMPONENT_ID_COLLISION = -912,
   IMAGE_PERFORMANCE_WARNING = -913,
   UNEXPECTED_ZONEJS_PRESENT_IN_ZONELESS_MODE = 914,
+  MISSING_NG_MODULE_DEFINITION = 915,
+  MISSING_DIRECTIVE_DEFINITION = 916,
+  NO_COMPONENT_FACTORY_FOUND = 917,
+  EXTERNAL_RESOURCE_LOADING_FAILED = 918,
 
   // Signal integration errors
   REQUIRED_INPUT_NO_VALUE = -950,
@@ -132,8 +142,14 @@ export const enum RuntimeErrorCode {
   LOOP_TRACK_RECREATE = -956,
 
   // Runtime dependency tracker errors
-  RUNTIME_DEPS_INVALID_IMPORTED_TYPE = 1000,
-  RUNTIME_DEPS_ORPHAN_COMPONENT = 1001,
+  RUNTIME_DEPS_INVALID_IMPORTED_TYPE = 980,
+  RUNTIME_DEPS_ORPHAN_COMPONENT = 981,
+
+  // resource() API errors
+  MUST_PROVIDE_STREAM_OPTION = 990,
+  RESOURCE_COMPLETED_BEFORE_PRODUCING_VALUE = 991,
+
+  // Upper bounds for core runtime errors is 999
 }
 
 /**
@@ -141,7 +157,7 @@ export const enum RuntimeErrorCode {
  * Formats and outputs the error message in a consistent way.
  *
  * Example:
- * ```
+ * ```ts
  *  throw new RuntimeError(
  *    RuntimeErrorCode.INJECTOR_ALREADY_DESTROYED,
  *    ngDevMode && 'Injector has already been destroyed.');
@@ -161,6 +177,13 @@ export class RuntimeError<T extends number = RuntimeErrorCode> extends Error {
   }
 }
 
+export function formatRuntimeErrorCode<T extends number = RuntimeErrorCode>(code: T): string {
+  // Error code might be a negative number, which is a special marker that instructs the logic to
+  // generate a link to the error details page on angular.io.
+  // We also prepend `0` to non-compile-time errors.
+  return `NG0${Math.abs(code)}`;
+}
+
 /**
  * Called to format a runtime error.
  * See additional info on the `message` argument type in the `RuntimeError` class description.
@@ -169,10 +192,7 @@ export function formatRuntimeError<T extends number = RuntimeErrorCode>(
   code: T,
   message: null | false | string,
 ): string {
-  // Error code might be a negative number, which is a special marker that instructs the logic to
-  // generate a link to the error details page on angular.io.
-  // We also prepend `0` to non-compile-time errors.
-  const fullCode = `NG0${Math.abs(code)}`;
+  const fullCode = formatRuntimeErrorCode(code);
 
   let errorMessage = `${fullCode}${message ? ': ' + message : ''}`;
 

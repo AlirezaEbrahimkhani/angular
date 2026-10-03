@@ -3,15 +3,17 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
-import {AnimationPlayer, NoopAnimationPlayer} from '@angular/animations';
+import {AnimationPlayer, NoopAnimationPlayer} from '../../../src/animations';
 import {Injectable} from '@angular/core';
 
 import {containsElement, getParentElement, invokeQuery, validateStyleProperty} from './shared';
 
 /**
  * @publicApi
+ *
+ * @deprecated 20.2 Use `animate.enter` or `animate.leave` instead. Intent to remove in v23
  *
  * `AnimationDriver` implentation for Noop animations
  */
@@ -72,6 +74,8 @@ export class NoopAnimationDriver implements AnimationDriver {
 
 /**
  * @publicApi
+ *
+ * @deprecated 20.2 Use `animate.enter` or `animate.leave` instead. Intent to remove in v23
  */
 export abstract class AnimationDriver {
   /**

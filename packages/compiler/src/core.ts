@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 // Attention:
@@ -12,7 +12,7 @@
 // This is important to prevent a build cycle, as @angular/core needs to
 // be compiled with the compiler.
 
-import {CssSelector} from './selector';
+import {CssSelector} from './directive_matching';
 
 // Stores the default value of `emitDistinctChangesOnly` when the `emitDistinctChangesOnly` is not
 // explicitly set.
@@ -23,6 +23,7 @@ export enum ViewEncapsulation {
   // Historically the 1 value was for `Native` encapsulation which has been removed as of v11.
   None = 2,
   ShadowDom = 3,
+  IsolatedShadowDom = 4,
 }
 
 export enum ChangeDetectionStrategy {
@@ -221,12 +222,12 @@ export const enum AttributeMarker {
    * ## Example:
    *
    * Given:
-   * ```
-   * <div class="foo bar baz">...<d/vi>
+   * ```html
+   * <div class="foo bar baz">...</div>
    * ```
    *
    * the generated code is:
-   * ```
+   * ```ts
    * var _c1 = [AttributeMarker.Classes, 'foo', 'bar', 'baz'];
    * ```
    */
@@ -240,12 +241,12 @@ export const enum AttributeMarker {
    * ## Example:
    *
    * Given:
-   * ```
+   * ```html
    * <div style="width:100px; height:200px; color:red">...</div>
    * ```
    *
    * the generated code is:
-   * ```
+   * ```ts
    * var _c1 = [AttributeMarker.Styles, 'width', '100px', 'height'. '200px', 'color', 'red'];
    * ```
    */
@@ -256,13 +257,13 @@ export const enum AttributeMarker {
    *
    * For example, given the following HTML:
    *
-   * ```
+   * ```html
    * <div moo="car" [foo]="exp" (bar)="doSth()">
    * ```
    *
    * the generated code is:
    *
-   * ```
+   * ```ts
    * var _c1 = ['moo', 'car', AttributeMarker.Bindings, 'foo', 'bar'];
    * ```
    */
@@ -273,7 +274,7 @@ export const enum AttributeMarker {
    *
    * For example, given the following HTML:
    *
-   * ```
+   * ```html
    * <div *ngFor="let value of values; trackBy:trackBy" dirA [dirB]="value">
    * ```
    *
@@ -298,7 +299,7 @@ export const enum AttributeMarker {
    *
    * For example, given the following HTML:
    *
-   * ```
+   * ```html
    * <h1 attr="value" ngProjectAs="[title]">
    * ```
    *
@@ -315,14 +316,15 @@ export const enum AttributeMarker {
    *
    * For example, given the following HTML:
    *
-   * ```
+   * ```html
    * <div moo="car" foo="value" i18n-foo [bar]="binding" i18n-bar>
    * ```
    *
    * the generated code is:
    *
-   * ```
+   * ```ts
    * var _c1 = ['moo', 'car', AttributeMarker.I18n, 'foo', 'bar'];
+   * ```
    */
   I18n = 6,
 }

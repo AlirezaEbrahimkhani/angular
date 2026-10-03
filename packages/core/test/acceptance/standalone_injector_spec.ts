@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {
@@ -14,8 +14,8 @@ import {
   NgModule,
   ViewChild,
   ViewContainerRef,
-} from '@angular/core';
-import {TestBed} from '@angular/core/testing';
+} from '../../src/core';
+import {TestBed} from '../../testing';
 
 describe('standalone injector', () => {
   it('should create one standalone injector for each parent EnvInjector', () => {
@@ -30,7 +30,6 @@ describe('standalone injector', () => {
 
     @Component({
       selector: 'standalone',
-      standalone: true,
       imports: [ModuleWithAService],
       template: `({{service.value}})`,
     })
@@ -38,7 +37,11 @@ describe('standalone injector', () => {
       constructor(readonly service: Service) {}
     }
 
-    @Component({selector: 'app', template: `<ng-template #insert></ng-template>`})
+    @Component({
+      selector: 'app',
+      template: `<ng-template #insert></ng-template>`,
+      standalone: false,
+    })
     class AppComponent {
       @ViewChild('insert', {static: true, read: ViewContainerRef}) vcRef!: ViewContainerRef;
 
@@ -77,7 +80,6 @@ describe('standalone injector', () => {
 
     @Component({
       selector: 'standalone',
-      standalone: true,
       imports: [ModuleWithAService],
       template: `{{service.value}}`,
     })
@@ -85,7 +87,9 @@ describe('standalone injector', () => {
       constructor(readonly service: Service) {}
     }
 
-    @Component({})
+    @Component({
+      standalone: false,
+    })
     class AppComponent {}
 
     const fixture = TestBed.createComponent(AppComponent);

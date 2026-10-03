@@ -3,9 +3,10 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
+import {Provider} from '@angular/core';
 import {PLACEHOLDER_QUALITY} from './constants';
 import {createImageLoader, ImageLoaderConfig, ImageLoaderInfo} from './image_loader';
 
@@ -34,7 +35,7 @@ function isImgixUrl(url: string): boolean {
  *
  * @publicApi
  */
-export const provideImgixLoader = createImageLoader(
+export const provideImgixLoader: (path: string) => Provider[] = createImageLoader(
   createImgixUrl,
   ngDevMode ? ['https://somepath.imgix.net/'] : undefined,
 );

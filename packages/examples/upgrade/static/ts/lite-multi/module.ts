@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 // #docplaster
@@ -17,8 +17,7 @@ import {
   NgModule,
   StaticProvider,
 } from '@angular/core';
-import {BrowserModule} from '@angular/platform-browser';
-import {platformBrowserDynamic} from '@angular/platform-browser-dynamic';
+import {BrowserModule, platformBrowser} from '@angular/platform-browser';
 import {
   downgradeComponent,
   downgradeInjectable,
@@ -33,11 +32,13 @@ declare var angular: ng.IAngularStatic;
 @Component({
   selector: 'ng2A',
   template: 'Component A | <ng1A></ng1A>',
+  standalone: false,
 })
 export class Ng2AComponent {}
 
 @Directive({
   selector: 'ng1A',
+  standalone: false,
 })
 export class Ng1AComponentFacade extends UpgradeComponent {
   constructor(elementRef: ElementRef, injector: Injector) {
@@ -65,6 +66,7 @@ export class Ng2AModule {
 @Component({
   selector: 'ng2B',
   template: 'Component B',
+  standalone: false,
 })
 export class Ng2BComponent {}
 
@@ -78,11 +80,11 @@ export class Ng2BModule {
 
 // The downgraded Angular modules.
 const downgradedNg2AModule = downgradeModule((extraProviders: StaticProvider[]) =>
-  (getPlatform() || platformBrowserDynamic(extraProviders)).bootstrapModule(Ng2AModule),
+  (getPlatform() || platformBrowser(extraProviders)).bootstrapModule(Ng2AModule),
 );
 
 const downgradedNg2BModule = downgradeModule((extraProviders: StaticProvider[]) =>
-  (getPlatform() || platformBrowserDynamic(extraProviders)).bootstrapModule(Ng2BModule),
+  (getPlatform() || platformBrowser(extraProviders)).bootstrapModule(Ng2BModule),
 );
 
 // The AngularJS app including downgraded modules, components and injectables.
@@ -110,8 +112,10 @@ const appModule = angular
     controller: [
       'ng2AService',
       class Ng1AController {
-        value = this.ng2AService.getValue();
-        constructor(private ng2AService: Ng2AService) {}
+        value: string;
+        constructor(private ng2AService: Ng2AService) {
+          this.value = this.ng2AService.getValue();
+        }
       },
     ],
   })
